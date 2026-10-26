@@ -53,6 +53,11 @@ use explanations for security monitoring. The defensible gap is the combination 
    features are also driving the detector's changed attribution profile;
 6. independent temporal validation of the complete diagnosis-and-adaptation protocol.
 
+The implementation also adds a separately reported, label-free transfer-calibration experiment:
+the coupling threshold is estimated from the largest unlabeled target-window score gap while the
+feature and SHAP thresholds remain source-locked. This is a calibration contribution to test
+portability, not a claim that the largest-gap heuristic is universally optimal.
+
 The last item is currently an evidence requirement, not a completed result.
 
 ## Study design implication
@@ -90,8 +95,10 @@ will be reported as a result.
 
 The evaluation must include explanation-drift baselines based on mean absolute SHAP displacement
 and top-k attribution overlap, because these signals are already used in recent security work.
-The new coupling score must be treated as an additional interpretable diagnostic, not as a claim
-that cosine similarity itself is novel in machine learning. Its incremental value must be tested
-against the existing dual rule and reported even if neutral.
+The new coupling score and conservative alignment ensemble must be treated as additional
+interpretable diagnostics, not as claims that cosine similarity, Pearson alignment, or the minimum
+operator itself is novel in machine learning. Their incremental value must be tested against the
+existing dual rule and reported even if neutral. The label-free transfer calibration must be
+reported separately from any label-tuned threshold.
 The project should also report calibration, detection delay, false-positive burden, model-version
 count, and contamination checks rather than only macro-F1.

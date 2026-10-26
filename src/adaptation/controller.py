@@ -8,7 +8,15 @@ import numpy as np
 from sklearn.ensemble import IsolationForest
 
 
-POLICIES = ("static", "periodic", "feature_only", "shap_only", "dual_signal", "coupled_signal")
+POLICIES = (
+    "static",
+    "periodic",
+    "feature_only",
+    "shap_only",
+    "dual_signal",
+    "coupled_signal",
+    "conservative_coupled_signal",
+)
 
 
 def should_adapt(

@@ -22,7 +22,7 @@ from sklearn.ensemble import IsolationForest
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from src.drift.diagnosis import apply_coupled_diagnosis, apply_diagnosis  # noqa: E402
+from src.drift.diagnosis import apply_coupled_diagnosis, apply_diagnosis, largest_gap_threshold  # noqa: E402
 from src.drift.drift_monitor import compute_drift_coupling, compute_feature_drift, compute_shap_drift  # noqa: E402
 from src.evaluation.metrics import binary_detection_metrics  # noqa: E402
 from src.explain.shap_explainer import explain_matrix  # noqa: E402
@@ -124,6 +124,26 @@ def main() -> None:
     thresholds = json.loads((ROOT / "data" / "benchmark" / "diagnosis_thresholds.json").read_text(encoding="utf-8"))
     diagnosed = apply_diagnosis(combined, thresholds)
     diagnosed = apply_coupled_diagnosis(diagnosed, thresholds)
+    diagnosed = apply_coupled_diagnosis(
+        diagnosed,
+        thresholds,
+        coupling_column="coupling_conservative_score",
+        threshold_key="conservative_coupling_threshold",
+        output_column="conservative_coupled_diagnosis",
+    )
+    transfer_calibration_pool = diagnosed[
+        (diagnosed["feature_drift_score"] >= thresholds["feature_threshold"])
+        & (diagnosed["shap_drift_score"] >= thresholds["shap_threshold"])
+    ]["coupling_conservative_score"]
+    transfer_thresholds = dict(thresholds)
+    transfer_thresholds["unsupervised_coupling_threshold"] = largest_gap_threshold(transfer_calibration_pool)
+    diagnosed = apply_coupled_diagnosis(
+        diagnosed,
+        transfer_thresholds,
+        coupling_column="coupling_conservative_score",
+        threshold_key="unsupervised_coupling_threshold",
+        output_column="unsupervised_coupled_diagnosis",
+    )
     diagnosed["ground_truth_binary"] = diagnosed["window_id"].map(
         lambda value: 0 if value in {"external_benign_reference", "external_benign"} else 1
     )
@@ -139,6 +159,12 @@ def main() -> None:
     diagnosed["coupled_signal_prediction"] = (
         diagnosed["coupled_diagnosis"] == "security_relevant_drift"
     ).astype(int)
+    diagnosed["conservative_coupled_signal_prediction"] = (
+        diagnosed["conservative_coupled_diagnosis"] == "security_relevant_drift"
+    ).astype(int)
+    diagnosed["unsupervised_coupled_signal_prediction"] = (
+        diagnosed["unsupervised_coupled_diagnosis"] == "security_relevant_drift"
+    ).astype(int)
     metrics = {
         policy: binary_detection_metrics(
             diagnosed["ground_truth_binary"].to_numpy(), diagnosed[column].to_numpy()
@@ -148,6 +174,8 @@ def main() -> None:
             "shap_only": "shap_only_prediction",
             "dual_signal": "dual_signal_prediction",
             "coupled_signal": "coupled_signal_prediction",
+            "conservative_coupled_signal": "conservative_coupled_signal_prediction",
+            "unsupervised_coupled_signal": "unsupervised_coupled_signal_prediction",
         }.items()
     }
 
@@ -163,12 +191,15 @@ def main() -> None:
         "target_records": len(target_records),
         "scenario_windows": {name: len(records) for name, records in groups.items()},
         "diagnosis_threshold_source": "data/benchmark/diagnosis_thresholds.json",
+        "unsupervised_transfer_threshold": transfer_thresholds["unsupervised_coupling_threshold"],
+        "unsupervised_transfer_threshold_source": "largest gap among unlabeled target windows with high feature and SHAP drift",
         "evaluation_unit": "scenario window, not individual event",
         "metrics": metrics,
         "limitations": [
             "The external corpus provides one target attack period and is insufficient for long-run adaptation recovery.",
             "The primary threshold is transferred without target-label tuning.",
             "The labels are used only for evaluation, never for fitting or diagnosis.",
+            "The unsupervised transfer calibration uses the unlabeled target-window score distribution; its small-window estimate requires broader prospective validation.",
         ],
     }
     (output / "external_temporal_diagnosis_manifest.json").write_text(

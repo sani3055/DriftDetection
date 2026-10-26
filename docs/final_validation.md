@@ -28,11 +28,13 @@ CloudTrail-style CSV recorded in `data_manifest/real_cloudtrail_manifest.json`.
 9. Saved result summaries and publication-oriented figures.
 10. Independent detector validation and a coarse external reference/target temporal diagnosis
     checkpoint.
-11. Attribution-feature coupling and a separate coupled-signal adaptation ablation.
+11. Attribution-feature coupling, conservative alignment, and separate coupled-signal adaptation
+    ablations.
+12. Label-free largest-gap transfer calibration with explicit provenance.
 
 ## Validation evidence
 
-- Full test suite: **26 passed**.
+- Full test suite: **28 passed**.
 - SHAP maximum additivity residual: `2.6645352591003757e-14`.
 - Benchmark validation macro-F1: `0.7306397306397306`.
 - Held-out diagnosis confusion matrix and adaptation-policy comparison were rendered and
@@ -42,7 +44,8 @@ CloudTrail-style CSV recorded in `data_manifest/real_cloudtrail_manifest.json`.
 - Detector-family and sample-size ablations were completed with deterministic bootstrap 95% CIs.
 - Mean absolute SHAP-attribution displacement is reported as an explicit attribution-drift metric.
 - Feature-attribution coupling is reported as cosine similarity between aligned PSI and SHAP
-  displacement vectors in `data/drift/coupling_drift.csv`.
+  displacement vectors in `data/drift/coupling_drift.csv`, with centered/rank alignment and a
+  conservative minimum score as ablations.
 - The richer raw export audit found 1,330 distinct days and all 24 hours, while confirming that it
   is the same underlying corpus and not independent validation.
 - Detector-only external validation completed on a separate labeled CloudTrail corpus: Isolation
@@ -51,6 +54,9 @@ CloudTrail-style CSV recorded in `data_manifest/real_cloudtrail_manifest.json`.
   SHAP-only, and dual-signal policies each achieved F1 `0.952381` and FPR `0.500000`.
 - The coupled external checkpoint achieved F1 `0.181818`, recall `0.100000`, and FPR `0.000000`,
   exposing negative transfer of the coupling threshold rather than supporting a superiority claim.
+- The label-free largest-gap transfer calibration selected threshold `0.499080` and achieved
+  F1 `1.000000`, recall `1.000000`, and FPR `0.000000` on the same 12-window checkpoint; this
+  result is exploratory and requires larger prospective validation.
 - Coupled-signal adaptation ablation completed; it matched the dual policy in the current held-out
   benchmark and is retained as a neutral result.
 - The pinned environment was used to regenerate the model, SHAP, drift, benchmark, adaptation,
@@ -89,6 +95,7 @@ claims of attack recall on the original unlabeled CloudTrail corpus.
 - `data/external_validation/external_temporal_diagnosis.csv`
 - `data/external_validation/external_temporal_diagnosis_metrics.json`
 - `data/external_validation/external_temporal_diagnosis_manifest.json`
+- `docs/unsupervised_transfer_calibration.md`
 - `docs/external_validation.md`
 - `figures/monthly_drift_signals.png`
 - `figures/diagnosis_confusion_matrix.png`

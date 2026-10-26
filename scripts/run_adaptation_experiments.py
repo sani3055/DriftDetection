@@ -47,7 +47,13 @@ def main() -> None:
                 policy,
                 float(record["feature_drift_score"]),
                 float(record["shap_drift_score"]),
-                str(record["coupled_diagnosis"] if policy == "coupled_signal" else record["diagnosis"]),
+                str(
+                    record["coupled_diagnosis"]
+                    if policy == "coupled_signal"
+                    else record["conservative_coupled_diagnosis"]
+                    if policy == "conservative_coupled_signal"
+                    else record["diagnosis"]
+                ),
                 float(thresholds["feature_threshold"]),
                 float(thresholds["shap_threshold"]),
                 sequence_index,

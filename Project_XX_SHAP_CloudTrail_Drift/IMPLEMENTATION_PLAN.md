@@ -260,6 +260,8 @@ Added:
 - mean absolute SHAP-attribution displacement as an explicit drift metric;
 - automated cost-sensitive policy analysis across missed-security, false-alarm, and unnecessary-adaptation cost assumptions;
 - attribution-feature coupling using aligned per-feature PSI and SHAP displacement, with a separate coupled adaptation policy;
+- conservative coupling ensemble using cosine and centered alignment, plus a label-free largest-gap
+  transfer-calibration experiment kept separate from source-tuned results;
 - richer-source timestamp-resolution audit without treating the same corpus as external data;
 - manuscript draft and venue-readiness checklist in `docs/manuscript_draft.md`.
 
@@ -277,10 +279,11 @@ Research updates added during the literature reassessment:
   current official scope warns of an AI/ML moratorium.
 
 Detector-only validation is now completed on an independent labeled CloudTrail corpus, and a coarse
-reference/target temporal diagnosis checkpoint has been added. The checkpoint is neutral across
-feature-only, SHAP-only, and dual policies at the scenario-window level; it does not establish
-full post-adaptation recovery. The remaining evidence gap is aligned independent temporal
-recovery evaluation or analyst-confirmed incident data.
+reference/target temporal diagnosis checkpoint has been added. The source-tuned coupling result
+shows negative transfer, while the separately reported label-free largest-gap calibration succeeds
+on the current small checkpoint. This does not establish full post-adaptation recovery. The
+remaining evidence gap is multi-period independent temporal recovery evaluation or
+analyst-confirmed incident data.
 
 ## Intended repository structure
 

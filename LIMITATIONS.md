@@ -23,6 +23,9 @@
 - Detector and sample-size ablations show configuration sensitivity; no single detector or window
   size should be presented as universally optimal.
 - The attribution-feature coupling extension is currently neutral relative to the simpler dual
-  rule under the controlled scenarios and transferred poorly to the external checkpoint; broader
-  perturbation families and threshold calibration are needed before claiming a benefit.
+  rule under the controlled scenarios. A source-tuned threshold transferred poorly, while a
+  largest-gap label-free calibration succeeded on the small external checkpoint; broader
+  multi-period validation is needed before claiming general transfer or production benefit.
+- The unsupervised transfer calibration estimates a threshold from target-window scores. This is
+  not attack-label leakage, but it can be unstable with few windows or contaminated target streams.
 - The project does not deploy AWS resources or enforce IAM policies.

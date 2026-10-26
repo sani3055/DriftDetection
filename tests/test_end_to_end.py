@@ -30,6 +30,7 @@ def test_generated_research_artifacts_exist() -> None:
         Path("docs/next_experiments.md"),
         Path("docs/cost_sensitivity.md"),
         Path("docs/attribution_feature_coupling.md"),
+        Path("docs/unsupervised_transfer_calibration.md"),
         Path("figures/monthly_drift_signals.png"),
     ]
     missing = [str(path) for path in required if not path.is_file()]

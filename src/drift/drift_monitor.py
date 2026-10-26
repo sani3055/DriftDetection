@@ -9,7 +9,7 @@ from typing import Iterable, Any
 
 import numpy as np
 import pandas as pd
-from scipy.stats import kendalltau, wasserstein_distance
+from scipy.stats import kendalltau, spearmanr, wasserstein_distance
 
 
 def _normalized_counts(counts: dict[str, int], keys: Iterable[str], epsilon: float) -> np.ndarray:
@@ -113,6 +113,26 @@ def _cosine_similarity(left: np.ndarray, right: np.ndarray, epsilon: float = 1e-
     return float(np.dot(left, right) / (left_norm * right_norm))
 
 
+def _centered_alignment(left: np.ndarray, right: np.ndarray, epsilon: float = 1e-12) -> float:
+    """Return positive-shifted Pearson alignment for two non-constant vectors."""
+    if np.std(left) <= epsilon or np.std(right) <= epsilon:
+        return 0.0
+    correlation = float(np.corrcoef(left, right)[0, 1])
+    if not np.isfinite(correlation):
+        return 0.0
+    return float(np.clip((correlation + 1.0) / 2.0, 0.0, 1.0))
+
+
+def _rank_alignment(left: np.ndarray, right: np.ndarray, epsilon: float = 1e-12) -> float:
+    """Return a [0, 1] rank agreement score that is robust to scale changes."""
+    if np.std(left) <= epsilon or np.std(right) <= epsilon:
+        return 0.0
+    correlation = float(spearmanr(left, right).statistic)
+    if not np.isfinite(correlation):
+        return 0.0
+    return float(np.clip((correlation + 1.0) / 2.0, 0.0, 1.0))
+
+
 def compute_shap_drift(
     shap_sample: pd.DataFrame,
     reference_months: Iterable[str],
@@ -194,9 +214,16 @@ def compute_drift_coupling(
         coupling = _cosine_similarity(feature_vector, attribution_vector)
         feature_mass = float(np.linalg.norm(feature_vector))
         attribution_mass = float(np.linalg.norm(attribution_vector))
+        centered_alignment = _centered_alignment(feature_vector, attribution_vector)
+        rank_alignment = _rank_alignment(feature_vector, attribution_vector)
         rows.append({
             "window_id": str(row["window_id"]),
             "feature_attribution_coupling": coupling,
+            "coupling_centered_alignment": centered_alignment,
+            "coupling_rank_alignment": rank_alignment,
+            # A conservative ensemble prevents one alignment definition from
+            # dominating when feature and attribution vectors have different scales.
+            "coupling_conservative_score": min(coupling, centered_alignment),
             "coupling_feature_mass": feature_mass,
             "coupling_attribution_mass": attribution_mass,
             "coupling_top_feature": feature_names[int(np.argmax(feature_vector))]

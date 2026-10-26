@@ -70,8 +70,9 @@ evaluation.
 
 The current method extension adds label-free attribution-feature coupling: cosine similarity between
 per-feature PSI drift and per-feature SHAP-attribution displacement. It is evaluated as a separate
-`coupled_signal` policy and is reported neutrally because the current benchmark does not show an
-advantage over the simpler dual rule.
+`coupled_signal` policy and a conservative alignment ablation. The controlled benchmark is neutral;
+the external checkpoint additionally tests a label-free largest-gap transfer calibration, which
+improved recall in that small checkpoint but requires prospective validation.
 
 See:
 
@@ -85,6 +86,7 @@ See:
 - `docs/next_experiments.md`
 - `docs/presentation_speaker_notes.md`
 - `docs/attribution_feature_coupling.md`
+- `docs/unsupervised_transfer_calibration.md`
 - `review_2022_2026/automated_quality_audit_100.csv`
 - `scripts/audit_review_set.py`
 - `scripts/run_external_temporal_diagnosis.py`

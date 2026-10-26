@@ -41,14 +41,20 @@ primary thresholds produced the following **scenario-window-level** results:
 | SHAP-only | 0.9091 | 1.0000 | 0.9524 | 0.5000 |
 | Dual-signal | 0.9091 | 1.0000 | 0.9524 | 0.5000 |
 | Coupled-signal | 1.0000 | 0.1000 | 0.1818 | 0.0000 |
+| Unsupervised coupled calibration | 1.0000 | 1.0000 | 1.0000 | 0.0000 |
 
 The feature-only, SHAP-only, and dual policies are identical at this coarse window level, while
-the coupled policy is conservative and misses most external attack windows under the transferred
-coupling threshold. This negative transfer result is important: coupling is not yet a universally
-portable policy, and its threshold requires broader temporal calibration. One benign target window
-is falsely flagged by the other policies. The result demonstrates why event-level or multi-window
-evaluation is required. Outputs are stored in `data/external_validation/external_temporal_diagnosis.csv`,
+the source-tuned coupled policy is conservative and misses most external attack windows. This
+negative transfer result is important. The additional unsupervised calibration uses the largest
+gap in the unlabeled target coupling-score distribution; its threshold was `0.4991` and it
+recovered all 10 attack windows without flagging the benign target window in this checkpoint.
+This is promising but small evidence: the target has only 12 scenario windows and the calibration
+threshold is estimated from the target stream. One benign target window is falsely flagged by the
+other policies. The result demonstrates why event-level or multi-window evaluation is required.
+Outputs are stored in `data/external_validation/external_temporal_diagnosis.csv`,
 `external_temporal_diagnosis_metrics.json`, and `external_temporal_diagnosis_manifest.json`.
+
+The detailed protocol is documented in `docs/unsupervised_transfer_calibration.md`.
 
 The external corpus still does not contain enough independent post-adaptation windows to validate
 recovery, retraining safety, or long-run adaptation cost. Those claims remain open.

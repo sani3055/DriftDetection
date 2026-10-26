@@ -13,15 +13,18 @@ analysis. We then construct a controlled semi-synthetic benchmark by injecting r
 benign and security-relevant perturbations into held-out real-data samples. An Isolation Forest
 provides the primary detector, TreeSHAP validates attribution behavior, and a protected
 adaptation controller compares static, periodic, feature-only, SHAP-only, and dual-signal
-policies. The held-out controlled benchmark obtained a validation-tuned diagnosis macro-F1 of
+policies, with coupling and conservative transfer-calibration ablations. The held-out controlled
+benchmark obtained a validation-tuned diagnosis macro-F1 of
 0.7306. In the adaptation comparison, dual-signal and static policies had similar mean F1
 (`-0.0028` paired difference; 95% bootstrap CI `[-0.0181, 0.0112]`), while dual-signal reduced
 false-positive rate by `0.0885` (95% CI `[-0.1272, -0.0561]`; Benjamini–Hochberg adjusted
 Wilcoxon `q=0.00043`). These values apply only to the defined semi-synthetic protocol. Detector
 and sample-size ablations show material sensitivity, supporting the need for uncertainty reporting
 rather than a single headline configuration. The study contributes a reproducible CloudTrail
-drift-diagnosis protocol and an explicit separation between real-data observations and controlled
-labelled evidence.
+drift-diagnosis protocol, an interpretable attribution-feature coupling ablation, and an explicit
+separation between real-data observations and controlled labelled evidence. A label-free
+largest-gap transfer calibration recovered all attack windows in a small 12-window external
+checkpoint, but this exploratory result requires multi-period validation.
 
 **Keywords:** CloudTrail, anomaly detection, concept drift, SHAP, explainable cybersecurity,
 adaptive retraining, unsupervised learning.
@@ -190,6 +193,13 @@ and the coarse window unit provides little statistical power.
 The external corpus does not provide enough post-adaptation windows to evaluate recovery or
 long-run retraining cost.
 
+As a separate label-free transfer-calibration experiment, the threshold for the conservative
+coupling score was set at the midpoint of the largest gap among unlabeled target windows that
+exceeded the transferred feature and SHAP thresholds. The selected threshold was `0.4991`; the
+resulting unsupervised coupled policy obtained precision `1.0000`, recall `1.0000`, F1 `1.0000`,
+and FPR `0.0000` at the scenario-window level. This encouraging result is exploratory because it
+uses only 12 target windows and estimates the threshold from the target score distribution.
+
 ### 4.7 Attribution-feature coupling
 
 The coupling score is measurable across the 45 real monthly windows and is saved in
@@ -199,6 +209,9 @@ The `coupled_signal` adaptation policy also matched the dual policy in the curre
 trigger rate `0.242857`, unnecessary-adaptation rate `0.000000`, mean F1 `0.287314`, and FPR
 `0.339707`. This neutral result means the extension is a reproducible diagnostic ablation, not
 evidence that coupling universally improves the simpler dual rule.
+The conservative alignment variant also matched the coupled policy in the controlled benchmark.
+Its value in the present study is therefore interpretive and transfer-oriented rather than a
+demonstrated within-corpus performance gain.
 
 ## 5. Discussion
 
@@ -210,9 +223,11 @@ the reported values.
 
 The most defensible contribution is the protocol. It prevents an unlabeled month-level corpus
 from being overinterpreted while still enabling a controlled test of diagnosis and adaptation.
-The neutral external temporal checkpoint also demonstrates that attribution drift does not
-automatically add decision value at every evaluation granularity. This makes the research question
-falsifiable rather than assuming that the dual signal will transfer.
+The source-tuned negative external checkpoint demonstrates that attribution drift does not
+automatically add decision value at every evaluation granularity. The separate unsupervised
+largest-gap calibration shows a plausible way to address score-scale shift, but it is not yet
+validated across enough target periods to support a universal transfer claim. This makes the
+research question falsifiable rather than assuming that the dual signal will transfer.
 The coupling extension adds a more granular interpretation of whether changed features are also
 driving the detector, but its current benchmark result is neutral and requires broader scenarios
 before a stronger superiority claim would be justified.
@@ -243,6 +258,8 @@ path and checksum rather than copied into the repository.
 - [x] Obtain and document an independent labeled CloudTrail dataset for detector portability.
 - [x] Add an aligned external reference/target temporal diagnosis checkpoint; report its neutral
   result and retain the limitation that full adaptation recovery is not validated.
+- [x] Add a separately reported label-free target-window coupling calibration experiment and
+  preserve its small-window limitation.
 - [ ] Add external validation of the full SHAP-drift/adaptation recovery protocol and, if possible,
   analyst-confirmed incident cases.
 - [ ] Lock the final dependency versions and archive the exact source snapshot.

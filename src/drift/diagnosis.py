@@ -43,6 +43,24 @@ def diagnose_coupled(
     return "security_relevant_drift" if coupling_high else "review_required"
 
 
+def largest_gap_threshold(values: Iterable[float], fallback: float = 0.5) -> float:
+    """Choose a label-free threshold at the largest observed score gap.
+
+    This is intended for a target-window transfer calibration experiment. It uses
+    only unlabeled coupling scores and falls back to a conservative midpoint when
+    fewer than two finite, non-identical scores are available.
+    """
+    scores = np.asarray([float(value) for value in values if np.isfinite(float(value))], dtype=float)
+    scores = np.unique(np.sort(scores))
+    if len(scores) < 2:
+        return float(fallback)
+    gaps = np.diff(scores)
+    index = int(np.argmax(gaps))
+    if gaps[index] <= 0:
+        return float(fallback)
+    return float((scores[index] + scores[index + 1]) / 2.0)
+
+
 def _labels(frame: pd.DataFrame) -> list[str]:
     return frame["ground_truth"].replace({"benign_region": "benign_drift", "benign_identity": "benign_drift", "benign_service": "benign_drift", "security_privilege": "security_relevant_drift", "security_defense": "security_relevant_drift", "security_credential": "security_relevant_drift", "stable": "stable"}).tolist()
 
@@ -70,11 +88,15 @@ def tune_thresholds(validation: pd.DataFrame) -> dict[str, float]:
     }
 
 
-def tune_coupled_thresholds(validation: pd.DataFrame) -> dict[str, float]:
-    """Tune feature, SHAP, and coupling thresholds using validation scenarios only."""
+def tune_coupled_thresholds(
+    validation: pd.DataFrame,
+    coupling_column: str = "feature_attribution_coupling",
+    threshold_key: str = "coupling_threshold",
+) -> dict[str, float]:
+    """Tune feature, SHAP, and one coupling score using validation scenarios only."""
     feature_candidates = np.unique(np.quantile(validation["feature_drift_score"], [0.2, 0.35, 0.5, 0.65, 0.8, 0.9]))
     shap_candidates = np.unique(np.quantile(validation["shap_drift_score"], [0.2, 0.35, 0.5, 0.65, 0.8, 0.9]))
-    coupling_candidates = np.unique(np.quantile(validation["feature_attribution_coupling"], [0.2, 0.35, 0.5, 0.65, 0.8, 0.9]))
+    coupling_candidates = np.unique(np.quantile(validation[coupling_column], [0.2, 0.35, 0.5, 0.65, 0.8, 0.9]))
     truth = _labels(validation)
     best = None
     for feature_threshold in feature_candidates:
@@ -85,7 +107,7 @@ def tune_coupled_thresholds(validation: pd.DataFrame) -> dict[str, float]:
                     for f, s, c in zip(
                         validation["feature_drift_score"],
                         validation["shap_drift_score"],
-                        validation["feature_attribution_coupling"],
+                        validation[coupling_column],
                     )
                 ]
                 score = f1_score(
@@ -102,7 +124,7 @@ def tune_coupled_thresholds(validation: pd.DataFrame) -> dict[str, float]:
     return {
         "feature_threshold": best[1],
         "shap_threshold": best[2],
-        "coupling_threshold": best[3],
+        threshold_key: best[3],
         "validation_macro_f1": best[0],
     }
 
@@ -116,21 +138,27 @@ def apply_diagnosis(frame: pd.DataFrame, thresholds: dict[str, float]) -> pd.Dat
     return result
 
 
-def apply_coupled_diagnosis(frame: pd.DataFrame, thresholds: dict[str, float]) -> pd.DataFrame:
+def apply_coupled_diagnosis(
+    frame: pd.DataFrame,
+    thresholds: dict[str, float],
+    coupling_column: str = "feature_attribution_coupling",
+    threshold_key: str = "coupling_threshold",
+    output_column: str = "coupled_diagnosis",
+) -> pd.DataFrame:
     result = frame.copy()
-    result["coupled_diagnosis"] = [
+    result[output_column] = [
         diagnose_coupled(
             f,
             s,
             c,
             thresholds["feature_threshold"],
             thresholds["shap_threshold"],
-            thresholds["coupling_threshold"],
+            thresholds[threshold_key],
         )
         for f, s, c in zip(
             result["feature_drift_score"],
             result["shap_drift_score"],
-            result["feature_attribution_coupling"],
+            result[coupling_column],
         )
     ]
     return result

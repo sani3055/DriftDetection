@@ -134,6 +134,7 @@ def scenario_signals(
     coupling = compute_drift_coupling(feature_drift, shap_drift)
     feature_row = feature_drift[feature_drift["window_id"] == "scenario"].iloc[0]
     shap_row = shap_drift[shap_drift["window_id"] == "scenario"].iloc[0]
+    coupling_row = coupling[coupling["window_id"] == "scenario"].iloc[0]
     return {
         "scenario": scenario,
         "seed": seed,
@@ -142,7 +143,10 @@ def scenario_signals(
         "mean_psi": float(feature_row["mean_psi"]),
         "mean_wasserstein": float(shap_row["mean_wasserstein"]),
         "top_k_jaccard": float(shap_row["top_k_jaccard"]),
-        "feature_attribution_coupling": float(coupling.loc[coupling["window_id"] == "scenario", "feature_attribution_coupling"].iloc[0]),
+        "feature_attribution_coupling": float(coupling_row["feature_attribution_coupling"]),
+        "coupling_centered_alignment": float(coupling_row["coupling_centered_alignment"]),
+        "coupling_rank_alignment": float(coupling_row["coupling_rank_alignment"]),
+        "coupling_conservative_score": float(coupling_row["coupling_conservative_score"]),
     }
 
 
@@ -167,7 +171,24 @@ def run_benchmark(
     validation = frame[frame["split"] == "validation"]
     thresholds = tune_thresholds(validation)
     coupled_thresholds = tune_coupled_thresholds(validation)
-    thresholds.update({"coupling_threshold": coupled_thresholds["coupling_threshold"], "coupled_validation_macro_f1": coupled_thresholds["validation_macro_f1"]})
+    conservative_thresholds = tune_coupled_thresholds(
+        validation,
+        coupling_column="coupling_conservative_score",
+        threshold_key="conservative_coupling_threshold",
+    )
+    thresholds.update({
+        "coupling_threshold": coupled_thresholds["coupling_threshold"],
+        "coupled_validation_macro_f1": coupled_thresholds["validation_macro_f1"],
+        "conservative_coupling_threshold": conservative_thresholds["conservative_coupling_threshold"],
+        "conservative_coupled_validation_macro_f1": conservative_thresholds["validation_macro_f1"],
+    })
     diagnosed = apply_diagnosis(frame, thresholds)
     diagnosed = apply_coupled_diagnosis(diagnosed, thresholds)
+    diagnosed = apply_coupled_diagnosis(
+        diagnosed,
+        thresholds,
+        coupling_column="coupling_conservative_score",
+        threshold_key="conservative_coupling_threshold",
+        output_column="conservative_coupled_diagnosis",
+    )
     return frame, thresholds, diagnosed

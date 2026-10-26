@@ -44,4 +44,7 @@ def test_drift_coupling_is_bounded() -> None:
     ])
     result = compute_drift_coupling(feature, shap)
     assert result["feature_attribution_coupling"].between(0.0, 1.0).all()
+    assert result["coupling_centered_alignment"].between(0.0, 1.0).all()
+    assert result["coupling_rank_alignment"].between(0.0, 1.0).all()
+    assert result["coupling_conservative_score"].between(0.0, 1.0).all()
     assert float(result.loc[result["window_id"] == "2020-02", "feature_attribution_coupling"].iloc[0]) > 0.99
