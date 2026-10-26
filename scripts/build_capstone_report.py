@@ -21,7 +21,7 @@ ROOT = Path(__file__).resolve().parents[1]
 TMP = ROOT / "tmp/capstone_report"
 TMP.mkdir(parents=True, exist_ok=True)
 TEMPLATE = Path(r"D:\Downloads\BCSE497J Project I Report - Template FINAlL Updated  (2).docx")
-OUTPUT = ROOT / "outputs/BCSE497J_Capstone_Report_Expanded.docx"
+OUTPUT = ROOT / "outputs/BCSE497J_Capstone_Report_Final.docx"
 CONTENT = ROOT / "docs/capstone_report_content.md"
 TITLE = "SHAP-GUIDED DRIFT DIAGNOSIS FOR ADAPTIVE ANOMALY DETECTION IN AWS CLOUDTRAIL"
 NS = {"w": "http://schemas.openxmlformats.org/wordprocessingml/2006/main", "r": "http://schemas.openxmlformats.org/officeDocument/2006/relationships"}
@@ -389,6 +389,23 @@ def build():
         node = copy.deepcopy(toc_pattern)
         for row in list(node.findall(W + "tr")): node.remove(row)
         total = 8900
+        if not navigation:
+            # The template's contents table deliberately has no printed borders.
+            # Data tables need explicit borders: Word's on-screen gridlines do
+            # not print and cannot make those tables visible in exported PDFs.
+            tp = node.find(W + "tblPr")
+            set_prop(tp, "tblW", w=total, type="dxa")
+            set_prop(tp, "tblLayout", type="fixed")
+            for old in list(tp.findall(W + "tblBorders")):
+                tp.remove(old)
+            borders = el("tblBorders")
+            for side in ("top", "left", "bottom", "right", "insideH", "insideV"):
+                borders.append(el(side, val="single", sz=6, space=0, color="000000"))
+            tp.append(borders)
+            margins = el("tblCellMar")
+            for side, value in (("top", 45), ("left", 80), ("bottom", 45), ("right", 80)):
+                margins.append(el(side, w=value, type="dxa"))
+            tp.append(margins)
         if widths is None:
             widths = {2:[2600,6300],3:[1800,3100,4000],4:[2900,1850,2250,1900],5:[3000,1475,1475,1475,1475]}.get(len(headers), [total//len(headers)] * len(headers))
         grid = node.find(W + "tblGrid")
@@ -408,6 +425,10 @@ def build():
                 pp = paragraph.find(W + "pPr")
                 set_prop(pp, "spacing", before=30, after=30, line=276, lineRule="auto")
                 set_prop(pp, "jc", val="left")
+                if not navigation and index < min(2, len(rows)):
+                    # Keep the header and at least two data rows together.
+                    # This also keeps a two-row result table on one page.
+                    set_prop(pp, "keepNext")
                 if isinstance(value, tuple): page_field(paragraph, value[0])
                 if index == 0:
                     for rp in paragraph.findall(".//" + W + "rPr"): rp.append(el("b"))
@@ -535,7 +556,14 @@ def build():
             key = block.split()[1]
             title, headers, rows = TABLES[key]
             main_nodes.append(caption(title, "table_" + key, True))
-            main_nodes.append(table(headers, rows))
+            column_widths = {
+                "functional": [700, 3900, 4300],
+                "features": [3500, 5400],
+                "tests": [2300, 4500, 2100],
+                "diagnosis": [2400, 1700, 4800],
+                "artifacts": [5800, 3100],
+            }
+            main_nodes.append(table(headers, rows, column_widths.get(key)))
         elif block.startswith("@figure "):
             key = block.split()[1]
             path, title = figure_defs[key]

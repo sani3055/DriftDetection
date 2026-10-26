@@ -15,7 +15,7 @@ from lxml import etree as ET
 
 ROOT = Path(__file__).resolve().parents[1]
 TMP = ROOT / "tmp/capstone_report"
-OUT = ROOT / "outputs/BCSE497J_Capstone_Report_Expanded.docx"
+OUT = ROOT / "outputs/BCSE497J_Capstone_Report_Final.docx"
 W = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}"
 NS = {"w": W[1:-1]}
 
