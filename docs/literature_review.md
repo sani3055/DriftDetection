@@ -75,15 +75,15 @@ unsupervised drift detection, OWAD's normality-shift explanation/adaptation fram
 explanation-instability monitoring for adversarial IDS inputs show that attribution changes are
 not an untouched concept. Therefore, the project's novelty must not be phrased as inventing SHAP
 drift. The contribution is the CloudTrail-specific empirical protocol, the separation of real
-observational data from controlled labelled perturbations, and the test of whether attribution
-drift improves protected adaptation decisions.
+observational data from controlled labelled perturbations, and the test of whether attribution-
+feature coupling improves protected adaptation decisions.
 
 ## Evidence-to-gap mapping
 
 | Literature evidence | Remaining problem | Project response |
 |---|---|---|
 | CloudTrail anomaly/XAI pipelines exist | They do not establish attribution-conditioned drift gating on this real corpus | Evaluate drift and adaptation explicitly |
-| Feature-based drift detection can over-alert | Any distribution change is not necessarily model-relevant | Compare feature drift with SHAP drift |
+| Feature-based drift detection can over-alert | Any distribution change is not necessarily model-relevant | Compare feature drift, SHAP drift, and their feature-level coupling |
 | Normality shift harms zero-positive anomaly detection | Adaptation can also absorb contamination or cause unnecessary retraining | Measure false positives, adaptation frequency, and protected retraining |
 | Drift-type-aware adaptation exists | Existing methods are not tailored to CloudTrail attribution behavior | Use interpretable dual-signal diagnosis |
 | Explanation-based drift monitoring exists in adjacent IDS/production work | General explanation drift is not evidence for CloudTrail security relevance | Use a real CloudTrail corpus and controlled security perturbations |

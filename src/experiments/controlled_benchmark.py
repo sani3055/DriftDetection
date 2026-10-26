@@ -8,8 +8,8 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
-from src.drift.diagnosis import apply_diagnosis, tune_thresholds
-from src.drift.drift_monitor import compute_feature_drift, compute_shap_drift
+from src.drift.diagnosis import apply_coupled_diagnosis, apply_diagnosis, tune_coupled_thresholds, tune_thresholds
+from src.drift.drift_monitor import compute_drift_coupling, compute_feature_drift, compute_shap_drift
 from src.explain.shap_explainer import explain_matrix
 
 
@@ -131,6 +131,7 @@ def scenario_signals(
     current_shap["window_id"] = "scenario"
     shap_frame = pd.concat([reference_shap, current_shap], ignore_index=True)
     shap_drift = compute_shap_drift(shap_frame, ["reference"], model_feature_names, top_k=3)
+    coupling = compute_drift_coupling(feature_drift, shap_drift)
     feature_row = feature_drift[feature_drift["window_id"] == "scenario"].iloc[0]
     shap_row = shap_drift[shap_drift["window_id"] == "scenario"].iloc[0]
     return {
@@ -141,6 +142,7 @@ def scenario_signals(
         "mean_psi": float(feature_row["mean_psi"]),
         "mean_wasserstein": float(shap_row["mean_wasserstein"]),
         "top_k_jaccard": float(shap_row["top_k_jaccard"]),
+        "feature_attribution_coupling": float(coupling.loc[coupling["window_id"] == "scenario", "feature_attribution_coupling"].iloc[0]),
     }
 
 
@@ -162,6 +164,10 @@ def run_benchmark(
                 row["ground_truth"] = scenario
                 rows.append(row)
     frame = pd.DataFrame(rows)
-    thresholds = tune_thresholds(frame[frame["split"] == "validation"])
+    validation = frame[frame["split"] == "validation"]
+    thresholds = tune_thresholds(validation)
+    coupled_thresholds = tune_coupled_thresholds(validation)
+    thresholds.update({"coupling_threshold": coupled_thresholds["coupling_threshold"], "coupled_validation_macro_f1": coupled_thresholds["validation_macro_f1"]})
     diagnosed = apply_diagnosis(frame, thresholds)
+    diagnosed = apply_coupled_diagnosis(diagnosed, thresholds)
     return frame, thresholds, diagnosed

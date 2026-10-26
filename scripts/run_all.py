@@ -16,6 +16,7 @@ STEPS = [
     "scripts/compute_drift.py",
     "scripts/run_controlled_benchmark.py",
     "scripts/run_adaptation_experiments.py",
+    "scripts/run_cost_sensitivity.py",
     "scripts/make_reports.py",
 ]
 
@@ -28,4 +29,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

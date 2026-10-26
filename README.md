@@ -68,6 +68,11 @@ The project contribution is the CloudTrail-specific protocol: real monthly obser
 labelled perturbations, dual-signal diagnosis, protected adaptation, and unnecessary-adaptation
 evaluation.
 
+The current method extension adds label-free attribution-feature coupling: cosine similarity between
+per-feature PSI drift and per-feature SHAP-attribution displacement. It is evaluated as a separate
+`coupled_signal` policy and is reported neutrally because the current benchmark does not show an
+advantage over the simpler dual rule.
+
 See:
 
 - `IMPLEMENTATION_PLAN.md`
@@ -79,8 +84,10 @@ See:
 - `docs/final_validation.md`
 - `docs/next_experiments.md`
 - `docs/presentation_speaker_notes.md`
+- `docs/attribution_feature_coupling.md`
 - `review_2022_2026/automated_quality_audit_100.csv`
 - `scripts/audit_review_set.py`
 - `scripts/run_external_temporal_diagnosis.py`
 - `scripts/run_cost_sensitivity.py`
+- `scripts/compute_drift.py`
 - `scripts/validate_submission_package.py`

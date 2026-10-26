@@ -22,6 +22,27 @@ def diagnose(feature_score: float, shap_score: float, feature_threshold: float, 
     return "review_required"
 
 
+def diagnose_coupled(
+    feature_score: float,
+    shap_score: float,
+    coupling_score: float,
+    feature_threshold: float,
+    shap_threshold: float,
+    coupling_threshold: float,
+) -> str:
+    """Diagnose drift using signal magnitude plus feature-attribution alignment."""
+    feature_high = feature_score >= feature_threshold
+    shap_high = shap_score >= shap_threshold
+    coupling_high = coupling_score >= coupling_threshold
+    if not feature_high and not shap_high:
+        return "stable"
+    if feature_high and not shap_high:
+        return "benign_drift"
+    if not feature_high and shap_high:
+        return "hidden_model_instability" if not coupling_high else "review_required"
+    return "security_relevant_drift" if coupling_high else "review_required"
+
+
 def _labels(frame: pd.DataFrame) -> list[str]:
     return frame["ground_truth"].replace({"benign_region": "benign_drift", "benign_identity": "benign_drift", "benign_service": "benign_drift", "security_privilege": "security_relevant_drift", "security_defense": "security_relevant_drift", "security_credential": "security_relevant_drift", "stable": "stable"}).tolist()
 
@@ -49,6 +70,43 @@ def tune_thresholds(validation: pd.DataFrame) -> dict[str, float]:
     }
 
 
+def tune_coupled_thresholds(validation: pd.DataFrame) -> dict[str, float]:
+    """Tune feature, SHAP, and coupling thresholds using validation scenarios only."""
+    feature_candidates = np.unique(np.quantile(validation["feature_drift_score"], [0.2, 0.35, 0.5, 0.65, 0.8, 0.9]))
+    shap_candidates = np.unique(np.quantile(validation["shap_drift_score"], [0.2, 0.35, 0.5, 0.65, 0.8, 0.9]))
+    coupling_candidates = np.unique(np.quantile(validation["feature_attribution_coupling"], [0.2, 0.35, 0.5, 0.65, 0.8, 0.9]))
+    truth = _labels(validation)
+    best = None
+    for feature_threshold in feature_candidates:
+        for shap_threshold in shap_candidates:
+            for coupling_threshold in coupling_candidates:
+                predictions = [
+                    diagnose_coupled(f, s, c, float(feature_threshold), float(shap_threshold), float(coupling_threshold))
+                    for f, s, c in zip(
+                        validation["feature_drift_score"],
+                        validation["shap_drift_score"],
+                        validation["feature_attribution_coupling"],
+                    )
+                ]
+                score = f1_score(
+                    truth,
+                    predictions,
+                    labels=["stable", "benign_drift", "security_relevant_drift", "hidden_model_instability", "review_required"],
+                    average="macro",
+                    zero_division=0,
+                )
+                candidate = (float(score), float(feature_threshold), float(shap_threshold), float(coupling_threshold))
+                if best is None or candidate > best:
+                    best = candidate
+    assert best is not None
+    return {
+        "feature_threshold": best[1],
+        "shap_threshold": best[2],
+        "coupling_threshold": best[3],
+        "validation_macro_f1": best[0],
+    }
+
+
 def apply_diagnosis(frame: pd.DataFrame, thresholds: dict[str, float]) -> pd.DataFrame:
     result = frame.copy()
     result["diagnosis"] = [
@@ -57,3 +115,22 @@ def apply_diagnosis(frame: pd.DataFrame, thresholds: dict[str, float]) -> pd.Dat
     ]
     return result
 
+
+def apply_coupled_diagnosis(frame: pd.DataFrame, thresholds: dict[str, float]) -> pd.DataFrame:
+    result = frame.copy()
+    result["coupled_diagnosis"] = [
+        diagnose_coupled(
+            f,
+            s,
+            c,
+            thresholds["feature_threshold"],
+            thresholds["shap_threshold"],
+            thresholds["coupling_threshold"],
+        )
+        for f, s, c in zip(
+            result["feature_drift_score"],
+            result["shap_drift_score"],
+            result["feature_attribution_coupling"],
+        )
+    ]
+    return result

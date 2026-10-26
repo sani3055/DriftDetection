@@ -28,10 +28,11 @@ CloudTrail-style CSV recorded in `data_manifest/real_cloudtrail_manifest.json`.
 9. Saved result summaries and publication-oriented figures.
 10. Independent detector validation and a coarse external reference/target temporal diagnosis
     checkpoint.
+11. Attribution-feature coupling and a separate coupled-signal adaptation ablation.
 
 ## Validation evidence
 
-- Full test suite: **23 passed**.
+- Full test suite: **26 passed**.
 - SHAP maximum additivity residual: `2.6645352591003757e-14`.
 - Benchmark validation macro-F1: `0.7306397306397306`.
 - Held-out diagnosis confusion matrix and adaptation-policy comparison were rendered and
@@ -40,12 +41,18 @@ CloudTrail-style CSV recorded in `data_manifest/real_cloudtrail_manifest.json`.
   p-value of `0.00028961940975555264` in the implemented benchmark.
 - Detector-family and sample-size ablations were completed with deterministic bootstrap 95% CIs.
 - Mean absolute SHAP-attribution displacement is reported as an explicit attribution-drift metric.
+- Feature-attribution coupling is reported as cosine similarity between aligned PSI and SHAP
+  displacement vectors in `data/drift/coupling_drift.csv`.
 - The richer raw export audit found 1,330 distinct days and all 24 hours, while confirming that it
   is the same underlying corpus and not independent validation.
 - Detector-only external validation completed on a separate labeled CloudTrail corpus: Isolation
   Forest F1 `0.451874`, recall `0.713733`, and FPR `0.173751`.
 - External temporal diagnosis checkpoint completed at scenario-window level: feature-only,
   SHAP-only, and dual-signal policies each achieved F1 `0.952381` and FPR `0.500000`.
+- The coupled external checkpoint achieved F1 `0.181818`, recall `0.100000`, and FPR `0.000000`,
+  exposing negative transfer of the coupling threshold rather than supporting a superiority claim.
+- Coupled-signal adaptation ablation completed; it matched the dual policy in the current held-out
+  benchmark and is retained as a neutral result.
 - The pinned environment was used to regenerate the model, SHAP, drift, benchmark, adaptation,
   and reporting artifacts; `requirements.txt` records the declared versions.
 
@@ -63,6 +70,7 @@ claims of attack recall on the original unlabeled CloudTrail corpus.
 - `data/drift/feature_drift.csv`
 - `data/drift/shap_drift.csv`
 - `data/drift/combined_drift.csv`
+- `data/drift/coupling_drift.csv`
 - `data/benchmark/scenario_signals.csv`
 - `data/benchmark/diagnosis_results.csv`
 - `data/benchmark/adaptation_results.csv`

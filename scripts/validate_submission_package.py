@@ -37,6 +37,7 @@ def main() -> None:
         ROOT / "review_2022_2026" / "automated_quality_audit_100.csv",
         ROOT / "review_2022_2026" / "PRISMA_protocol.md",
         ROOT / "data" / "external_validation" / "external_temporal_diagnosis_metrics.json",
+        ROOT / "data" / "drift" / "coupling_drift.csv",
         ROOT / "data" / "robustness" / "cost_sensitivity_results.csv",
         ROOT / "data" / "robustness" / "cost_sensitivity_winners.csv",
         PACKAGE / "Final_Consolidated_100_Paper_Summary.docx",
@@ -76,7 +77,7 @@ def main() -> None:
 
     metrics_path = ROOT / "data" / "external_validation" / "external_temporal_diagnosis_metrics.json"
     metrics = json.loads(metrics_path.read_text(encoding="utf-8")) if metrics_path.is_file() else {}
-    temporal_metrics_present = bool(metrics.get("dual_signal"))
+    temporal_metrics_present = all(metrics.get(policy) for policy in ("dual_signal", "coupled_signal"))
     if not temporal_metrics_present:
         missing.append("external temporal diagnosis metrics are missing or malformed")
     summary = {

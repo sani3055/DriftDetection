@@ -49,7 +49,9 @@ use explanations for security monitoring. The defensible gap is the combination 
 2. explicit separation of observational real data from controlled labelled evaluation;
 3. comparison of feature drift, attribution drift, and their joint decision value;
 4. protected adaptation with an explicit unnecessary-adaptation and contamination-risk outcome;
-5. independent temporal validation of the complete diagnosis-and-adaptation protocol.
+5. label-free attribution-feature coupling that tests whether distributionally changed CloudTrail
+   features are also driving the detector's changed attribution profile;
+6. independent temporal validation of the complete diagnosis-and-adaptation protocol.
 
 The last item is currently an evidence requirement, not a completed result.
 
@@ -88,5 +90,8 @@ will be reported as a result.
 
 The evaluation must include explanation-drift baselines based on mean absolute SHAP displacement
 and top-k attribution overlap, because these signals are already used in recent security work.
+The new coupling score must be treated as an additional interpretable diagnostic, not as a claim
+that cosine similarity itself is novel in machine learning. Its incremental value must be tested
+against the existing dual rule and reported even if neutral.
 The project should also report calibration, detection delay, false-positive burden, model-version
 count, and contamination checks rather than only macro-F1.

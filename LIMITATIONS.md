@@ -22,4 +22,7 @@
   underlying corpus and therefore does not count as an independent dataset.
 - Detector and sample-size ablations show configuration sensitivity; no single detector or window
   size should be presented as universally optimal.
+- The attribution-feature coupling extension is currently neutral relative to the simpler dual
+  rule under the controlled scenarios and transferred poorly to the external checkpoint; broader
+  perturbation families and threshold calibration are needed before claiming a benefit.
 - The project does not deploy AWS resources or enforce IAM policies.

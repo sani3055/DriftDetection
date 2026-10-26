@@ -36,9 +36,8 @@ def main() -> None:
         top_k=int(drift_config["top_k"]),
     )
     combined = save_drift_outputs(feature_drift, shap_drift, ROOT / "data" / "drift")
-    print(combined[["window_id", "feature_drift_score", "shap_drift_score"]].to_string(index=False))
+    print(combined[["window_id", "feature_drift_score", "shap_drift_score", "feature_attribution_coupling"]].to_string(index=False))
 
 
 if __name__ == "__main__":
     main()
-

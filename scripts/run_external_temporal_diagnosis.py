@@ -22,8 +22,8 @@ from sklearn.ensemble import IsolationForest
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from src.drift.diagnosis import apply_diagnosis  # noqa: E402
-from src.drift.drift_monitor import compute_feature_drift, compute_shap_drift  # noqa: E402
+from src.drift.diagnosis import apply_coupled_diagnosis, apply_diagnosis  # noqa: E402
+from src.drift.drift_monitor import compute_drift_coupling, compute_feature_drift, compute_shap_drift  # noqa: E402
 from src.evaluation.metrics import binary_detection_metrics  # noqa: E402
 from src.explain.shap_explainer import explain_matrix  # noqa: E402
 from src.features.window_features import DEFAULT_HIGH_RISK_EVENTS  # noqa: E402
@@ -118,10 +118,12 @@ def main() -> None:
         explanation_frames.append(explanations)
     explanation_frame = pd.concat(explanation_frames, ignore_index=True)
     shap_drift = compute_shap_drift(explanation_frame, ["external_benign_reference"], list(FEATURES), top_k=3)
-    combined = feature_drift.merge(shap_drift, on="window_id", how="inner")
+    coupling = compute_drift_coupling(feature_drift, shap_drift)
+    combined = feature_drift.merge(shap_drift, on="window_id", how="inner").merge(coupling, on="window_id", how="inner")
 
     thresholds = json.loads((ROOT / "data" / "benchmark" / "diagnosis_thresholds.json").read_text(encoding="utf-8"))
     diagnosed = apply_diagnosis(combined, thresholds)
+    diagnosed = apply_coupled_diagnosis(diagnosed, thresholds)
     diagnosed["ground_truth_binary"] = diagnosed["window_id"].map(
         lambda value: 0 if value in {"external_benign_reference", "external_benign"} else 1
     )
@@ -134,6 +136,9 @@ def main() -> None:
     diagnosed["dual_signal_prediction"] = (
         diagnosed["diagnosis"] == "security_relevant_drift"
     ).astype(int)
+    diagnosed["coupled_signal_prediction"] = (
+        diagnosed["coupled_diagnosis"] == "security_relevant_drift"
+    ).astype(int)
     metrics = {
         policy: binary_detection_metrics(
             diagnosed["ground_truth_binary"].to_numpy(), diagnosed[column].to_numpy()
@@ -142,6 +147,7 @@ def main() -> None:
             "feature_only": "feature_only_prediction",
             "shap_only": "shap_only_prediction",
             "dual_signal": "dual_signal_prediction",
+            "coupled_signal": "coupled_signal_prediction",
         }.items()
     }
 

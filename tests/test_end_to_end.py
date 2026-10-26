@@ -11,6 +11,7 @@ def test_generated_research_artifacts_exist() -> None:
         Path("models/isolation_forest_event_baseline.joblib"),
         Path("data/scores/shap_validation.json"),
         Path("data/drift/combined_drift.csv"),
+        Path("data/drift/coupling_drift.csv"),
         Path("data/benchmark/diagnosis_results.csv"),
         Path("data/benchmark/adaptation_results.csv"),
         Path("results/adaptation_summary.csv"),
@@ -28,6 +29,7 @@ def test_generated_research_artifacts_exist() -> None:
         Path("docs/final_validation.md"),
         Path("docs/next_experiments.md"),
         Path("docs/cost_sensitivity.md"),
+        Path("docs/attribution_feature_coupling.md"),
         Path("figures/monthly_drift_signals.png"),
     ]
     missing = [str(path) for path in required if not path.is_file()]

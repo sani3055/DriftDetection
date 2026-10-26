@@ -102,6 +102,17 @@ def _top_features(frame: pd.DataFrame, feature_names: list[str], top_k: int) -> 
     return means.head(top_k).index.tolist()
 
 
+COUPLING_FEATURES = ("eventName", "eventSource", "awsRegion", "userIdentitytype", "errorCode")
+
+
+def _cosine_similarity(left: np.ndarray, right: np.ndarray, epsilon: float = 1e-12) -> float:
+    left_norm = float(np.linalg.norm(left))
+    right_norm = float(np.linalg.norm(right))
+    if left_norm <= epsilon or right_norm <= epsilon:
+        return 0.0
+    return float(np.dot(left, right) / (left_norm * right_norm))
+
+
 def compute_shap_drift(
     shap_sample: pd.DataFrame,
     reference_months: Iterable[str],
@@ -148,6 +159,49 @@ def compute_shap_drift(
             ),
             "reference_top_features": ",".join(reference_top),
             "current_top_features": ",".join(current_top),
+            **{
+                f"attribution_displacement_{name}": float(abs(current_abs - reference_abs))
+                for name, current_abs, reference_abs in zip(
+                    feature_names, current_abs_means, reference_abs_means
+                )
+            },
+        })
+    return pd.DataFrame(rows)
+
+
+def compute_drift_coupling(
+    feature_drift: pd.DataFrame,
+    shap_drift: pd.DataFrame,
+    feature_names: Iterable[str] = COUPLING_FEATURES,
+) -> pd.DataFrame:
+    """Measure whether distributionally changed categorical features also changed model attribution.
+
+    The score is a cosine similarity between the per-feature PSI vector and the per-feature absolute
+    SHAP-displacement vector for the shared CloudTrail categorical features. It is label-free and
+    therefore safe for observational data and validation/test windows.
+    """
+    feature_names = tuple(feature_names)
+    merged = feature_drift.merge(shap_drift, on="window_id", how="inner")
+    rows = []
+    for _, row in merged.iterrows():
+        feature_vector = np.asarray(
+            [float(row.get(f"psi_{name}", 0.0)) for name in feature_names], dtype=np.float64
+        )
+        attribution_vector = np.asarray(
+            [float(row.get(f"attribution_displacement_{name}", 0.0)) for name in feature_names],
+            dtype=np.float64,
+        )
+        coupling = _cosine_similarity(feature_vector, attribution_vector)
+        feature_mass = float(np.linalg.norm(feature_vector))
+        attribution_mass = float(np.linalg.norm(attribution_vector))
+        rows.append({
+            "window_id": str(row["window_id"]),
+            "feature_attribution_coupling": coupling,
+            "coupling_feature_mass": feature_mass,
+            "coupling_attribution_mass": attribution_mass,
+            "coupling_top_feature": feature_names[int(np.argmax(feature_vector))]
+            if feature_mass > 0
+            else "none",
         })
     return pd.DataFrame(rows)
 
@@ -159,8 +213,10 @@ def save_drift_outputs(
 ) -> pd.DataFrame:
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
-    combined = feature_drift.merge(shap_drift, on="window_id", how="inner")
+    coupling = compute_drift_coupling(feature_drift, shap_drift)
+    combined = feature_drift.merge(shap_drift, on="window_id", how="inner").merge(coupling, on="window_id", how="left")
     feature_drift.to_csv(output_dir / "feature_drift.csv", index=False)
     shap_drift.to_csv(output_dir / "shap_drift.csv", index=False)
+    coupling.to_csv(output_dir / "coupling_drift.csv", index=False)
     combined.to_csv(output_dir / "combined_drift.csv", index=False)
     return combined

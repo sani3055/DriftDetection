@@ -106,6 +106,12 @@ rank agreement, and signed attribution shifts. Thresholds are tuned only on vali
 The threshold policy maps low/low signals to stable, high feature and low attribution drift to
 candidate benign drift, and high/high signals to candidate security-relevant drift.
 
+The attribution-feature coupling extension aligns the per-feature categorical PSI vector with the
+per-feature absolute SHAP-displacement vector using cosine similarity. High aligned coupling
+supports a model-relevant drift interpretation; weak coupling with high SHAP drift is treated as
+possible hidden model instability or review-required evidence. The coupling score is computed
+without scenario labels or future-window information.
+
 ### 3.5 Controlled benchmark
 
 The benchmark applies semantic perturbations to real training-window samples. Benign scenarios
@@ -116,7 +122,8 @@ validation seeds tune thresholds and ten held-out seeds provide the primary test
 
 ### 3.6 Selective adaptation and inference
 
-The adaptation comparison includes static, periodic, feature-only, SHAP-only, and dual-signal
+The adaptation comparison includes static, periodic, feature-only, SHAP-only, dual-signal, and
+coupled-signal
 policies. Retraining uses replay data and candidates predicted normal by the baseline detector;
 the protected controller does not blindly absorb all current-window records. Results include F1,
 precision, recall, false-positive rate, trigger rate, and unnecessary-adaptation rate.
@@ -174,11 +181,24 @@ of the SHAP drift or adaptation policy.
 An additional external checkpoint used benign February records as a reference window and April
 2026 scenario windows as target windows. Primary thresholds were transferred without target-label
 tuning. At the scenario-window level, feature-only, SHAP-only, and dual-signal policies all
-obtained precision 0.9091, recall 1.0000, F1 0.9524, and false-positive rate 0.5000. The identical
-results are a neutral transfer finding rather than evidence of dual-signal superiority: one benign
-target window was falsely flagged and the coarse window unit provides little statistical power.
+obtained precision 0.9091, recall 1.0000, F1 0.9524, and false-positive rate 0.5000. The coupled
+policy obtained precision 1.0000, recall 0.1000, F1 0.1818, and false-positive rate 0.0000 under
+the transferred coupling threshold. The identical results for the first three policies are a
+neutral transfer finding rather than evidence of dual-signal superiority; the coupled result is a
+negative transfer finding. One benign target window was falsely flagged by the first three policies
+and the coarse window unit provides little statistical power.
 The external corpus does not provide enough post-adaptation windows to evaluate recovery or
 long-run retraining cost.
+
+### 4.7 Attribution-feature coupling
+
+The coupling score is measurable across the 45 real monthly windows and is saved in
+`data/drift/coupling_drift.csv`. In the controlled benchmark, the coupled diagnosis achieved
+validation macro-F1 `0.4384`; its held-out category counts matched the existing dual diagnosis.
+The `coupled_signal` adaptation policy also matched the dual policy in the current benchmark:
+trigger rate `0.242857`, unnecessary-adaptation rate `0.000000`, mean F1 `0.287314`, and FPR
+`0.339707`. This neutral result means the extension is a reproducible diagnostic ablation, not
+evidence that coupling universally improves the simpler dual rule.
 
 ## 5. Discussion
 
@@ -193,6 +213,9 @@ from being overinterpreted while still enabling a controlled test of diagnosis a
 The neutral external temporal checkpoint also demonstrates that attribution drift does not
 automatically add decision value at every evaluation granularity. This makes the research question
 falsifiable rather than assuming that the dual signal will transfer.
+The coupling extension adds a more granular interpretation of whether changed features are also
+driving the detector, but its current benchmark result is neutral and requires broader scenarios
+before a stronger superiority claim would be justified.
 
 ## 6. Threats to validity
 

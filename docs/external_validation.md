@@ -40,11 +40,14 @@ primary thresholds produced the following **scenario-window-level** results:
 | Feature-only | 0.9091 | 1.0000 | 0.9524 | 0.5000 |
 | SHAP-only | 0.9091 | 1.0000 | 0.9524 | 0.5000 |
 | Dual-signal | 0.9091 | 1.0000 | 0.9524 | 0.5000 |
+| Coupled-signal | 1.0000 | 0.1000 | 0.1818 | 0.0000 |
 
-These values are not evidence that the dual signal is superior: all three policies are identical
-at this coarse window level, and one benign target window is falsely flagged. The result is useful
-as a negative/neutral transfer finding and demonstrates why event-level or multi-window evaluation
-is required. Outputs are stored in `data/external_validation/external_temporal_diagnosis.csv`,
+The feature-only, SHAP-only, and dual policies are identical at this coarse window level, while
+the coupled policy is conservative and misses most external attack windows under the transferred
+coupling threshold. This negative transfer result is important: coupling is not yet a universally
+portable policy, and its threshold requires broader temporal calibration. One benign target window
+is falsely flagged by the other policies. The result demonstrates why event-level or multi-window
+evaluation is required. Outputs are stored in `data/external_validation/external_temporal_diagnosis.csv`,
 `external_temporal_diagnosis_metrics.json`, and `external_temporal_diagnosis_manifest.json`.
 
 The external corpus still does not contain enough independent post-adaptation windows to validate

@@ -8,7 +8,7 @@ import numpy as np
 from sklearn.ensemble import IsolationForest
 
 
-POLICIES = ("static", "periodic", "feature_only", "shap_only", "dual_signal")
+POLICIES = ("static", "periodic", "feature_only", "shap_only", "dual_signal", "coupled_signal")
 
 
 def should_adapt(
@@ -58,4 +58,3 @@ def protected_retrain(
     )
     model.fit(training_matrix)
     return model, int(len(normal_candidates))
-

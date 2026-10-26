@@ -259,6 +259,7 @@ Added:
 - paired standardized effects, Wilcoxon tests, and Benjamini–Hochberg correction;
 - mean absolute SHAP-attribution displacement as an explicit drift metric;
 - automated cost-sensitive policy analysis across missed-security, false-alarm, and unnecessary-adaptation cost assumptions;
+- attribution-feature coupling using aligned per-feature PSI and SHAP displacement, with a separate coupled adaptation policy;
 - richer-source timestamp-resolution audit without treating the same corpus as external data;
 - manuscript draft and venue-readiness checklist in `docs/manuscript_draft.md`.
 
