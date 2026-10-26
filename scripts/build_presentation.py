@@ -102,7 +102,7 @@ def main():
     add_text(slide, "SHAP-Guided Drift Diagnosis\nfor Adaptive AWS CloudTrail Anomaly Detection", 0.75, 1.72, 8.4, 1.45, 30, True, NAVY)
     add_text(slide, "Research implementation, PRISMA evidence package, and Q1/Q2 journal plan", 0.77, 3.8, 8, 0.5, 17, False, MUTED)
     add_text(slide, "Project folder placeholder: Project_XX - replace XX with assigned number", 0.77, 5.45, 7.8, 0.3, 11, False, DARK)
-    add_footer(slide, "Prepared for supervisor progress review | 21 October 2026")
+    add_footer(slide, "Prepared for supervisor progress review | 26 October 2026")
 
     # 2. Problem
     slide = new_slide(prs, WHITE)

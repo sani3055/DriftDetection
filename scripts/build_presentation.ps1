@@ -72,7 +72,7 @@ Add-Text $slide 'CAPSTONE / IDP JOURNAL OUTCOME' 70 76 820 26 14 $true $teal 1 |
 Add-Text $slide 'SHAP-Guided Drift Diagnosis\nfor Adaptive AWS CloudTrail Anomaly Detection' 70 130 800 145 38 $true $navy 1 | Out-Null
 Add-Text $slide 'Research implementation, PRISMA evidence package, and Q1/Q2 journal plan' 72 300 720 42 20 $false $muted 1 | Out-Null
 Add-Text $slide 'Project folder placeholder: Project_XX - replace XX with assigned number' 72 430 700 28 13 $false $dark 1 | Out-Null
-Add-Footer $slide 'Prepared for supervisor progress review | 21 October 2026' 
+Add-Footer $slide 'Prepared for supervisor progress review | 26 October 2026' 
 
 # 2. Problem
 $slide = $pres.Slides.Add($pres.Slides.Count + 1, 12); Set-Bg $slide $white; Add-Title $slide 'The research problem is deciding when to adapt'
