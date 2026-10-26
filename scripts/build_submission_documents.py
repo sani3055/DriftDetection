@@ -193,6 +193,7 @@ def build_package(rows: list[dict]) -> None:
         ROOT / "docs" / "final_validation.md",
         ROOT / "docs" / "next_experiments.md",
         ROOT / "docs" / "cost_sensitivity.md",
+        ROOT / "docs" / "presentation_speaker_notes.md",
         ROOT / "IMPLEMENTATION_PLAN.md",
     ]:
         if source.is_file():

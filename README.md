@@ -78,6 +78,7 @@ See:
 - `docs/external_validation.md`
 - `docs/final_validation.md`
 - `docs/next_experiments.md`
+- `docs/presentation_speaker_notes.md`
 - `review_2022_2026/automated_quality_audit_100.csv`
 - `scripts/audit_review_set.py`
 - `scripts/run_external_temporal_diagnosis.py`
