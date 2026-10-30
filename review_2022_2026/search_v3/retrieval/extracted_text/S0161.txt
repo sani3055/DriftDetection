@@ -1,0 +1,880 @@
+Journal of Intelligent Decision Making and Information Science, Volume 3(14s), 2026, 2413-2436
+2413 
+Journal of Intelligent Decision Making 
+and Information Science
+www.jidmis.org 
+eISSN: 3079-0875 
+An Adaptive Hoeffding Tree -Based Intrusion Detection Framework 
+with ADWIN Drift Detection and Bayesian Hyperparameter 
+Optimization for Streaming Network Traffic 
+Dr. M. Kavitha 1,Dr. S.Cynthiya Margaret Indrani 2, Dr K Sridhar 3, Dr. C J Raman 4, A. Abdul Rahman 5, Dr. V. 
+Thamilarasi6 
+1Corresponding Author , Associate Professor, Department of Mathematics , Panimalar Engineering College, Chennai -23, Tamil Nadu, India , 
+mkavitha@panimalar.ac.in, ORCID ID:0009-0000-4890-8892 
+2Assistant Professor , Department of Mathematics, Sathyabama Institute of Science and Technology , Rajiv Gandhi Salai, Chennai -19, Tamil Nadu, 
+India, cynthiya.maths@sathyabama.ac.in, ORCID ID: 0000-0002-0690-6589 
+3Associate Professor, Department of CSE, School of Computer Science and Engineering , Malla Reddy (MR) Deemed to be University, Telangana, India 
+sridhark529reddy@gmail.com, ORCID ID: 0009-0007-6850-8731 
+4Professor, Department of Artificial Intelligence and Machine Learning, St. Joseph's College of Engineering, OMR, Chennai - 600119, Tamil Nadu, India,  
+ cjramancj@gmail.com, Orchid id: 0000-0001-9376-6424 
+5Department of Computer Science & Engineering, Koneru Lakshmaiah Education Foundation, Greenfields, Vaddeswaram, Guntur-522502, AP, India 
+abd_ul_rahman@rediffmail.com, ORCID ID: 0000-0002-6874-1652,  
+6Assistant Professor of Computer Science, Sri Sarada College for Women (Autonomous), Salem-16, Tamil Nadu, India., tamilomsiva@gmail.com, ORCID 
+ID: 0000-0002-5866-0074 
+ARTICLE INFO ABSTRACT 
+Article history: 
+Received 29 June 2026 
+Received in revised form 30 July 2026 
+Accepted 05 August 2026 
+Dynamic network environment intrusion detection systems should quickly 
+determine whether there is any intrusion present or not as the tracked traffic 
+is a real -time traffic. This study proposes an adaptive streaming intrusion 
+detection framework combining a Hoeffding Adaptive Tree and ADWIN drift 
+detection for rapid deployment on cloud edge infrastructures. The 
+incremental flow-level classification is executed by the framework in a test -
+then-train protocol while ADWIN keeps an online track of the prediction  
+errors to identify performance changes which are statistically significant. 
+Bayesian optimization utilizes the chronological tuning stream to select the 
+hyperparameters of AHT and ADWIN, namely, grace period, split confidence, 
+tie threshold and ADWIN conf idence. The experiments were conducted with 
+the use of a CICIDS2017 derived dataset that consists of 2,830,743 network 
+flows. These network flows have 78 numerical features as well as 15 original 
+traffic labels. According to the results on the binary intru sion detection, the 
+Bayesian-optimized AHT–ADWIN model scored 0.9876 for accuracy, 0.9959 
+for precision, 0.9873 for recall, 0.9916 for F1, and 0.9681 for Matthews 
+correlation coefficient, the lowest false-positive of 00.0115 among streaming 
+tree models. This system's ability to process 2,165.57 flows per second makes 
+it a viable option in return. During a temporal evaluation of 300,000 flows, an 
+external ADWIN monitor detected 113 alarms of error -distribution drift. In 
+classification of eight classes attack -family, the framework yield 99.28% 
+accuracy, 99.17 weighted F1 score, 64.90% macro F1 score and 97.50% MCC. 
+The results indicate strong detection ability for dominant attack regimes but 
+indicate some limitations for rare and late -arriving classes. The pro posed 
+approach provides a highly effective and interpretable methodology to 
+achieve efficient adaptive network intrusion detection in nonstationary 
+streaming environments. Diverse attack scenarios are included in the 
+CICIDS2017 dataset and can be used for flow-based IDS evaluation. ADWIN is 
+Keywords: Streaming intrusion detection, 
+Adaptive Hoeffding Tree, ADWIN, concept 
+drift detection, Bayesian hyperparameter 
+optimization, online machine learning, 
+CICIDS2017, network traffic classification, 
+prequential evaluation, cybersecurity. 
+ DOI: https://doi.org/10.17762/jidmis.v3.4323
+
+Journal of Intelligent Decision Making and Information Science 
+Volume 3(14s), (2026) 2413-2436 
+2414 
+an adaptive sliding window algorithm that allows for the detection and 
+characterization of statistically significant changes in the distribution of data. 
+ 
+1. INTRODUCTION 
+Enterprise network expansion to cloud services, IoT devices, and cyber -physical systems are 
+generating more diverse and faster network traffic than before.  Networked environments are 
+constantly under attack by a range of different forces. Just as is the c ase with brute -force attacks, 
+denial-of-service (DoS) attacks, and the less common distributed denial -of-service (DDoS) attack, 
+there are rogue force attacks such as port scanning, botnet attack, web attack, infiltration, and more. 
+As a result, IDSs are essential for detecting malicious behavior directing against the network resources 
+and safety of data, and the data’s confidentiality, integrity, and availability. However, the IDS needs to 
+have high accuracy but at the same time low latency with low memory and false positive rate as well. 
+A majority of machine learning -based intrusion detection studies utilize a conventional almost fixed 
+batch learning approach where a model is trained just once from scratch using a fixed historical 
+dataset and is subsequently tested on a separate static da taset. While it’s a useful benchmark, it is 
+not entirely representative of a real network. Network traffic comes in a continuous stream, and 
+patterns of both normal and malicious traffic evolve over time. There could be changes because of 
+various reasons such as new applications, changes in user behavior, network configuration changes, 
+attack variants and others. The changes between input features and classes with respect to time are 
+called concept drift. A batch model that is trained on previous traffic wi ll gradually become less 
+effective when a new distribution of data arrives and is different from the one on which it was 
+originally trained. 
+The incremental processing of individual flows allows online learning to serve as an alternative for 
+streaming network traffic, wherein the model updates occur without re-training. Hoeffding Trees are 
+well suited for this setting since they make splits based on the Hoeffding bound using a sequence of 
+arriving observations. In contrast to standard decision trees, they are able to update continuously, 
+with bounded memory. Nevertheless, a standard Hoeffding Tree may not adapt sufficiently when the 
+distribution of network traffic changes. An Adaptive Hoeffding tree (AHT) extends this limitation using 
+drift-aware mechanisms which can evaluate alternative decision branches and replace deteriorating 
+subtrees when their performance falls below par. 
+Adaptive Windowing (ADWIN) is a commonly used method used for detecting drift in data streams. 
+It uses a window that grows and shrinks dynamically depending on the past observations. It flags 
+some changes as statistically significant. ADWIN indicates that a drift event has occurred if there is a 
+meaningful difference between the old and new segments. It is important for intrusion detection as 
+attack regimes and normal traffic behavior can change suddenly or gradually. ADWIN is specifically 
+designed to manage changing data streams with the use of an adaptive window rather than a fixed -
+size window. 
+While AHT and ADWIN do offer advantages, their benefits hinge on hyperparameter selection. 
+Parameters like grace period, split -confidence, tie -threshold, and ADWIN -confidence control the 
+
+Journal of Intelligent Decision Making and Information Science 
+Volume 3(14s), (2026) 2413-2436 
+2415 
+speed of a tree’s split evaluations, how willing it is to grow, and how sensitive it is to distributional 
+changes. Default settings might be suited to a specific network-traffic stream. Exhaustive grid search 
+is computationally costly, especially on high-volume streaming datasets. Furthermore, random search 
+can evaluate many unhelpful configurations.  Bayesian hyperparameter optimization is more sample-
+efficient as it uses observations from previous trials to select subsequent parameter configurations. 
+In this paper, we propose a Bayesian hyper-parameter optimization along with ADWIN drift detection 
+Hoeffding Tree-based intrusion detection framework for streaming network traffic.  The framework 
+to be proposed has incremental flow -level classification, in ternal adaptation of AHT , external 
+monitoring of error-stream via ADWIN, and Bayesian tuning of hyperparameters. An evaluation of the 
+model using a dataset generated from CICIDS2017, which has 2,830,743 flow records, 78 network -
+flow features, and 15 fine-grained traffic labels. The dataset consists of legitimate traffic in addition 
+to brute-force, DoS, DDoS, web attack, botnet, infiltration, and port -scanning cases. CICIDS2017 is 
+popularly used in the IDS evaluation, because it has multiple labeled attack s cenarios along with 
+realistic flow-based traffic characteristics. 
+The suggested framework employs replays of traffic in chronological order with prequential 
+evaluation, where each arriving flow is first classified and then employed for model updating. To 
+better capture operational IDS deployment and avoid information lea kage associated with random 
+shuffling of a stream. Bayesian optimization was performed on a different temporal tuning segment, 
+after which the chosen configuration was fixed for the evaluation. The framework achieved an F1 -
+score of 0.9916, MCC of 0.9681, and false positive rate of 0.0115 in binary intrusion detection on the 
+300,000-flow temporal evaluation stream. It attained 0.9928 accuracy, 0.9917 weighted F1 score, and 
+0.9750 MCC in attack -family classification on a 933,968 flow multi regime temporal str eam.  The 
+findings also uncover an obstacle of rare and late arriving attacks in strict online evaluation. 
+The significant contributions of this work are as follows. 
+1. An IDS which is adaptive in nature is proposed for sequential network -flow classification 
+scenario by using an Adaptive Hoeffding Tree with ADWIN based drift detection. 
+2. A Bayesian optimization strategy uses its chronological tuning stream to adjust the grace 
+period, split confidence, tie threshold, and ADWIN confidence parameter instead of default 
+hyperparameter values. 
+3. A temporal -conscious experimental protocol is empowered through the generation of 
+replayed CICIDS2017 traffic in chronological numbers with the subsequent prequential test-then-train 
+evaluation for the simulated conditions of streaming deployments. 
+4. A comparison of the proposed framework is done with Hoeffding Tree standard, AHT default, 
+AHT default ADWIN settings, and Adaptive Random Forest. Binary classification metrics are used for 
+a comparative study and they include F1 -score, MCC, false positive rate, throughput, and memory 
+consumption. 
+5. An external ADWIN monitor allows us to identify online changes in error-distribution; 113 drift 
+alarms were detected in the evaluation stream of 300,000 flows. 
+
+Journal of Intelligent Decision Making and Information Science 
+Volume 3(14s), (2026) 2413-2436 
+2416 
+6. The framework has been evaluated on an eight-class attack-family task. The results achieve a 
+very strong performance on the dominant attack categories. However, we find the performance 
+limited for the rare classes such as brute-force and infiltration traffic. 
+The rest of the paper is structured as follows. Section 2 discusses related work on IDS based on 
+machine-learning, stream learning, drift detection and hyperparameter optimization. The proposed 
+AHT–ADWIN framework along with the Bayesian optimization process is described in section 3. The 
+dataset, preprocessing, experimental configurations, analytics are discussed in Section 4. The 
+following section covers the results and discussion. To conclude this research work and future 
+direction is given in Section 6. 
+2. LITERATURE REVIEW 
+Network intrusion detection systems (NIDSs) are increasingly required to work under non-stationary 
+conditions. In other words, not only can attacks evolve, but benign traffic can also change and the 
+deployment-domain can differ, all of which may render a previously-trained model unreliable. These 
+changes may produce concept drift, while continuous updates mostly based on new observations 
+may result in catastrophic forgetting of old attack knowledge. In recent studies, methods like 
+decentralized federated learning, governance-aware response system, quantum anomaly detection, 
+budget-aware multi-stage screening, and deep continual learning have been proposed. 
+The XDFC -IDS is an explainable decentralized federated class -incremental intrusion detection 
+framework for a streaming IoT setting, as proposed by Nguyen et al. The proposed scheme uses the 
+serverless peer -to-peer aggregation architecture, CNN –GRU and LSTM  classifiers, EWC, and local 
+SHAP explanations. EWC with classification loss reduces catastrophic forgetting when traffic arrives in 
+sequence and collaborators have Non -IID data distribution. The assessment was conducted on the 
+TONIoT and Kitsune datasets under federated and class-incremental conditions. 
+ While XDFC-IDS enables privacy-respecting cooperation and feature level interpretability, it suffers 
+from decentralized federation, deep-learning backbones, and under-utilization of inter-device model 
+aggregation, which lead to computational, communication, and deployment complexities. 
+Adabara et al. constructed a credible framework for intrusion detection and response for the 
+Healthcare Internet of Medical Things. NIST AI Risk Management Framework is where the Random 
+Forest flow detector, Deep Q -Network triage model and governance -rule engine integration take 
+place at.  The research examines the predictive quality but also the safety type impacts, defined by 
+benign blocking and decision-harm cost. The governance mechanism curtailed benign blocking from 
+25.3% to 17.3% and lowered mean har m cost from 0.502 to 0.434 under shifted temporal replay. 
+Although this work makes a significant contribution to safe automated response, it is more focused 
+on ethical selection of response actions than on low-overhead, continual adaptation of the detection 
+classifier. 
+A system DP-QIDS further advanced by Khan et al., helps reduce the qubit count whilst performing 
+high dimensional traffic analysis. This system encodes two normalized features per qubit using polar-
+angle and azimuthal -phase parameters and generates a compo site anomaly score using quantum 
+fidelity, Kullback –Leibler divergence, and von Neumann entropy change. Authors studied false -
+
+Journal of Intelligent Decision Making and Information Science 
+Volume 3(14s), (2026) 2413-2436 
+2417 
+positive behavior with quantile -based calibration using the UNSW -NB15 and CICIDS2017 datasets.  
+Drift-aware recalibration for streaming settings is also discussed by the study.  Notwithstanding its 
+potential to enhance quantum resource efficiency, the depe ndence of DP -QIDS on both quantum -
+oriented processing and anomaly -threshold calibration limits its applicability to conventional 
+lightweight CPU-based online IDS. 
+According to Dung, RiskGate-IDS is a new two-stage NetFlow IDS intrusion detection framework that 
+is budget-aware. 
+ The initial stage employs Tiny-Gate to produce flow-level risk evidence. Subsequently, a target-aware 
+RiskGate ranker and BudgetBank distribute a constrained Stage -2 inspection budget over time -
+ordered micro-batches. XGBoost and neural MLP models then examine selected high-risk flows. The 
+attack recall was 0.904896 and the F1 -score was 0.949298 for the case with 0.1% labelled target 
+calibration data with Stage-2 budget of 30%. The Spark local -mode was able to process 1.59 million 
+flows/second. 
+ RiskGate-IDS does depend on labelled target-domain calibration, a costly multi -stage architecture, 
+and secondary inspection, which is not well -suited for Gradual Deployment Scenario where direct 
+adaptive classification is needed for every incoming flow. Xu et al. developed a collaborative ongoing 
+intrusion detection technique that brings together feature-space MMD drift detection with gradient-
+matching coreset selection. The framework aims to synchronize the tasks of drift detection, replay -
+memory admission and continual optimization under a limited buffer capacity. The MMD approach is 
+used for detecting a learned feature representation distributional shift. The gradient -matching 
+coresets maintain samples that are more proportional to their previous learni ng during model 
+updates. Assessment on NSL-KDD and UNSW-NB15 show coreset selection is the main contributor to 
+detection and retention improve. The performance of MMD scheduling was affected by data 
+distributions and chosen drift thresholds. Also, the fram ework must learn feature representations, 
+perform updates at the batch level, and maintain the replay buffer. 
+Research Gap 
+The literature reviewed confirms the modern NIDS research examines deployment challenges like 
+concept drift, cross-domain shift, catastrophic forgetting, false positive control, resource limitations, 
+response safety etc. But existing solutions often require one or more demanding requirements. 
+• A system of federated deep learning infrastructure 
+• Replay buffers or storing previous samples for preventing forgetfulness. 
+• Monitoring of feature-space drift in batches. 
+• The target-domain calibration data is labelled.  
+• Process involving multiple filtering and expensive extra judges. 
+• Policies for rule-governance and reinforcement-learning response. 
+• Quantum encoding or special computational resources. 
+Though useful, these techniques may be difficult to utilize in resource -limited or high -speed 
+environments that require simple, low -latency per-flow processing. In particular, there is relatively 
+
+Journal of Intelligent Decision Making and Information Science 
+Volume 3(14s), (2026) 2413-2436 
+2418 
+little emphasis on a single framework that learns in an incremental manner from sequential network 
+flows, infers drift directly from the predictive error associated with real -time arrival, and adapts 
+without reliance on a replay-memory buffer or a target-domain calibration phase. 
+Moreover, the unified framework is designed to learn incrementally, adapt readily to changes and 
+infer drift directly, without using a replay -memory buffer or target -domain calibration phase, and 
+automatically tune its operational parameters to manage the detection–resource trade-off. 
+3. PROPOSED SYSTEM MODEL 
+The suggested systems lightweight online network intrusion detection system NIDS for a continuous 
+stream of network -flow. It is an ensemble using a drift detection mechanism that employs AHT 
+classifier and ADWIN. The system classifies each incoming flow in an incremental manner, tracks the 
+predicted degradation over time, and adapts to flow behaviour changes without the need for 
+complete retraining, historical replay buffers, federated or end -to-end coordination, or labelled 
+target-domain calibration. 
+Adaptive trees that are based on Hoeffding are appropriate in streaming settings as they adjust 
+incrementally. The Hoeffding bound is used to determine when there is sufficient proof for a split. 
+ADWIN keeps an observation window of variable length. It sig nals a change when the means of two 
+subwindows differ significantly. So, it may monitor the live prediction -error stream. Also, it can 
+remove outdated observations after a drift is detected. 
+3.1 System Architecture 
+The proposed framework contains five sequential modules: 
+1. Flow-stream acquisition 
+Network traffic appears as flow data in chronological order.  Each record has numeric traffic 
+characteristics such as flow durations, counts of packets and bytes, packet -length statistics, inter -
+arrival-time measures, counts of flags, and features of forward/backward flow. 
+2. Preprocessing and feature transformation 
+Invalid, missing, duplicate and non -numeric values will be treated first before classification. The 
+categorical labels are encoded, followed by the dirtying of numerical variables and the alignment of 
+the selected feature vector for consistency across training and test-time flow instances. 
+3. Bayesian hyperparameter optimization 
+Prior to the actual execution of the stream, Bayesian optimization effectively searches for an AHT –
+ADWIN configuration. This approach evaluates candidate configurations with an objective that 
+prioritizes predictive quality while controlling false-positive, obtaining throughput, and memory use. 
+4. Online AHT classification 
+The Adaptive Hoeffding Tree classifies every pre -processed flow. After the prediction has been 
+produced, the true label is used to update the model. Consequently, the classifier continuously gains 
+knowledge from newly labelled flows. 
+
+Journal of Intelligent Decision Making and Information Science 
+Volume 3(14s), (2026) 2413-2436 
+2419 
+5. ADWIN-based drift monitoring and adaptation 
+The output prediction for each flow has been converted into an error indicator. The error stream is 
+monitored by ADWIN. When the behavior of errors differs widely from the earlier observed 
+behaviour, then the system flags it as concept drift. Using evidenc e from recent traffic, the system 
+adapts the affected AHT branches. 
+The overall processing sequence is: 
+Network Flow → Preprocessing → AHT Prediction → Error Computation → ADWIN Drift Monitoring
+→ Incremental Model Update 
+ 
+Figure 3.1 Architecture of the Proposed BO-AHT–ADWIN Online Intrusion Detection Framework 
+
+
+Journal of Intelligent Decision Making and Information Science 
+Volume 3(14s), (2026) 2413-2436 
+2420 
+3.2 Input Representation 
+Let the incoming network-flow stream be denoted as: 
+𝒮 = {(𝐱𝑡, 𝑦𝑡)}𝑡=1
+𝑇  
+where: 
+• 𝐱𝑡 ∈ ℝ𝑑 is the feature vector of the 𝑡 − 𝑡ℎ network flow. 
+• d denotes the number of selected numerical traffic features. 
+• 𝑦𝑡 ∈ {0,1, … , 𝐶 − 1} is the true class label. 
+• C is the total number of classes, such as benign traffic and one or more attack categories. 
+• T is the total number of flows in the chronological stream. 
+For binary intrusion detection: 
+𝑦𝑡 = {0, if the flow is benign
+1, if the flow is malicious 
+For multiclass intrusion detection, 𝑦𝑡 can represent traffic close to DoS, DDoS, brute-force, port-scan, 
+botnet, web attack, infiltration and other attack family. 
+3.3 Adaptive Hoeffding Tree Classifier 
+The core classifier is an Adaptive Hoeffding Tree. The AHT does not need all the training data at once 
+as a regular decision tree would do. It maintains the statistics at the node -level. It updates the node 
+statistics each time a flow enters. 
+For an incoming flow 𝐱𝑡, the classifier produces: 
+𝑦ˆ𝑡 = 𝑓𝑡(𝐱𝑡) 
+where 𝑓𝑡 represents the tree model at time t, and 𝑦ˆ𝑡 is the predicted traffic class. 
+At every leaf node, the model keeps sufficient statistics for potential splitting features. The split -
+quality measure of a feature X let us denote by G(X), which can be information gain or reduction in 
+Gini impurity. Let 𝑋𝑎 and 𝑋𝑏 be the split attributes of the best and second-best candidate respectively. 
+When a new split is executed. 
+𝐺(𝑋𝑎) − 𝐺(𝑋𝑏) > 𝜖 
+where 𝜖 is the Hoeffding bound: 
+𝜖 = √𝑅2 ln(1/𝛿)
+2𝑛  
+where: 
+• R is the range of the split-quality criterion. 
+• 𝛿 is the split-confidence parameter. 
+
+Journal of Intelligent Decision Making and Information Science 
+Volume 3(14s), (2026) 2413-2436 
+2421 
+• n is the number of samples observed at the node. 
+The model can make dependable split decisions using only a limited subset of the stream, rather than 
+requiring the complete data set due to this mechanism. The AHT assists in adaptation by sustaining 
+alternate learning structures at affected branches, as d rift is detected. Once the predictive 
+performance of a background subtree becomes better under the new traffic distribution than the 
+older branch, replace the old branch with the background subtree. 
+3.4 Prediction-Error Stream 
+We convert every prediction into a binary error value to monitor whether the performance of the 
+classifier is degrading as: 
+𝑒𝑡 = {0, 𝑦ˆ𝑡 = 𝑦𝑡
+1, 𝑦ˆ𝑡 ≠ 𝑦𝑡
+ 
+The resulting error stream is: 
+ℰ = {𝑒1, 𝑒2, … , 𝑒𝑇} 
+A constant rise in 𝑒𝑡 might indicate that the association between network -flow attributes and class 
+labels has varied. The proposed approach monitors predictive error directly rather than monitoring 
+drift in raw feature distributions. A feature-distribution change becomes operationally relevant when 
+it affects detection reliability, which helps. 
+3.5 ADWIN Drift Detection 
+ADWIN uses an adaptive window 𝑊𝑡 that contains recent prediction errors observations. In contrast 
+to a fixed sliding window, its size adjusts automatically depending on the observed stability of the 
+error stream. 
+At time t, the ADWIN window is partitioned into two adjacent subwindows: 
+𝑊𝑡 = 𝑊0 ∪ 𝑊1 
+where: 
+• 𝑊0 contains older error observations. 
+• 𝑊1 contains more recent error observations. 
+• 𝑛0 = |𝑊0| and 𝑛1 = |𝑊1| are the respective subwindow lengths. 
+• 𝜇0 and 𝜇1 are their mean prediction-error rates. 
+The mean error in each subwindow is: 
+𝜇0 = 1
+𝑛0
+∑ 𝑒𝑖
+𝑒𝑖∈𝑊0
+ 
+𝜇1 = 1
+𝑛1
+∑ 𝑒𝑖
+𝑒𝑖∈𝑊1
+ 
+Drift is signalled when: 
+
+Journal of Intelligent Decision Making and Information Science 
+Volume 3(14s), (2026) 2413-2436 
+2422 
+|𝜇0 − 𝜇1| > 𝜖ADWIN 
+where 𝜖ADWIN is the confidence-dependent threshold computed from the subwindow sizes and the 
+ADWIN confidence parameter 𝛿ADWIN. Once a drift signal is detected, obsolete observations in the 
+older part of the window are deleted and the classifier is permitted to emphasize recent traffic 
+behaviour. ADWIN relies on comparing the statistical mean of subwindows and an adaptive window 
+length rather than requiring a preconfigured change rate. 
+3.6 Drift-Adaptation Procedure 
+The adaptation process of AHT–ADWIN works for every incoming flow. 
+1. Obtain the successive network-flow entry (𝐱𝑡, 𝑦𝑡). 
+2. Carry out preprocessing and prepare the final feature vector. 
+3. Use the present AHT to forecast traffic label 𝑦ˆ𝑡. 
+4. Find prediction error 𝑒𝑡. 
+5. Transfer 𝑒𝑡 to ADWIN. 
+6. Gradually modify the AHT with inclusion of 𝐱𝑡, 𝑦𝑡. 
+7. If drifts are detected update or activate alternate AHT branches with latest observations. 
+8. Substituting a previous branch when its alternative branch has better predictive power. 
+A test-then-train or prequential protocol is used for the learning process. 
+Predict → Evaluate → Learn 
+Hence, every flow is first treated as unseen data for evaluation and is only updated afterward. 
+3.7 Bayesian Hyperparameter Optimization 
+The AHT-ADWIN system function relies on a set of hyperparameters that control tree growth and drift 
+sensitivity. Bayesian optimization automatically picks a configuration that maximizes the validation 
+objective rather than choosing these numbers manually. 
+Let the hyperparameter vector be: 
+𝜽 = {𝛿split, 𝛿drift, 𝑔, 𝜏, 𝑑max, 𝑚min} 
+where: 
+• 𝛿split is the Hoeffding-tree split confidence. 
+• 𝛿drift is the ADWIN drift confidence. 
+• g is the grace period, or the number of instances observed before split evaluation. 
+• 𝜏 is the tie threshold used for split selection. 
+• 𝑑max is the maximum permitted tree depth, if depth limiting is enabled. 
+• 𝑚min is the minimum number of samples required before a split attempt. 
+For each candidate configuration 𝜽, the objective function is evaluated on a chronological validation 
+stream: 
+
+Journal of Intelligent Decision Making and Information Science 
+Volume 3(14s), (2026) 2413-2436 
+2423 
+𝐽(𝜽) = 𝛼 ⋅ 𝐹1(𝜽) + 𝛽 ⋅ 𝑀𝐶𝐶(𝜽) − 𝛾 ⋅ 𝐹𝑃𝑅(𝜽) + 𝜂 ⋅ log(1 + Throughput(𝜽)) − 𝜆 ⋅ Memory(𝜽) 
+where: 
+• F1 assesses how precise and recall are balanced. 
+• MCC assesses how accurately a classifier can distinguish between classes. 
+• The false positive rate indicates how many traffic is incorrectly identified as malicious. 
+• Throughput is the amount of processing flows per second. 
+• Memory refers to model memory demand. 
+• 𝛼, 𝛽, 𝛾, 𝜂, and 𝜆 are weights that reflect system priorities. 
+The optimal parameter configuration is: 
+𝜽∗ = argmax
+𝜽∈Θ
+𝐽(𝜽) 
+where Ɵ is the feasible hyperparameter search space. The Bayesian optimization algorithm leverages 
+past evaluation results to compute the next best combination of simulation parameters, yielding 
+substantial savings in computational time and cost. 
+3.8 Output and Evaluation Measures 
+For every flow, the system outputs: 
+𝑜𝑡 = {𝑦ˆ𝑡, 𝑝𝑡, 𝑒𝑡, 𝐷𝑡} 
+where: 
+• 𝑦ˆ𝑡 is the predicted intrusion label. 
+• 𝑝𝑡 is the prediction confidence or class probability, where supported by the chosen leaf 
+predictor. 
+• 𝑒𝑡 is the prediction-error indicator. 
+• 𝐷𝑡 ∈ {0,1} is the drift status produced by ADWIN. 
+System performance is evaluated continuously through prequential measures: 
+Accuracy = 𝑇𝑃 + 𝑇𝑁
+𝑇𝑃 + 𝑇𝑁 + 𝐹𝑃 + 𝐹𝑁 
+Precision = 𝑇𝑃
+𝑇𝑃 + 𝐹𝑃 
+Recall = 𝑇𝑃
+𝑇𝑃 + 𝐹𝑁 
+𝐹1 = 2 × Precision × Recall
+Precision + Recall  
+𝐹𝑃𝑅 = 𝐹𝑃
+𝐹𝑃 + 𝑇𝑁 
+
+Journal of Intelligent Decision Making and Information Science 
+Volume 3(14s), (2026) 2413-2436 
+2424 
+𝑀𝐶𝐶 = 𝑇𝑃 ⋅ 𝑇𝑁 − 𝐹𝑃 ⋅ 𝐹𝑁
+√(𝑇𝑃 + 𝐹𝑃)(𝑇𝑃 + 𝐹𝑁)(𝑇𝑁 + 𝐹𝑃)(𝑇𝑁 + 𝐹𝑁)
+ 
+Alongside predictive measures, the suggested system logs drop-event timestamps, time between drift 
+detection and performance recovery, throughput in flows per second, and memory usage. These 
+measures will assess if the system is sufficiently accurate and operationally suitable for the real-time 
+detection of intrusions. 
+4. IMPLEMENTATION 
+A Bayesian -optimized Adaptive Hoeffding Tree with ADWIN concept -drift detection is an online 
+intrusion-detection framework that is implemented as a Python-based system. The system processes 
+these network-flow records in turn, predicts the class of each flow before training on it, and monitors 
+the prediction-error stream to determine whether there has been a change in the behavior of packets 
+on the network. 
+4.1 Development Environment 
+The implementation relies on River or a similar stream-mining library, as it allows for model updates 
+through learn_one() and provides prediction through predict_one(). An AHT is integrated with ADWIN 
+for adaptation over time when the prediction -error distribution changes. Hoeffding Adaptive Trees 
+are intended to be used for online stream learning and may incorporate adaptive -window drift 
+detection. 
+Table 4.1 Software Tools and Their Roles in the Proposed Implementation 
+Tool / Library Role in the implementation 
+Python Core programming language for the complete IDS pipeline 
+Pandas Loading CSV files, cleaning records, and chunk-wise stream preparation 
+NumPy Numerical processing and handling invalid numeric values 
+River Online classification, Adaptive Hoeffding Tree, ADWIN, and incremental 
+metrics 
+Optuna / Scikit -
+Optimize Bayesian hyperparameter optimization 
+Scikit-learn Label encoding, preprocessing utilities, and baseline comparisons 
+Matplotlib / Seaborn Visualization of performance trends, drift events, and confusion matrices 
+Psutil / Tracemalloc Monitoring memory consumption 
+Time module Measuring processing latency and flow throughput 
+ 
+4.2 Implementation Architecture 
+The complete processing sequence is: 
+
+Journal of Intelligent Decision Making and Information Science 
+Volume 3(14s), (2026) 2413-2436 
+2425 
+Flow Stream → Preprocessing → AHT Prediction → Error Computation → ADWIN Drift Detection
+→ AHT Incremental Update 
+Table 4.2 Modules of the AHT–ADWIN Intrusion Detection System 
+Module Input Main operation Output 
+Stream reader Chronological 
+network-flow files 
+Reads one flow or a small 
+chunk at a time 
+Sequential flow 
+record 
+Preprocessing 
+module Raw feature values Cleans and converts features 
+to valid numerical values Feature vector 𝐱𝑡 
+AHT classifier 𝐱𝑡 Predicts benign or attack class Predicted label 𝑦ˆ𝑡 
+Error generator 𝑦ˆ𝑡, 𝑦𝑡 Generates binary prediction 
+error Error value 𝑒𝑡 
+ADWIN detector Error value 𝑒𝑡 Detects statistically significant 
+error-rate change Drift flag 𝐷𝑡 
+Incremental 
+learner 𝐱𝑡, 𝑦𝑡 Updates the AHT after 
+prediction Updated model 𝑓𝑡+1 
+Evaluation logger Predictions and 
+runtime values 
+Updates metrics and stores 
+events 
+Performance and 
+drift reports 
+ 
+5. RESULTS AND DISCUSSION 
+Using chronological streaming intrusion-detection experiments, we evaluate the proposed BO-AHT–
+ADWIN. The assessment of the studied criteria involved features of the datasets used, the 
+performance of the Bayesian optimization binary detector, control of false positives, multiclass recall, 
+computation time, and monitoring of online drift. 
+5.1 Dataset Characteristics 
+The stream derived from CICIDS2017 consisted of 2,830,743 flows with 78 original flow features. 
+Diverse columnar dataset of 80 with 15 sub -labels and 8 attack families distributed after attacks. A 
+total of 80.30% of all the flows consisted of benign traffi c while attack traffic accounted for 19.70% 
+thus creating an extremely imbalanced streaming classification setting. 
+Table 5.1 Dataset Summary for the Streaming IDS Evaluation 
+Metric Value 
+Total flows 2,830,743 
+Original flow features 78 
+Total columns after label enrichment 82 
+
+Journal of Intelligent Decision Making and Information Science 
+Volume 3(14s), (2026) 2413-2436 
+2426 
+Benign flows 2,273,097 
+Attack flows 557,646 
+Benign proportion 80.3004% 
+Attack proportion 19.6996% 
+Fine-grained classes 15 
+Attack-family classes 8 
+Rare-class threshold Fewer than 100 records 
+ 
+Table 5.2 Attack-Family Distribution in the Dataset 
+Attack family Flows Percentage of total flows 
+BENIGN 2,273,097 80.3004% 
+DOS_HEARTBLEED 252,672 8.9260% 
+PORTSCAN 158,930 5.6144% 
+DDOS 128,027 4.5227% 
+BRUTE_FORCE 13,835 0.4887% 
+WEB_ATTACK 2,180 0.0770% 
+BOT 1,966 0.0695% 
+INFILTRATION 36 0.0013% 
+ 
+The data distribution shows extreme sparsity for Infiltration, Web attack and Bot traffic. When 
+examining performance per class, this imbalance is significant since a rare class with a low recall score 
+may indicate the presence of insufficiently representa tive examples in the chronological training 
+history and the inherent difficulty of identifying that attack family. 
+5.2 Bayesian Optimization Results 
+The used tuning stream for Bayesian optimization consisted of 100,000 flows including 2,571 attack 
+flows.  Ten trials were assessed and took approximately 7.00 minutes for tuning. The experiment 
+performed better at Trial 9 giving prequential F1-score of 0.9814. 
+
+Journal of Intelligent Decision Making and Information Science 
+Volume 3(14s), (2026) 2413-2436 
+2427 
+ 
+Figure 5.1 Convergence of Bayesian Hyperparameter Optimization Across Ten Trials 
+Table 5.3 Selected Hyperparameters of the Proposed BO-AHT–ADWIN Model 
+Parameter Selected value 
+Grace period 50 
+Split confidence 0.0055517 
+Tie threshold 0.1934701 
+ADWIN delta 0.0026619 
+Best tuning F1-score 0.9814 
+Number of Bayesian trials 10 
+Tuning-stream flows 100,000 
+Attack flows in tuning stream 2,571 
+Tuning execution time 7.00 minutes 
+ 
+The optimal setup involves a brief grace period of just 50 instances. This helps the AHT to frequently 
+assess potential splits and respond faster to changing traffic patterns. The chosen ADWIN delta 
+0.0026619 is neither too sensitive, causing too many fals e alarms nor too conservative, delaying 
+adaptation. 
+Table 5.4 Bayesian-Optimization Trial Results 
+Trial F1-score Accuracy Precision Recall MCC FPR 
+1 0.9796 0.99895 0.9775 0.9817 0.9791 0.000595 
+2 0.9286 0.99609 0.8756 0.9883 0.9284 0.003705 
+3 0.9137 0.99555 0.9111 0.9164 0.9114 0.002361 
+4 0.9161 0.99568 0.9144 0.9179 0.9139 0.002268 
+
+
+Journal of Intelligent Decision Making and Information Science 
+Volume 3(14s), (2026) 2413-2436 
+2428 
+5 0.9599 0.99794 0.9603 0.9595 0.9589 0.001047 
+6 0.9315 0.99642 0.9164 0.9471 0.9298 0.002279 
+7 0.9250 0.99625 0.9515 0.9000 0.9235 0.001211 
+8 0.9462 0.99720 0.9351 0.9576 0.9448 0.001755 
+9 0.9814 0.99904 0.9784 0.9844 0.9809 0.000575 
+10 0.9765 0.99879 0.9748 0.9782 0.9759 0.000667 
+ 
+The plot convergence reveals that Trial 1 has an F1 -score equals 0.9796, and Trial 9’s generated the 
+final best score of 0.9814.  The other configurations did not perform as well. Trials 3 and 4 were the 
+weakest, confirming that both AHT split settings and ADWIN sensitivity substantially affect the quality 
+of streaming detection. 
+5.3 Binary Detection Performance 
+The binary evaluation examines how well five models distinguish benign traffic from malicious traffic. 
+The F1-score of the proposed BO-AHT-ADWIN framework was found to be 0.9916 with MCC at 0.9681. 
+Table 5.5 Binary Streaming IDS Performance Comparison 
+Model F1-score MCC 
+Hoeffding Tree 0.9889 0.9576 
+Default AHT 0.9896 0.9601 
+AHT + ADWIN 0.9909 0.9656 
+Proposed BO-AHT–ADWIN 0.9916 0.9681 
+Adaptive Random Forest 0.9933 0.9740 
+ 
+The method was better than the standard Hoeffding Tree and Default AHT and untuned AHT + ADWIN. 
+Compared to Hoeffding Tree BO -AHT–ADWIN attain 0.0027 more in F1 -score and 0.0105 more in 
+MCC. The gain over AHT + ADWIN is small 0.0007 in F1 -score and 0.0025 in MCC but it shows that 
+Bayesian parameter selection gave us a boost on top of drift adaptation. 
+
+Journal of Intelligent Decision Making and Information Science 
+Volume 3(14s), (2026) 2413-2436 
+2429 
+ 
+Figure 5.2 Comparison of Binary Streaming IDS Performance Using F1-Score and MCC 
+Adaptive Random Forest’s F1-score of 0.9933 and MCC of 0.9740 was the highest among algorithms. 
+However, detection performance is higher at the expense of throughput (Section 5.6). As a result, the 
+suggested model exhibits a better accuracy-efficiency conflict for streaming deployment. 
+5.4 False-Positive Rate Analysis 
+The significance of false positives in intrusion detection is that they are benign traffic incorrectly 
+flagged as malicious. These errors can raise unwanted alarms, waste analyst time, and break standard 
+services. 
+Table 5.6 Binary False-Positive Rate Comparison 
+Model False-positive rate FPR (%) 
+Hoeffding Tree 0.0198 1.98% 
+Default AHT 0.0208 2.08% 
+AHT + ADWIN 0.0121 1.21% 
+Proposed BO-AHT–ADWIN 0.0115 1.15% 
+Adaptive Random Forest 0.0264 2.64% 
+ 
+The examined framework secured the least false -positive rate of 1.15% compared to others. This is 
+nearly 41.9% less than what Hoeffding Tree would consume and 45.2% less than Adaptive Random 
+Forest. It is worth noting that Adaptive Random Forest recorded t he best F1 -score and MCC value. 
+However, it also has the maximum false -positive rate. The proposed BO -AHT–ADWIN model is, 
+therefore, ideal for use in scenarios were avoiding the incorrect blocking of or alerting on legitimate 
+network flows is the most important operational requirement. 
+
+
+Journal of Intelligent Decision Making and Information Science 
+Volume 3(14s), (2026) 2413-2436 
+2430 
+ 
+Figure 5.3 False-Positive Rate Comparison of Streaming IDS Models 
+5.5 Multiclass Recall Analysis 
+The multiclass experimentation determines whether the proposed model indicates the capability of 
+the model to classify individual attack families rather than simply labelling the traffic as “benign” or 
+“malicious”. 
+Table 5.7 Per-Class Recall of the Proposed BO-AHT–ADWIN Model 
+Class Recall Recall (%) 
+BENIGN 0.998 99.8% 
+PORTSCAN 0.995 99.5% 
+DDOS 0.993 99.3% 
+DOS_HEARTBLEED 0.948 94.8% 
+WEB_ATTACK 0.793 79.3% 
+BOT 0.283 28.3% 
+BRUTE_FORCE 0.000 0.0% 
+INFILTRATION 0.000 0.0% 
+ 
+The suggested model achieved a good recall for a range of traffic types. The stream has water 
+discharges of 2273097, 158930, 128027 and 252672. On the other hand, classes such as BOT , 
+WEB_ATTACK, BRUTE_FORCE, and INFILTRATION remain undetectable at lower frequencies. 
+
+
+Journal of Intelligent Decision Making and Information Science 
+Volume 3(14s), (2026) 2413-2436 
+2431 
+ 
+Figure 5.4 Per-Class Recall of the Proposed BO-AHT–ADWIN Framework 
+The complete lack of recall for BRUTE_FORCE and INFILTRATION should not be overlooked, as it 
+highlights a limitation. Infiltration only has 36 flows corresponding to 0.0013% of the dataset. Also, as 
+benign traffic comes early in the timeline, and later, att acks occur sporadically, adaptation can be 
+difficult. It indicates that high binary detection performance does not imply uniformly high multiclass 
+family recognition. 
+5.6 Computational Efficiency 
+The experiment measures the throughput and the peak memory of the model. The framework that 
+was proposed processed 2,166 flows per second with a peak process memory of 4,387 MB. 
+Table 5.8 Computational Efficiency of Streaming IDS Models 
+Model Throughput (flows/s) Peak process memory (MB) 
+Hoeffding Tree 3,170 4,381 
+AHT + ADWIN 2,517 4,384 
+Default AHT 2,283 4,382 
+Proposed BO-AHT–ADWIN 2,166 4,387 
+Adaptive Random Forest 1,477 4,384 
+ 
+The basic Hoeffding Tree gave the highest throughput numbers since it employs the simplest learning 
+configuration and does not include adaptation mechanisms. Including the ADWIN dropped 
+throughput to 2,517 flows per second, as the throughput offered by the proposed Bayesian optimized 
+model was 2,166 flows per second. The model assesses splits more often and does adaptive drift 
+monitoring, which causes this overhead. 
+
+
+Journal of Intelligent Decision Making and Information Science 
+Volume 3(14s), (2026) 2413-2436 
+2432 
+ 
+Figure 5.5 Throughput and Peak Process Memory Comparison of Streaming IDS Models 
+The model is approximately 46.6% faster than Adaptive Random Forest that processes 1,477 
+flows/second, costing the model 10%. All models, with the exception of one, recorded similar peak 
+process memory in the range of 4381 -4387 MB. As a result, the main co st of BO -AHT-ADWIN is 
+processing time rather than a significant increase in recorded process memory. 
+5.7 ADWIN Drift Monitoring 
+The prediction-error stream of BO-AHT–ADWIN was monitored using external ADWIN at around 300k 
+evaluation positions. During periods of steady traffic, the estimated online error rate was nearly zero, 
+with a few brief and noticeable spikes occurring at several points in the stream. 
+The maximum spike in the error apparently takes place at stream position 50,000 with a value of 
+about 0.067. There were quite a few other noteworthy peaks; for instance of about 0.031 near 40,000, 
+about 0.025 near 75,000, about 0.019 near 113,000, about 0. 028 near 133,000, about 0.014 near 
+225,000–230,000, about 0.028 near 290,000.  The ADWIN monitoring plot produces several drift 
+alarms close to these areas. 
+
+
+Journal of Intelligent Decision Making and Information Science 
+Volume 3(14s), (2026) 2413-2436 
+2433 
+ 
+Figure 5.6 External ADWIN Drift Monitoring of the Proposed BO-AHT–ADWIN Framework 
+These events indicate changes in the behaviour of the model’s error that are statistically detectable. 
+The alarm does not necessarily mean a new attack. A change in error distribution (ADWIN alarm) can 
+be due to changes in class proportions, evolving benig n behaviour, noisy labels, or a transition 
+between attack files.  Nonetheless, the error rate of the model after most spikes returned to low 
+values. This shows that incremental updates of the average hypothesis target and adaptation based 
+on ADWIN led to recovery from transient degradation. 
+5.8 Discussion 
+According to the results, employing adaptive tree -learning techniques together with ADWIN drift 
+detection and Bayesian hyperparameter optimization can yield improvements on the streaming 
+intrusion-detection trade-off between classification efficacy and operational cost. 
+First, the proposed BOAHTADWIN framework attained superior binary F1 -score and MCC in 
+comparison to the Hoeffding Tree, Default AHT , and AHT + ADWIN baselines. It confirms that the 
+optimized configuration yielded more value than using the adaptive tree and  drift detector with 
+default settings. 
+The proposed model had the least false positive of all studied models. The FPR level of 1.15% is 
+particularly significant for practical NIDS deployment as it can either bombard analysts with false 
+alarms or lead to blocking legitimate traffic. Despite havi ng a marginally higher F1 -score and MCC, 
+Adaptive Random Forest recorded a 2.64% FPR and lesser throughput. 
+The third section revealed that while binary detection is strong, multiclass detection performance is 
+variable. 
+In the multiclass scenario, the system was able to detect the popular families with a recall above 
+94.8%, PortScan, DDoS and Dos related traffic. However, the similar activity of Brute Force and 
+Infiltration was not detected. This weakness corresponds to s ignificant class imbalance: there were 
+36 flows for infiltration, and a lot of attack families are less than 0.5% of the full stream. Future work 
+
+
+Journal of Intelligent Decision Making and Information Science 
+Volume 3(14s), (2026) 2413-2436 
+2434 
+must do cost-sensitive learning, online resampling, rare-event replay, synthetic minority generation, 
+hierarchical binary-then-family classification, etc. to improve minority-attack recognition. 
+Ultimately, ADWIN monitoring recognized the periods of significant prediction error and generated 
+drift alarms at the error spikes. The incremental learner was able to learn the new traffic effectively, 
+as shown by the model’s later low error rate. Nonethe less, some periods with many alarm marks 
+indicate that careful tuning of ADWIN sensitivity is required to prevent alarm flooding. In the future, 
+an evaluation should compare detected alarms against the known timestamps of dataset-transitions 
+and report on the following; the detection delay, false-alarm rate, and the time taken to recover post-
+drift.  
+5.9 Results Summary 
+Table 5.9 Summary of Main Findings 
+Evaluation 
+objective Result Interpretation 
+Best tuning F1 -
+score 0.9814 Bayesian optimization identified an effective 
+AHT–ADWIN configuration 
+Binary F1-score 0.9916 Strong benign-versus-attack discrimination 
+Binary MCC 0.9681 Reliable performance despite class imbalance 
+False-positive rate 1.15% Lowest among compared models 
+Highest multiclass 
+recall 99.8% for BENIGN Strong recognition of common/stable traffic 
+Lowest multiclass 
+recall 
+0.0% for BRUTE_FORCE and 
+INFILTRATION 
+Limitation caused by minority and sparse 
+classes 
+Throughput 2,166 flows/s Faster than Adaptive Random Forest but 
+slower than simpler trees 
+Peak process 
+memory 4,387 MB Similar measured process footprint across 
+models 
+Largest error -rate 
+spike 
+Approximately 0.067 near 
+position 50,000 
+Evidence of a major transition in stream 
+prediction behavior 
+ 
+CONCLUSION AND FUTURE WORK 
+For online intrusion detection in evolving network -flow streams, this study proposed the Bayesian -
+optimized Adaptive Hoeffding Tree with ADWIN drift detection. The framework integrates 
+incremental tree learning, prediction -error-based drift monitoring, and  Bayesian hyperparameter 
+optimization that delivers adaptive detection capability without any full retraining or storage of the 
+entire traffic history. The experiments utilized a chronological 2017 CICIDS derived stream with 
+2,830,743 flows in total: 80.30 % benign and 19.70% attack. According to Bayesian optimization, the 
+grace period, split confidence, tie threshold, and ADWIN delta were set to 50, 0.0055517, 0.1934701, 
+and 0.0026619 respectively, with a best tuning F1-score of 0.9814. 
+
+Journal of Intelligent Decision Making and Information Science 
+Volume 3(14s), (2026) 2413-2436 
+2435 
+BO-AHT–ADWIN outperformed the baseline Hoeffding Tree, Default AHT and untuned AHT + ADWIN 
+configurations, yielding scores of 0.9916 for F1 and 0.9681 for MCC. Despite Adaptive Random Forest 
+recording a marginally higher F1 -score and MCC, the proposed fram ework achieved a much lower 
+false-positive rate than Adaptive Random Forest at 1.15% as opposed to 2.64%. The system was able 
+to process 2,166 flows in a second, a big improvement from the Adaptive Random Forest with 1,477 
+flows a second. Recall across the classes was exceptionally high for the first four class traffic over the 
+benign, portscan, ddos and dos_heartbleed. However, the performance was limited for the next two 
+classes bot and web_attack. Brute force and infiltration could not be detected. The limitation shows 
+the serious imbalance of the time stream, in particular only 36 Infiltration flows. The ADWIN 
+monitoring further detected several elevated actuals vs. predicted periods, suggesting the method’s 
+ability to detect behavioural changes and to adapt. 
+In the future, research on recognition of rare attack families should use cost-sensitive learning, online 
+resampling, minority -class replaying, and hierarchical classifying into binary then multiclass. For 
+further validation, real NetFlow or Zeek traffic f rom newer and more diverse datasets and delayed -
+label scenarios should be used.  Experiments in the future should validate ADWIN alarms against 
+known transitions in traffic and report detection delay, missing drifts, false alarms, and recovery time. 
+Finally achieving lightweight online explainability and feature-selection mechanisms may help sustain 
+analyst trust whilst preserving the framework’s low false-positive rate and computational efficiency. 
+REFERENCES 
+[1] Martindale, N., Ismail, M., & Talbert, D. A. (2020). Ensemble-based online machine learning algorithms for network 
+intrusion detection systems using streaming data. Information, 11(6), 315. 
+[2] Kassymov, D., & Zhukabayeva, T. K. (2026). ADAPTIVE REAL -TIME NETWORK INTRUSION DETECTION 
+SYSTEM. SMART TECHNOLOGIES JOURNAL, 2(1). 
+[3] Seth, S., Chahal, K. K., & Singh, G. (2024). Concept drift –based intrusion detection for evolving data stream 
+classification in IDS: Approaches and comparative study. The Computer Journal, 67(7), 2529-2547. 
+[4] Carnier, R. M., Lahesoo, L., & Fukuda, K. (2025). Binary anomaly detection in streaming iot traffic under concept 
+drift. arXiv preprint arXiv:2510.27304. 
+[5] Geetha, S., Dulhare, U. N., & Sindhu, S. S. S. (2018, February). Intrusion detection using NBHoeffding rule based 
+decision tree for wireless sensor networks. In  2018 Second International Conference on Advances in Electronics, 
+Computers and Communications (ICAECC) (pp. 1-5). IEEE. 
+[6] Pederzoli, S., Paganelli, M., Contalbo, M. L., Benassi, R., Tiano, D., Iannucci, S., & Guerra, F. (2025). NOCTOWL: 
+Adaptive Tree-Based Model for Network Anomaly Detection Under Delayed and Sampled Label Availability.  IEEE 
+Access, 13, 197899-197911. 
+[7] Corrêa, D. G., Enembreck, F., & Silla, C. N. (2017, May). An investigation of the hoeffding adaptive tree for the 
+problem of network intrusion detection. In  2017 International Joint Conference on Neural Networks (IJCNN)  (pp. 
+4065-4072). IEEE. 
+[8] Eldhai, A. M., Hamdan, M., Abdelaziz, A., Hashem, I. A. T., Babiker, S. F., Marsono, M. N., ... & Jhanjhi, N. Z. (2024). 
+Improved feature selection and stream traffic classification based on machine learning in software -defined 
+networks. IEEE access, 12, 34141-34159. 
+[9] Rajeswari, P . V. N., Shashi, M., Rao, T. K., Rajya Lakshmi, M., & Kiran, L. V. (2022). Effective intrusion detection system 
+using concept drifting data stream and support vector machine.  Concurrency and computation: practice and 
+experience, 34(21), e7118. 
+
+Journal of Intelligent Decision Making and Information Science 
+Volume 3(14s), (2026) 2413-2436 
+2436 
+[10] Adewole, K. S., Salau-Ibrahim, T. T., Imoize, A. L., Oladipo, I. D., AbdulRaheem, M., Awotunde, J. B., ... & Aro, T. O. 
+(2022). Empirical analysis of data streaming and batch learning models for network intrusion 
+detection. Electronics, 11(19), 3109. 
+[11] Yuan, J., Yang, Y ., & Wang, M. (2025, December). DSALSTM: A Concept Drift -Adaptive LSTM Framework for Real -
+Time Network Intrusion Detection. In  2025 7th International Conference on Frontier Technologies of Information 
+and Computer (ICFTIC) (pp. 23-29). IEEE. 
+[12] Sharma, A. K., & Tiwari, M. FeDrift: Feature-Level Drift Evolution Analysis for Adaptive DDoS Detection in Dynamic 
+Networks. 
+[13] de Araújo Josephik, J. G. A., Siqueira, Y ., Machado, K. G., Terada, R., dos Santos, A. L., Nogueira, M., & Batista, D. M. 
+(2023, November). Applying hoeffding tree algorithms for effective stream learning in IoT DDoS detection. In 2023 
+IEEE Latin-American Conference on Communications (LATINCOM) (pp. 1-6). IEEE. 
+[14] Talib, A., Yousif, B., & Tahseen, O. (2026). An Intrusion Detection System in IIoT Networks Based on Decision Trees 
+and Neighborhood Component Analysis (NCA). Electrical Engineering Technical Journal, 3(2), 1-11. 
+[15] Noori, M. S., Sahbudin, R. K., Sali, A., & Hashim, F. (2023). Feature drift aware for intrusion detection system using 
+developed variable length particle swarm optimization in data stream. IEEE Access, 11, 128596-128617. 
+[16] Seraphim, B. I., Poovammal, E., Ramana, K., Kryvinska, N., & Penchalaiah, N. (2021). A hybrid network intrusion 
+detection using darwinian particle swarm optimization and stacked autoencoder hoeffding tree.  Math. Biosci. 
+Eng, 18, 8024-8044. 
+[17] Kumari, S. R., & Kumari, P . (2014). Adaptive anomaly intrusion detection system using optimized Hoeffding 
+tree. ARPN Journal of Engineering and Applied Sciences, 9, 1903-1910. 
+[18] Zou, L., Luo, X., Zhang, Y ., Yang, X., & Wang, X. (2023). HC-DTTSVM: A network intrusion detection method based 
+on decision tree twin support vector machine and hierarchical clustering. IEEE Access, 11, 21404-21416. 
+ 

@@ -1,0 +1,909 @@
+echT PressScience
+https://doi.org/10.32604/cmc.2026.085403
+ARTICLE
+LLMEnhancedExplainableIntrusionDetectionSystemfor
+GeneratingActionableSecurityInsights
+MohammedAtoum1, MalikAl-Essa1,*, YazeedAlsarhan2, AhmadK.AlHwaitat 1
+andMuhammadImran 3
+1ComputerScienceDepartment,KingAbdullahIIFacultyforInformationTechnology,TheUniversityofJordan,Amman,Jordan
+2DepartmentofComputerScience,FacultyofInformationTechnology,Al-AhliyyaAmmanUniversity,Amman,Jordan
+3DepartmentofComputerScience,UniversityofBariAldoMoro,Bari,Italy
+*CorrespondingAuthor:MalikAl-Essa.Email:m.alessa@ju.edu.jo
+Received:11May2026;Accepted:29July2026;Published:15September2026
+ABSTRACT: WiththeurgentneedforIntrusionDetectionSystems(IDS)toprotectdigitalinfrastructure,eXplainable
+Artificial Intelligence (XAI) has become an important supporting layer. The integration of XAI and IDS can rank
+influentialfeaturesthataffectIDSdecisions,yettheseoutputsoftenremaindifficulttotranslateintooperationalsecurity
+actions.Inthiswork,weproposeLEXIS(LLM-EnhancedeXplainableIntrusiondetectionSystem),anLLM-enhanced
+explainableIDSthatconvertssample-levelexplanationsintostructuredreportdraftsthatorganizefeatureattributions
+into candidate response actions for analyst review, through an evidence-bounded reporting process. Given a network
+trace, the classifier generates a prediction for that sample, while an XAI method generates a top-k explanation set
+with attribution scores. Then, an LLM is prompted to produce a machine-readable incident report in a fixed JSON
+schema, which includes suspected causes, confidence cues, false-positive checks, and recommended response actions
+extracted from a predefined action catalog. To investigate the effect of adversarial attacks against both the classifier
+and the XAI method, we evaluate explanation stability under normalized feature-space Fast Gradient Sign Method
+(FGSM) and Projected Gradient Descent (PGD) attacks using a signed-rank stability metric that separately reports
+feature-rank reordering through Kendall tau correlation and attribution-sign agreement between clean and attacked
+samples, each with bootstrap confidence intervals and permutation-test significance. The experiments are evaluated
+on the CICIDS2017 dataset, where the proposed model achieves high detection performance on the majority traffic
+classes, while minority and subtle attack classes remain more challenging. Focal-losstraining with per-class threshold
+calibration raises macro-F1 from 0.726 to 0.776 on the imbalanced class distribution. The stability analysis shows that
+feature-space adversarial perturbations only partially disrupt explanations, with feature ranks retaining substantial
+order and attribution signs agreeing significantly above chance level. The findings suggest that coupling XAI with
+grounded LLM summarization can help transform raw feature attributions into standardized triage-oriented report
+drafts. We evaluate the framework as a benchmark-based prototype, and broader validation on diverse datasets, real
+SecurityOperationsCenter(SOC)logs,analyst-in-the-loopassessment,andproblem-spaceadversarialattacksremains
+futurework.
+KEYWORDS:XAI;intrusiondetectionsystems;SHAP;adversarialattacks;deeplearning;largelanguagemodels
+1I n t r o d u c t i o n
+Recently,IDShasbeenconsideredacriticallayerforprotectingmodernnetworks;however,thegrowing
+volume and diversity of alerts make manual triage expensive and error-prone. Machine learning (ML) and
+Copyright © 2026 The Authors. Published by Tech Science Press. This work is licensed under a Creative Commons Attribution 4.0 International
+License, which permits unrestricted use, distribution, and reproduction in any medium, provided the original work is properly cited.
+
+2 ComputMaterContin. 2026;89(2):50
+Deep Learning (DL) techniques are proposed to be used in detecting cyber-attacks due to their powerful
+capabilities, but their generated decisions are considered as black-box decisions and need to be explained
+for security analysts. XAI techniques such as SHapley Additive exPlanations (SHAP) [1] provide local-
+level feature attributions that help answerwhyan alert was triggered. However, a recurring operational gap
+remains; ranked feature lists are rarely self-explanatory to security practitioners, particularly when features
+are domain-specific (e.g., protocol counters or timing statistics). As a result, security analysts still need to
+manuallytranslateexplanationsgeneratedbyanXAItechniqueintodecisionsandactions(e.g.,verifyfalse
+positives, isolate hosts, block indicators), which introduces inconsistency and delays to the work. LLMs,
+as a new technique, that is becoming widely used, offer a promising bridge from explanations to actions,
+whereLLMscantransformtechnicalevidenceintoreadableincidentreportsandstandardizedtriagesteps.
+However, the problem is that LLMs can hallucinate facts, overstate certainty, or propose unsafe actions,
+which may generate unsafe reports that can mislead security analysts. Therefore, what is required is that
+using LLMs in security triage requires restricting generation to the provided evidence, and responses are
+auditableandcomparableacrossallgeneratedalerts.UnlikepriorIDSstudies,inthisworkwe(i)demonstrate
+an evidence-bounded LLM reporting layer that converts feature-level explanations into structured triage-
+orientedreportdrafts,(ii)constrainthegeneratedreportsusingthesuppliedXAIevidenceandapredefined
+actioncatalog,and(iii)analyzeexplanationstabilityundernormalizedfeature-spaceFGSMandPGDattacks
+usingadecomposed,statisticallytestedstabilitymetric.
+We emphasize at the outset that the present work is a benchmark-based prototype for structured
+explanation-to-action reporting, not a validated SOC triage system. All experiments are conducted offline
+on the refined CICIDS2017 benchmark; the framework is not evaluated with real SOC logs, human-analyst
+assessment, operational deployment constraints, latency profiling, or field validation. The SOC-oriented
+terminologyusedthroughout(e.g.,triage,responseactions,analystsupport)thereforedescribestheintended
+usecaseandthecontrolledbenchmarksetting,ratherthanademonstratedoperationaldeployment.
+The contributions of thiswork canbe summarized as follows:
+1. We propose LEXIS (LLM-Enhanced eXplainable Intrusion detection System), an LLM-enhanced
+explainable intrusion detection framework that transforms quantitative XAI evidence into structured
+reportdraftsdesignedtosupportSOC-styletriageinacontrolledbenchmarksetting.
+2. We propose a grounded LLM reasoning engine constrained by explanation evidence and a predefined
+actioncatalog.Thegeneratedreportfollowsafixedmachine-readableschemaandisdesignedtoreduce
+unsupportedreasoningbyrequiringevidence-boundedclaimsandcatalog-basedresponseactions.
+3. We introduce a decomposed signed-rank stability analysis that reports the Kendall rank component
+and the sign-agreement component separately, with bootstrap confidence intervals and permutation-
+test significance, in order to evaluate explanationdrift under normalized feature-space FGSM and
+PGDattacks.
+4. We conduct experiments on the refined CICIDS2017 dataset to analyze IDS performance, global and
+local SHAP behavior, attribution drift under feature-space adversarial attacks, explanation stability,
+class-imbalancetreatments,andrepresentativegroundedLLM-generatedincidentreports.
+This paper is structured as follows: The related work is discussed inSection2. Section3 explains the
+proposed method.Section4 discusses the results, and finally,Section5 concludes the paper and outlines
+future directions.
+
+ComputMaterContin. 2026;89(2):50 3
+2R e l a t e dW o r k
+2.1 MachineLearning-BasedIntrusionDetectionSystems
+ML and DL-based IDSs have grown substantially over the past few years, driven by the limitations
+of signature-based systems in addressing novel and polymorphic attacks. ML-based IDS adopted different
+techniques to detect cyber-threats, such as decision trees, support vector machines,k-nearest-neighbor
+algorithms [2,3]. However, these techniques had the problem of working with high-dimensional network
+flowdata,wheretheyfailedtogeneralizeacrossheterogeneoustrafficenvironments[ 4].Ontheotherside,the
+useofDeepNeuralNetworks(DNNs)enabledanend-to-endlearningofhierarchicalfeaturerepresentations
+from raw flow statistics, significantly improving the detection of cyber-threats across multi-class attack
+taxonomies[5].ConvolutionalNeuralNetworks(CNNs),atechniquethatwasoriginallyproposedtoclassify
+images, have been applied to packet-level features encoded as images [6], while recurrent architectures,
+notably Long Short-Term Memory (LSTM) networks, exploit the sequential nature of network flows to
+capture temporal attack patterns [7]. Recently, IDS research has investigated lightweight and explainable
+architectures designed for deployment in resource-constrained environments, e.g., knowledge distillation
+techniques have been adopted to reduce computational overhead while preserving interpretability, and
+detectioncapabilityinconsumer-deviceintrusiondetectionsystems[ 8].
+2.2 ExplainableAIforIntrusionDetection
+The adoption of post-hoc XAI methods in the IDS domain has been motivated by the requirement
+for accountability and trust in high-stakes security decisions generated by DNN models. SHAP (SHapley
+Additive exPlanations) [1] has emerged as the most widely adopted explainable AI (XAI) method due
+to its theoretical grounding in cooperative game theory and its model-agnostic applicability. In the IDS
+context, SHAP is typically applied at both global explanations, to identify the most influential features
+across the dataset, and local explanations, to explain individual decisions [9]. Complementary approaches
+include Integrated Gradients [10], which attributes predictions to input features by integrating gradients
+along a straight-line path from a baseline to the input, and LIME (Local Interpretable Model-agnostic
+Explanations)[11],whichfitslocallyfaithfulsurrogatemodelsaroundindividualpredictions.DALEX[ 12]as
+anXAItechniquethatprovidesbothglobalandlocalinformation,isconsideredasaframeworkformodel-
+agnosticexplanationsthatsupportsbreakdownprofilesandpartialdependenceplots,enablingcomparative
+analysisacrossmodelfamilies.Intheliterature,severalworksproposedapplyingXAItechniquestoexplain
+t h ed e c i s i o n sg e n e r a t e db yI D S s .Th ew o r ki n[13] applied SHAP techniques to generate local explanations
+for a random forest IDS through identifying the top contributing features per attack class, finding flow-
+level statistics, e.g., packet duration and inter-arrival timing. Similarly, Ref. [14] demonstrated LIME-based
+explanations for anomaly detection in industrial control system traffic. However, these studies still have
+limitations related to the explanations generated by an XAI technique used, which remain in the form
+of ranked feature attribution vectors, quantitative outputs that are interpretable to ML practitioners but
+opaque to operational security analysts unfamiliar with the underlying feature engineering, which hinder
+the explainability of the decisions generated by these classifiers. Furthermore, explanation instability is
+consideredasanotherlimitationthatisrelatedtotheexplanationsgeneratedbyanXAItechnique,e.g.,SHAP
+attributionscanexhibithighvarianceacrosssemanticallysimilarsamples[ 9],andadversarialperturbations
+cancausebothpredictionflipsandattributionsignreversals,aformofsemanticinstabilitythatundermines
+trustinexplanation-drivenworkflows[ 15].
+
+4 ComputMaterContin. 2026;89(2):50
+2.3 AdversarialRobustnessinIntrusionDetection
+Adversarial ML poses a significant threat to learning-based IDS. Fast Gradient Sign Method
+(FGSM) [16] and Projected Gradient Descent (PGD) [17] are canonical first-order attack algorithms that
+have been applied in the network security domain to generate adversarial network flow samples that
+evade classification. In the IDS domain, adversarial samples must satisfy problem-space constraints, where
+perturbedfeaturevectorsmustcorrespondtorealizablenetworkflows,whichlimitsthefeasibleperturbation
+factor compared to the image domain. The work in [18] demonstrated FGSM-based evasion against DNN
+classifiers on network flow datasets, achieving significant accuracy degradation with minimal perturbation
+factor. Subsequent work explored transferability of adversarial samples across model architectures [19]a n d
+proposedadversarialtrainingasadefensemechanism[ 16].However,theimpactofadversarialperturbations
+onmodelexplanations,asopposedtopredictionsalone,hasreceivedcomparativelylittleattention.Ourwork
+addresses this gap by evaluating explanation stability under FGSM and PGD attacks using a signed rank
+stabilitymetricthatcapturesbothrankreorderingandattributionsignflips.
+2.4 LargeLanguageModelsforSecurityAnalytics
+Recently, LLMshavebeen explored asaninterfacelayerbetween automatedsecuritytools andhuman
+analysts in order to generate explanations for human analysts. Their natural language generation capability
+makes them attractive for generating plain-language summaries of alerts generated by IDS, translating
+technical log entries into investigative reports, and generating structured triage recommendations [20],
+which makes it easier for the security analyst to understand the reason behind the generated alerts by
+an IDS. Early applications have focused on log parsing and threat-intelligence summarization, in which
+LLMs demonstrated a strong ability to synthesize information from heterogeneous sources into coherent
+security advisories. More recently, LLMs have been used to support SOC workflows by automating cyber-
+threat-intelligence analysis, extracting actionable indicators, and generating structured outputs that reduce
+repetitiveanalysteffortinanalyzingexplanationsgeneratedbyXAImethods[ 21].However,theuseofLLMin
+securitycontextsmayintroducehallucinationrisk[ 22].Inthiscase,theLLMmodelmayfabricateindicators
+ofcompromise(IoCs)orrecommendactionsthatareinconsistentwiththeavailableevidencegeneratedby
+an IDS. This motivates the grounded reasoning design adopted in this work, where an LLM is constrained
+to evidence supplied by an XAI technique and instructed to select actions from a controlled catalog to
+mitigate hallucination. Nowadays, LLM-assisted cybersecurity systems have been used for automated alert
+interpretation, threat summarization, SOC support, and structured incident reporting [23]. However, LLM
+generation in security contexts still introduces risks related to unsupported reasoning and hallucinated
+outputs. This motivates the requirement for grounded reasoning frameworks that constrain generated
+outputsusingevidencederivedfromexplainableIDScomponents.
+3M e t h o d
+The proposed method is illustrated inFig.1 (Algorithm 1), which improves an IDS through the use of
+a grounded LLM layer that converts quantitative model explanations into actionable security insights. The
+proposedmethodisorganizedintothreestagesasfollows:
+
+ComputMaterContin. 2026;89(2):50 5
+Figure1: Overviewoftheproposedschema.
+Algorithm1: LEXIS
+Input:Dataset D={( xi,yi)}N
+i=1;classifier fθ;loss J(fθ(x),y);XAIexplainer E(⋅);contextualizer C(⋅);
+LLM L(⋅);
+attack factor:ϵ;PGDsteps T;PGDstepsize α;no rm∥⋅∥∞.
+Output:Explanationsforeachmode Hclean , Hfgsm , Hpgd .
+Functionfgsm(x,y, ϵ):
+g←∇x J(fθ(x),y)
+xfgsm ←clip(x+ ϵ⋅sign(g))
+return xfgsm
+Functionpgd(x,y, ϵ,α,T):
+x0←x+ U(−ϵ, ϵ)
+fort←1toT do
+g←∇x J(fθ(xt−1),y)
+xt←xt−1+α⋅sign(g)
+xt←ΠB∞(x,ϵ)(xt) //Projectto ϵ-ball
+xt←clip(xt)
+return xT
+FunctionGenerateExplanation(x):
+ˆy←fθ(x)
+e←E(fθ,x)//featureranking
+z←C(x, ˆy,e)//quantitative→qualitativecontextpack
+h←L(z)//LLMreasoning +summary
+return h
+fori←1toN do
+(Continued)
+
+6 ComputMaterContin. 2026;89(2):50
+Algorithm1(continued)
+//Mode1: Clean
+xclean ←xi; y←yi
+Hclean
+i ←GenerateExplanation(xclean )
+//Mode2: FGSM
+xfgsm ←FGSM(xclean ,y, ϵ)
+Hfgsm
+i ←GenerateExplanation(xfgsm )
+//Mode3: PGD
+xpgd ←PGD(xclean ,y, ϵ,α,T)
+Hpgd
+i ←GenerateExplanation(xpgd)
+return Hclean , Hfgsm , Hpgd
+S1:Data,IDSModel,andAdversarialAttacksTesting
+Let D={(xi,yi)}N
+i=1 denote a labeled IDS dataset, wherexi∈Rd is a feature vector extracted from
+network traffic andyi∈{1,..., C} is the class label (e.g., benign vs. attack categories). An IDS modelfθis
+trainedtoo u tp u tclassp r obab ili ties:
+ˆp= fθ(x)∈[0,1]C, ˆy=argmax
+c
+ˆpc.( 1 )
+Wedistinguishtwonotionsofrobustnessthatarekeptseparatethroughoutthiswork. Predictionrobust-
+nessreferstowhetherthepredictedlabel ˆy changesunderanadversarialperturbation,whereas explanation
+robustnessreferstowhetherthefeatureattributionsconsumedbythedownstreamLLMremainstableunder
+the same perturbation. These two properties are independent: a sample whose label is unchanged may still
+exhibit large attribution drift, and conversely a label flip does not necessarily imply a complete change of
+the underlying evidence. The stability metric defined in Stage S3 (and analyzed inSection4.3.4)m e a s u r e s
+explanationrobustnessspecifically,andiscomputedundertheclean-predictionconventionsothatitisolates
+pure explanation drift from the consequence of prediction flips. To evaluate not only predictive robustness
+but also explanation robustness, we generate adversarial samples ˜x from clean inputsx using standard
+gradient-based attacks. For an inputxwithlabel y,definetheloss
+J(fθ(x),y).TheFGSMgenerates:
+˜x=x+ ϵ⋅sign(∇xJ(fθ(x),y)),( 2 )
+where ϵcontrolstheperturbationfactor.PGDiterativelyrefines ˜xwithinan ℓ∞-ball:
+˜x(t+1)= ΠBϵ(x)(˜x(t)+α⋅sign(∇˜x(t) J(fθ(˜x(t)),y))),( 3 )
+withstepsize αandprojectionoperator ΠBϵ(x).I nS1,bothx(clean)and ˜x(adversarial)arepassedthrough
+fθ,producingpredictionsandconfidencescoresuseddownstream.
+S2:XAI
+Given a samplex (clean or adversarial), an explainerE(⋅)produces quantitative evidenceabout the
+decisionof fθ.Concretely,wecomputearankedattributionvector:
+a= E(fθ,x)∈Rd, (4)
+where aj represents the contribution of featurej to the model output (e.g., the predicted class logit or
+probability).Let T(x)={ j∣j∈TopK(∣a∣,k)} denotetheindexsetofthe kfeatureswiththelargestabsolute
+
+ComputMaterContin. 2026;89(2):50 7
+attribution for samplex; this set is used both to form the top-k explanation set below and, in the stability
+analysis ofSection4.3.4, to compare clean and adversarial explanations. Note thatT(⋅)d e n o t e st h i si n d e x
+setthroughout,andisdistinctfromthescalar T usedinAlgorithm1forthenumberofPGDiterations.The
+explanationisrepresentedasthetop- k setasillustratedinthefollowingEquation:
+Ek(x)={(j,xj,aj,sj)}j∈T(x) , (5)
+wheresj=sign(aj)denoteswhetherthefeatureincreasesordecreasesthepredictedtargetclassscore.
+S3:LLMContextualReasoningforActionableSecurityInsights
+Three components are used in Stage S3 to convert quantitative explanations into operationally mean-
+ingfuloutputs:(i)aquantitative-to-qualitativecontextualizer,(ii)anintermediateexplanationnetwork,and
+(iii) a grounded LLM reasoning engine that generates human-readable and actionable results. First, in the
+Quant-to-Qual Contextualizer, XAI outputs contain cryptic features (e.g., protocol counters, inter-arrival
+statistics)andrawnumericvaluesthatarehardtobeinterpreteddirectly.Wethereforedefineadeterministic
+mappingϕ(⋅)fromquantitativeevidencetoqualitativetokens:
+Q(x)= ϕ(Ek(x)), (6)
+The outputQ(x) is a structured set of interpretable statements, e.g.,“high connection fan-out”, “burst-
+like packet timing”,o r“elevated SYN-like activity”, each explicitly tied to one or more feature tuples from
+Ek(x).ExplainableNetworkConstructionisusedtoimproveconsistencyandauditability,throughoptionally
+building an intermediate graph representation that captures relationships among evidence items. Let
+G=( V,E) be an Explainable Network where nodes correspond to (i) features, (ii) derived behaviors from
+Q(x),and(iii)hypothesislabels(e.g.,scan,brute-force,DoS).Edgesarecreatedusingsimpledomainrules
+(e.g., multiple timing-variance features jointly support a burstiness node) and/or similarity grouping over
+featuresemantics.
+Grounded LLM Reasoning Engine phase is where LLM receives only the following inputs: (i) the
+predictedclass ˆyandconfidence ˆp,(ii)thequantitativeevidence Ek(x),(iii)thequalitativecontext Q(x),and
+(iv) the Explainable NetworkG (if enabled). The LLM is instructed to generate an output strictly following
+ap r edefinedschemaS (e.g.,JSON)thatsupportsSOCtriageasfollows:
+Schema S: alert_summary, predicted_label, top_evidence (list),
+threat_hypothesis, confidence_notes, false_positive_checks (list),
+recommended_actions(list),and required_logs (list).
+Weenforcetwogroundingconstraintsinordertoreducehallucinationsandpreservetraceability: (C1)
+Evidence-bounded claims:Every claim intop_evidence must reference a tuple from the explanation
+evidenceset,includingthefeaturename,value,anda ttributionsignormagnitude.Throughthisconstraint,
+the LLM is instructed to avoid using indicators that are not present in the input.(C2) Controlled action
+library: Recommendedactionsandfalse-positivechecksareselectedfromtheproposedcatalog.Inthecase
+thatcriticalcontextismissing,anLLMmustreturn needs_contextratherthanguessing.Formally,the
+reasoningengineinthisstepisdefinedasinthefollowingEquation:
+R(x)= LLM(ˆy,ˆp, Ek(x), Q(x),G; S, A),( 7 )
+where R(x)istheh uman-r eadabler epo rt.
+
+8 ComputMaterContin. 2026;89(2):50
+Inthiswork,weuseanactioncatalog AasimplementedbyapredefinedsetofSOC-orientedresponse
+actions. Each action in this report is associated with a unique identifier and a short operational descrip-
+tion (e.g., inspect_zeek_conn, rate_limit_source), where in the report generation process,
+an LLM is constrained to selecting actions only from this catalog. The full action catalogA used in
+our experiments is listed inTable 1; the LLM may populaterecommended_actions and the action-
+bearing false_positive_checksonlywithkeysdrawnfromthiscatalog,andanyout-of-catalogkey
+triggers report rejection viavalidate_soc_report (see Section4.3.6). This closed action vocabulary
+isthemechanismthroughwhichhallucinationofunsafeornon-existentresponseactionsisoperationalized
+andprevented.Intheproposedmethod,Quant-to-Qualcontextualizerappliesdeterministicmappingrules
+thatconvertquantitativefeatureattributionsintointerpretablebehavioraldescriptors(e.g.,“burst-likepacket
+timing”or“high-volumeflow”).Toconstructalightweightgraphstructure,theExplainableNetworkisused,
+wherenodesrepresentfeatures,qualitativebehavioralindicators,andattackhypotheses,andedgesrepresent
+predefinedsemanticorrule-basedrelationshipsamongthoseentities.Themainaimofthisintegrationisto
+improvethegroundingconsistency,interpretability,andreproducibilityofthegeneratedSOCreports.
+Table 1:Thecontrolledactioncatalog A.Th egr o u n d edL L Mm a yo nl ye m i trecommended_actionswhosekeys
+appearinthiscatalog;the needs_contextkeyisthemandatoryfallbackwhencriticalcontextismissing(constraint
+C2).Anykeynotpresentin Acausesthereporttoberejectedby validate_soc_reportandregenerated.
+ActionKey OperationalDescription TypicalTriggerEvidence
+inspect_zeek_conn ExamineZeek/Broconnection
+logsfo rtheso ur ceIP
+Burst-likeorhigh-volumeflow
+evidence
+rate_limit_source Applytemporaryratelimiting
+totheso ur ceIP Volumetricfloodindicators
+block_indicator BlocktheoffendingIP/indicator
+attheperimeter
+High-confidencemalicious
+classification
+isolate_host Quarantinetheaffectedinternal
+host
+Lateral-movement/infiltration
+evidence
+verify_false_positive R unfalse-posi tivechecksbefo r e
+escalation
+Lowstabilityscoreor
+benign-adjacentevidence
+needs_context Defertoanalyst;donot
+recommendanaction
+Criticalcontextmissing(C2
+fallback)
+As Ek(⋅)iscomputedforbothclean xand adversarialx′, we can quantify explanation drift. Recall that
+T(x),definedinStageS2,isthesetoftop- k feature indices for samplex.Asimplesign-agreementstability
+score,computedoverthetop- k unionratherthanoversetintersection,is:
+σk(x, ˜x)=
+∣{j∈T(x)∪T(˜x)∶sign(aj)= sign(˜aj)}∣
+∣T(x)∪T(˜x)∣ (8)
+whereσk(x, ˜x)isthefractionoffeaturesinthetop- kunion T(x)∪T(˜x)whoseattributionsignispreserved
+betweenthecleansample xandtheadversarialsample ˜x,and aj, ˜aj denotetheattributionoffeature jforthe
+cleanandadversarialsamplesrespectively.Notethat σk isnotaset-overlapmeasure,itquantifiesdirectional
+agreement over the combined top-k set, whereas set overlap proper is reported separately as the Jaccard
+index Jaccard@k=∣T(x)∩T(˜x)∣/∣T(x)∪T(˜x)∣. The two quantities are nevertheless numerically close,
+
+ComputMaterContin. 2026;89(2):50 9
+andcoincideexactlywheneverthefeaturessharedbythetwotop- ksetsarealsothefeatureswhoseattribution
+signispreserved,whichistheregimeobservedformo stclassesinourexperiments.Thecompositesigned-
+rankstabilityscorethencombinesthissign-agreementcomponentwiththeKendallrankcomponent:
+Stabk(x, ˜x)= 1
+2(τk(x, ˜x)+ σk(x, ˜x)) (9)
+whereτk(x, ˜x)istheKendallrankcorrelationcoefficientcomputedoverallofthefeaturemagnitudevectors
+∣a∣and∣˜a∣.As c o r eo fS t a bk=1.0 indicates perfect stability in both rank order and attribution direction.
+B e c a u s et h et w oc o m p o n e n t sh a v ed i ff e r e n tr a n g e s(τk∈[−1,1], σk∈[0,1]), the composite score alone is
+ambiguous:avalueof0.5canarisefromrandomizedrankswithfullypreservedsigns( τk≈0,σk≈1)aswell
+as from preserved ranks with fully reversed signs (τk≈1,σk≈0), whereas near-random behavior inboth
+componentsyieldsStab k≈0.25.Wethereforereport τk andσk separately,alongsidethecompositescore,in
+allstabilitytables.
+Thisprovidesadirectmeasureofwhetheradversarialperturbationsdestabilizetheexplanationevidence
+that the LLM consumes, which is crucial for trustworthy deployment. To assess robustness, we evaluate
+explanationstabilityunderadversarialattacks(FGSMandPGDattacks)usingasignedrankstabilitymetric
+Stab
+k that jointly captures feature rank reordering (Kendall-τ) and attribution sign agreement between
+Ek(x) and Ek(x′) for attacked samplesx′. The proposed signed-rank stability metric incorporates two
+complementary properties of XAI robustness. The first one is the Kendall-τcomponent, which evaluates
+whethertherelativeorderingoffeaturesremainsstableunderadversarialattacks.Ontheotherside,thesign-
+agreement component evaluates whether the explanatory direction of these features remains semantically
+consistent. This distinction is considered an important factor in the proposed LLM-assisted SOC setting,
+wherefeature-rankreorderingmayalterevidenceprioritizationpresentedtothesecurityanalyst.Incontrast,
+attribution-signreversalsmayleadtocontradictoryormisleadingsecurityinterpretations.Therefore,jointly
+measuring rank consistency and sign agreement provides a more operationally meaningful assessment of
+explanationstabilityunderadversarialattacks.
+4 EmpiricalEvaluationandDiscussion
+4.1 Datasets
+CICIDS2017[24]isanetworkintrusiondatasetfromtheCanadianInstituteforCybersecuritycollected
+on a dedicated testbed with different hosts and operating systems. The environment separates victim and
+attacker segments and generates traffic that traverses the public Internet. The captured traces include
+commonapplicationprotocols(e.g.,HTTP/HTTPS,FTP,SSH,SMTP)andcombinebenignactivity,driven
+byprofilingagentstrainedontracesofrealuserbehavior,withcoordinatedattackcampaigns.Attacksinclude
+bruteforceattacks,botnetcommunication,Heartbleed,severalvariantsofDoSandDDoS,infiltration,and
+web-relatedthreats.EachtraceinCICIDS2017has78numericfeaturesand1classfeatureextractedwiththe
+CICFlowMetertool[ 24].Inourexperimen ts,weadopttherefinedCICIDS2017releasein troducedby[ 25]
+1,
+which addresses known issues in the original dataset released by the Canadian Institute for Cybersecurity
+by removing artifacts, correcting errors, and repairing mislabeled samples from the original dataset. This
+refinement retains 72 numeric features (removing spurious attributes that can promote overfitting) and
+contains no categorical fields. We use two disjoint subsets of 100,000 flows each for training and testing via
+stratified sampling without replacement. Both splits preserve the base class distribution, containing 80%
+benignand20%attacktraffic.Theattacktrafficisorganizedintoeightcategories: PortScan,DoSHulk,DDoS,
+1downloads.distrinet-research.be/WTMC2021
+
+10 ComputMaterContin. 2026;89(2):50
+DoSGoldenEye,DoSSlowloris,FTP-Patator,SSH-Patator,and DoSSlowhttptest.CICIDS2017datasetsuffers
+from the problem of minority classes, where it has six out of eight classes that are under-represented in
+thedataset.
+4.2 ImplementationDetails
+The implementation of the proposed pipeline was developed in Python 3.9, using the Keras 2.7
+API to build the neural models, with TensorFlow as the computational backend. All numerical features
+were pre-processed usingmin–max scaling, which linearly rescales each feature into the range[0,1].Th i s
+normalization mitigates scale-induced dominance among heterogeneous attributes and typically improves
+convergence and stability for gradient-based optimization. To optimize hyperparameters used in the DNN
+architecture, we employed theTree-structured Parzen Estimator (TPE)algorithm, as implemented in the
+Hyperoptlibrary,andavalidationdatasetcomprising20%ofthetrainingset(selectedviastratifiedsampling)
+has been used. We set the number of optimization trials to 30, where the configuration that achieves the
+minimumvalidationlossisselected.TheDNNarchitectureusedinthisworkconsistsofthreefullyconnected
+layers,withlayerparametersdeterminedthroughhyperparameteroptimization.Weuseddropoutandbatch
+normalization to improve generalization and mitigate overfitting, where we applied theReLU activation
+functioninthehiddenlayers[ 26].Theoutputlayeruses softmaxtogenerateaprobabilitydistributionover
+classes. DNN model training was performed for up to 150 epochs, withearly stopping(patience=10) to
+restorethecheckpointwiththelowestvalidationloss.
+For interpretability, we used explanation techniques at both local and global levels. SHAP
+(v 0.48.0) was used to generate local feature attributions. For the LLM reasoning stage (S3), we used
+the gemini-2.5-flashmodelviatheGoogleGenerativeAIAPI,configuredwithatemperatureof0.2
+andamaximumoutputlengthof3000tokenstoencouragelow-varianceandconcisestructuredoutputs.All
+adversarialperturbationsweregeneratedinthenormalizedfeaturespaceafterapplyingmin–maxscalingto
+therefinedCICIDS2017features.Theperturbationvalu eswereclippedtoremainwithinthevalidnormalized
+range([0,1])foreveryfeature.FGSMadversarialsamplesweregeneratedusingasingle-stepgradientupdate
+withperturbationfactor(
+ϵ=0.01),whilePGDadversarialsamplesweregeneratediterativelyusingprojected
+updatesconstrainedwithinan( ℓ∞)perturbationball,withstepsize( α= ϵ/10)and(T=10)iterations.Since
+the refined CICIDS2017 dataset adopted in this work contains only numerical attributes, no categorical-
+feature perturbation constraints were required. We additionally emphasize that the generated adversarial
+samplesareevaluatedasfeature-spaceperturbationsandarenotguaranteedtocorrespondtofullyrealizable
+packet-level network flows. The Adversarial Robustness Toolbox (ART) library was used to generate both
+FGSMandPGDadversarialsamples.
+Thepipelineincursthreesequentialper-samplecosts.DNNinferenceonthetrainedthree-layermodel
+isnegligible(sub-millisecondperflowoncommodityhardware).TheSHAPattributionstepisthedominant
+local cost, since the explainer scales with the size of the background set and the feature count, and it is
+thereforethebottleneckoftheexplanationstageratherthantheclassifier.ThegroundedLLMreportingstage
+issuesasingle gemini-2.5-flashAPIcallperalert(temperature0.2, ≤3000outputtokens),whoseend-
+to-end latency is network-bound and typically on the order of a few seconds per report. Importantly, in a
+deployment the SHAP attribution and LLM reporting stages runafter the real-time classification decision,
+as a post-alert enrichment step; they therefore do not lie on the detection critical path and do not affect
+detection latency. The values reported here are indicative timings on our experimental setup rather than
+optimized production benchmarks, and a systematic latency and throughput study under operational load
+islefttofuturework.
+
+ComputMaterContin. 2026;89(2):50 11
+4.3 ResultsandDiscussion
+4.3.1PerformanceAnalysis
+Table 2presents the per-class detection performance of the proposed model on the clean CICIDS2017
+test set, revealing a generally strong ability to distinguish between benign traffic and multiple attack
+categories. Overall, the DNN model shows high discriminative capability across all classes, as reflected by
+theAUC-ROCvalues,whichrangefrom0.95to1.00.ThisillustratesthattheDNNmodelishighlyeffective
+at separating class distributions even when class-wise precision and recall vary. Specifically, the majority of
+trafficcategories,including Benign,DoSHulk,PortScan,and DDoS,areidentifiedwithstrongperformance,
+suggestingthatthelearnedfeaturerepresentationcapturesthemostsalientcharacteristicsoflargeandwell-
+represented classes. The CICIDS2017 dataset is considered a highly imbalanced dataset, where the normal
+traffic is about 79% of the dataset. The DNN model achieves perfect precision (1.00) and high recall (0.92),
+resulting in an F1-score of 0.96, predicting normal samples in the testing dataset. This implies that samples
+predicted as benign are almost always correct, although a subset of benign flows is still mis-classified as
+m a l i c i o u sd u et ot h en a t u r eo ft h i sd a t a s e t( a sah i g h l yi m b a l a n c e dd a t a s e t ) .F r o ma ni n t r u s i o nd e t e c t i o n
+perspective,thistrade-offisoftenacceptable,sinceprioritizingattackdetectionisgenerallymorecriticalthan
+maximizingbenignrecall.Amongtheattackclasses, DoSHulk andDDoSachievethestrongestresults,with
+recall values of 1.00, precision of 0.96 and 0.97, and F1-scores of 0.98 and 0.99, respectively. These findings
+show that high-volume denial-of-service patterns are highly separable from normal traffic in the dataset.
+Similarly,FTP-PatatorachievesanF1-scoreof0.85withperfectrecall,showingthattheDNNmodelcanalso
+effectivelycapturebrute-forceattackbehaviorwhenclasssignaturesaresufficientlydistinctiveinthedataset.
+Table 2:Per-classdetectionperformanceonthecleantestset.
+Class Precision Recall F1-Score Support AUC-ROC
+Benign 1.00 0.92 0.96 79,288 0.99
+DoSHulk 0.96 1.00 0.98 7582 1.00
+PortScan 0.64 1.00 0.78 7609 0.99
+DDoS 0.97 1.00 0.99 4551 1.00
+DoSGoldenEye 0.32 0.64 0.43 362 0.95
+FTP-Patator 0.73 1.00 0.85 191 1.00
+SSH-Patator 0.55 0.99 0.70 143 1.00
+DoSslowloris 0.22 0.98 0.36 191 0.99
+DoSSlowhttptest 0.33 0.93 0.49 83 0.99
+However, the results showed decreased class-wise reliability for minority classes, where the minority
+classes are less than 1% of the samples in this CICIDS2017 dataset. Although the classPortScangets perfect
+recall (1.00), still its precision decreases to 0.64, which yield an F1-score of 0.78, which means that the
+DNN model is highly sensitive to scan-related activity, so, it tends to over-predict this class, likely due to
+scanning behavior sharing common characteristics with other anomalous traffic patterns. A similar trend
+is observed forSSH-Patator, which reaches a recall of 0.99 but only 0.55 precision, which means effective
+detection of true attacks but with a non-negligible false positive rate. Furthermore, challenging classes
+such asDoS GoldenEye, DoS slowloris,a n dDoS Slowhttptest, whose F1-scores drop to 0.43, 0.36, and 0.49,
+respectively,arecharacterizedbyrelativelylowsupportinthetrainingdataset,andmarkedlylowerprecision
+despite moderate-to-high recall. This suggests that the DNN model can often identify them but struggles
+to distinguish them cleanly from other attack categories. Finally, these results shown inTable 2confirm
+
+12 ComputMaterContin. 2026;89(2):50
+that the proposed DNN model performs very well on the majority classes in the CICIDS2017 dataset,
+while its performance decreases on minority and subtle attack categories, which highlights the importance
+of improved imbalance handling, stronger class-specific feature discrimination to improve the detection
+performance for these attack classes by the DNN model.
+Toaddressthereducedreliabilityonminorityclasses,weevaluatedtwoimbalance-treatmentstrategies
+onthesamearchitectureandtrainingprotocol:inverse-frequencyclassweightingandfocalloss( γ=2),each
+assessed both with the standard argmax decision rule and with per-class decision thresholds calibrated to
+maximizeone-vs-rest F1onthevalidationsplit. Table 3reports the per-class F1-scores of all configurations,
+andFig.2 shows the corresponding confusion matrices, in which every cell is annotated with the raw flow
+countandtherow-normalizedfractionsothatprecision,recall,andF1aredirectlyderivablefromthefigure.
+Focallosscombinedwiththresholdcalibrationyieldst hestrongestoverallresults,improvingmacro-F1from
+0.726 to 0.776 and overall accuracy from 0.937 to 0.963, with clear per-class F1 gains for seven of the nine
+classes:DoS GoldenEyeimproves from 0.428 to 0.541,DoS Slowhttptestfrom 0.492 to 0.598,PortScanfrom
+0.779to0.894, SSH-Patatorfrom0.705to0.801,and FTP-Patatorfrom0.845to0.936,while BenignandDoS
+Hulkalso improve slightly andDDoSis essentially unchanged (0.987 to 0.988). ThePortScanimprovement
+is driven almost entirely by precision: the volume of benign flows misclassified asPortScan falls from
+approximately5%to2%ofbenigntraffic.Incontrast,inverse-frequencyclassweightingdegradesminority-
+class F1 substantially (e.g.,DoS slowloris0.115,DoS Slowhttptest0.062), because reweighting amplifies the
+leakageofthedominant Benignclassintolow-supportattackcolumns;wereportthisnegativeresulttoshow
+thatthechoiceofimbalancetreatment,ratherthanimbalancetreatmentperse,determinestheoutcome.
+Two trade-offs of the focal-loss model warrant explicit discussion. First,DoS slowlorisis the single
+class that regresses (F1 0.364 to 0.261): its recall remains high (0.95), but the number of benign flows
+misclassifiedas slowlorisgrowsfromapproximately655to1019,achangethatisinvisibleinarow-normalized
+confusion matrix, since both correspond to roughly 1% of the benign row. Second, the error structure
+of DoS GoldenEyechanges qualitatively: under the baseline, 30% ofGoldenEye flows were misattributed
+to DoS Hulk, a semantically adjacent HTTP-flood class that still raises an alert—whereas under the focal
+m o d e lt h i sc o n f u s i o nd r o p st o1 1 % ,b u tt h ef r a c t i o no fGoldenEye flows misclassified as Benign rises
+from 1% to 10%, converting label confusion into silent misses. From an operational standpoint these are
+differentfailuremodes,andmiss-aversedeploymentsmayprefertheclass-weightedcalibratedvariant,whose
+GoldenEye-to-Benignleakageremainsat2%inourexperiments.
+Table 3:Per-class F1-scores of the baseline model and the imbalance-treated variants (CW= inverse-frequency class
+weighting;FL=focalloss, γ=2;+cal=per-classthresholdcalibration).Macro-F1istheunweightedmeanoverthenine
+classes.Thebestresultsinbold.
+Class Baseline CW CW +cal FL FL +cal
+Benign 0.960 0.893 0.936 0.965 0.977
+DoSHulk 0.977 0.975 0.971 0.980 0.985
+PortScan 0.779 0.717 0.791 0.861 0.894
+DDoS 0.987 0.959 0.984 0.988 0.988
+DoSGoldenEye 0.428 0.178 0.253 0.426 0.541
+FTP-Patator 0.845 0.628 0.674 0.709 0.936
+SSH-Patator 0.705 0.233 0.329 0.461 0.801
+DoSslowloris 0.364 0.115 0.198 0.220 0.261
+DoSSlowhttptest 0.492 0.062 0.097 0.433 0.598
+Macro-F1 0.726 0.529 0.581 0.671 0.776
+
+ComputMaterContin. 2026;89(2):50 13
+Figure 2:Confusion matrices of the baseline and the focal-loss calibrated model. Each cell shows the raw flow count
+andtherow-normalizedfraction.
+4.3.2GlobalSHAPExplanationAnalysis
+Fig.3 s h o w st h eg l o b a lS H A Pe x p l a n a t i o n sf o rt h ec l e a nt e s ts e t(Fig.3a), FGSM adversarial test set
+(Fig.3b), and PGD adversarial test set (Fig.3c). What is clear inFig.3 is that under clean conditions,Fwd
+BulkRateAvg emergesasthemostgloballyinfluentialfeaturethataffectsthepredictionoftheDNNmodel,
+whichexhibitsamean ∣SHAP∣valueofapproximately0.017acrossallnineclassesintheCICIDS2017dataset.
+While Fwd Packet Length Stdand Bwd Packet/Bulk Avg2 rank second and third globally, which reflect the
+model’s reliance on packet-size variability and backward bulk throughput as primary discriminators in the
+DNNmodel.
+Figure3: GlobalexplanationsgeneratedbySHAPfortheCICIDS2017dataset.
+The heatmap (Fig.4) reveals that the top-15 global features exhibit highly uniform importance across
+attack classes under the clean, FGSM, and PGD conditions shown inFig.4a–c,r e s p e c t i v e l y :w h i c hm e a n s
+2Bwd Packet/Bulk Avgand Bwd Bulk Rate Avgare two distinct CICFlowMeter bulk-transfer statistics: the former denotes the average number of
+packets per bulk transfer in the backward direction (CICFlowMeter fieldBwd Avg Packets/Bulk ), while the latter denotes the average bulk
+transferrateinthebackwarddirection( Bwd Avg Bulk Rate ).BothattributesarepresentintherefinedCICIDS2017releaseusedinthiswork.
+
+14 ComputMaterContin. 2026;89(2):50
+that∣SHAP∣values for the five most important features vary by less than 0.001 across all nine classes in the
+dataset.ThishomogeneityproposesthattheDNNmodelhaslearnedasharedsetofgeneraltrafficanomaly
+indicatorsratherthanclass-specificdistinguishingsignatures.However,whilethismaybeconsideredadvan-
+tageousforgeneralization,italsoimpliesthatexplanationsprovidelimitedclass-discriminativeinformation,
+afindingwithdirectimplicationsforLLM-groundedSOCtriage.
+Figure4: Global Heatmap explanations generated by SHAP for the CICIDS2017 dataset.
+UnderadversarialattacksbyFGSM,theglobalrankingoffeaturesundergoesanotablereorganization;
+Fwd Packet Length Stddisplaces Fwd Bulk Rate Avgas the top-ranked feature across all nine classes
+(Fig.3),consistentwiththenear-uniformcross-classimportanceprofilenotedabove,while DstPort,which
+does not appear among the top-15 global features under clean conditions (Fig.4a), enters the top-15 for
+all classes under FGSM (Fig.4b) .Th i sr a n kd i s r u p t i o ni sc o n s i s t e n tw i t ht h ea d v e r s a r i a lo b j e c t i v e :t h e
+FGSMperturbationshiftsfeaturevaluesinthedirectionofthegradient,selectivelyamplifyingtheapparent
+importance of features that are locally sensitive to the perturbation direction. The global heatmap under
+FGSM(Fig.4b)confirmsthatabsolutemagnitudesincreaseslightlycomparedtocleanconditions:themean
+∣SHAP∣of the top-ranked feature rises from approximately 0.017 (Fwd Bulk Rate Avg, the top feature under
+clean conditions) to approximately 0.019 (Fwd Packet Length Std,t h et o pf e a t u r eu n d e rF G S M ) .S i n c et h e
+identity of the top-ranked feature changes between the two conditions, this comparison reflects both a
+reordering of the ranking and a mild inflation of attribution magnitudes, rather than a growth in a single
+feature’s importance; the relative ordering within classes is likewise disrupted. On the other side, the PGD
+heatmap(Fig.4c)mirrorstheFGSMpatternclosely.UnderPGD,theleadingpositionsoftheglobalranking
+are unchanged relative to FGSM,withBwd Packet Length Minremaininginfourthplaceforthemajorityof
+classes. The PGD heatmap values are nearly identical to those of FGSM at three decimal places, suggesting
+thattheadditionaliterativerefinementdoesnotsubstantiallyaltertheglobal-levelattributionprofilebeyond
+whatFGSMachieveswithasinglegradientstep.
+
+ComputMaterContin. 2026;89(2):50 15
+4.3.3 Per-Class Feature Importance Comparison
+Fig.5 presents per-class grouped horizontal bar charts, comparing mean∣SHAP∣for the top-8 features
+across the three conditions. Note that while the visualization displays the top-8 features for clarity, all
+stability computations and evidence sets usek=10 top features. A consistent pattern is observed across all
+attackclasses:themagnitudeoffeatureattributionsishigherunderadversarialconditionsthanunderclean
+conditions,evenwhenthepredictedclassisthesame.Thisattributioninflation,reflectingincreasedfeature
+sensitivity rather than increased feature relevance, is a manifestation of adversarial perturbations inflating
+gradientsignals.
+Figure5: Topfeatureimportanceperclass:Clean,FGSM,andPGDforCICIDS2017dataset.
+The Δ-SHAP analysis (Fig.6) quantifies the signed change in mean SHAP attribution between clean
+andadversarialconditionsforeachclass,comparingcleanvs.FGSMin Fig.6a andcleanvs.PGDin Fig.6b.
+Red bars (positive Δ) indicate features whose apparent importance was amplified by the attack; blue bars
+(negative Δ) indicate suppression. For benign traffic under FGSM,Fwd Bulk Rate Avgexhibits the largest
+positive Δ, with an increase of approximately+0 . 0 0 3i nm e a nS H A Pm a g n i t u d e ,w h i l eFlow IAT Std
+
+16 ComputMaterContin. 2026;89(2):50
+is suppressed by approximately−0 . 0 0 1 .Th i sd i r e c t i o n a lp a t t e r ni sc o n s i s t e n ta c r o s sm o s ta t t a c kc l a s s e s ,
+suggestingthatFGSMsystematicallyredirectsattributionweightfromtiming-relatedfeaturestowardbulk-
+rate features. PGD produces a broadly similar pattern, withDoS slowlorisexhibiting the largest attribution
+drift; this is consistent with the stability analysis inSection4.3.4,w h e r eDoS slowlorisshows the largest
+FGSM-to-PGDdecreaseincompositestabilityamongallnineclasses(Stab k 0.629to0.579, Table 4).
+Figure6: SHAPattributionshift(Δ):Cleanvs.FGSM,andCleanvs.PGDforCICIDS2017dataset.
+
+ComputMaterContin. 2026;89(2):50 17
+Table 4:Explanationstabilityperclass:Kendallrankcomponent( τk),sign-agreementcomponent( σk),combinedscore
+(Stabk),andtop- k Jaccard overlap (k=10);meanwith95%bootstrapCI.
+Class Attack τk σk Stabk Jaccard@10
+PortScan FGSM 0.727[0.725,0.729] 0.596[0.593,0.598] 0.661[0.659,0.664] 0.596[0.593,0.598]
+Benign FGSM 0.590[0.589,0.591] 0.470[0.469,0.471] 0.530[0.529,0.531] 0.476[0.474,0.477]
+DDoS FGSM 0.631[0.626,0.636] 0.512[0.508,0.517] 0.572[0.567,0.576] 0.514[0.510,0.519]
+DoSHulk FGSM 0.774[0.772,0.776] 0.657[0.655,0.660] 0.716[0.714,0.718] 0.657[0.655,0.660]
+FTP-Patator FGSM 0.705[0.691,0.718] 0.600[0.583,0.616] 0.652[0.637,0.667] 0.600[0.583,0.616]
+DoSslowloris FGSM 0.681[0.654,0.706] 0.576[0.550,0.602] 0.629[0.602,0.654] 0.578[0.553,0.604]
+DoSGoldenEye FGSM 0.682[0.660,0.702] 0.585[0.564,0.605] 0.633[0.612,0.653] 0.587[0.567,0.607]
+SSH-Patator FGSM 0.648[0.631,0.665] 0.521[0.502,0.541] 0.585[0.566,0.603] 0.523[0.504,0.542]
+DoSSlowhttptest FGSM 0.626[0.596,0.654] 0.531[0.500,0.563] 0.579[0.548,0.607] 0.533[0.502,0.563]
+PortScan PGD 0.735[0.733,0.737] 0.607[0.605,0.609] 0.671[0.669,0.673] 0.607[0.604,0.610]
+Benign PGD 0.581[0.579,0.582] 0.463[0.462,0.464] 0.522[0.520,0.523] 0.469[0.468,0.470]
+DDoS PGD 0.618[0.612,0.623] 0.501[0.496,0.506] 0.559[0.554,0.564] 0.503[0.498,0.508]
+DoSHulk PGD 0.772[0.771,0.774] 0.655[0.653,0.658] 0.714[0.712,0.716] 0.655[0.653,0.658]
+FTP-Patator PGD 0.663[0.649,0.677] 0.567[0.552,0.583] 0.615[0.600,0.630] 0.567[0.551,0.583]
+DoSslowloris PGD 0.626[0.591,0.661] 0.532[0.499,0.564] 0.579[0.546,0.613] 0.534[0.502,0.566]
+DoSGoldenEye PGD 0.669[0.647,0.692] 0.574[0.553,0.596] 0.622[0.600,0.643] 0.578[0.556,0.599]
+SSH-Patator PGD 0.624[0.607,0.640] 0.496[0.478,0.514] 0.560[0.543,0.577] 0.498[0.481,0.514]
+DoSSlowhttptest PGD 0.615[0.590,0.639] 0.516[0.490,0.542] 0.565[0.539,0.590] 0.517[0.492,0.543]
+4.3.4 Explanation StabilityAnalysis
+We recall the distinction established in Stage S1: this subsection analyzesexplanation robustness(the
+stability of the attributions consumed by the LLM), which is conceptually separate from theprediction
+robustness (label flips) discussed in the local analysis ofSection4.3.5. To isolate explanation robustness,
+all stability quantities below are computed under the clean-prediction convention, so that a label flip does
+n o tb yi t s e l fr e g i s t e ra se x p l a n a t i o nd r i ft .Table 4reports the per-class explanation-stability results (with
+k=10) for FGSM and PGD adversarial attacks, decomposed into the Kendall rank componentτ
+k and
+the sign-agreement componentσk, each as the mean over test samples with a 95% bootstrap confidence
+interval (B=10,000 resamples). Stability is computed under the clean-prediction convention: for every
+sample, the attribution vector of the class predicted on the clean input is compared between the clean and
+attackedinputs,sothatthemetricmeasurespureexplanationdriftratherthantheconsequenceofprediction
+flips. Statistical significance is assessed with a permutation test against a feature-shuffle null that destroys
+the clean–adversarial feature correspondence while preserving the marginal attribution distribution (200
+permutationsperclass).
+The decomposition reveals that adversarial perturbations only partially disrupt the explanations: the
+composite Stab
+k ranges from 0.52 to 0.72 across classes, with the Kendall componentτk between 0.58 and
+0.77 and the sign-agreement componentσk between 0.46 and 0.66. Both components lie far above their
+chance levels under the feature-shuffle null (τk≈0a n dσk≈0.05–0.08, respectively; allp<0.005), so the
+feature ranking retains substantial order and the attribution directions agree well above chance even under
+attack.Thestabilityisalsoclearlyheterogeneousacrossclasses, Benignistheleaststable(Stab k≈0.53)while
+DoSHulk andPortScanarethemoststable( ≈0.72and≈0.66),whichprovidesclass-specificguidanceonhow
+m u c ht r u s ta na n a l y s ts h o u l dp l a c ei na d v e r s a r i a l l ye x p o s e de v i d e n c e .A sa n t i c i p a t e di nSection3, σk and
+Jaccard@10 take very similar values inTable 4, and coincide for several classes: in these cases the features
+
+18 ComputMaterContin. 2026;89(2):50
+sharedbythecleanandadversarialtop- k setsareexactlythefeatureswhoseattributionsignispreserved,so
+directionalagreementandsetoverlapcollapseontothesamevalue.
+A paired Wilcoxon signed-rank test over the per-sample Stabk values shows that PGD is statistically
+significantlymoredisruptivethanFGSMforeightofthenineclasses;theexceptionis PortScan,whosemean
+Stabk is marginally higher under PGD than under FGSM (0.671 vs. 0.661). The practical magnitude of this
+difference is nevertheless small: the per-sample effect sizes are limited (paired Cohen’sd≤0.35), and the
+class-level mean Stabk differences between the two attacks reported inTable 4are at most 0.05. The per-
+sample test and the class-level means thus support the same conclusion drawn from the global analysis
+in Section4.3.2: the iterative refinement of PGD adds only a modest amount of explanation drift over the
+single-stepFGSM.
+The distinction between the two components has important practical implications. Rank reordering,
+capturedby τ
+k,affectsthepriorityofevidenceitemspresentedtoanLLMoranalyst,potentiallycausingthe
+mostoperationallyrelevantindicatorstobedeprioritized.Signreversals,capturedby σk, are more severe: a
+featurethatpositivelysupportsaDoSclassificationundercleanconditionsmayappeartoargueagainstthat
+classification under adversarial conditions, causing the LLM reasoning engine to generate contradictory or
+misleadingsecurityreports.Themeasuredregime,substantiallypreservedrankswithpartialsignagreement
+well above chance, indicates that adversarial perturbations in this setting act primarily as a graded re-
+weighting of the evidence rather than a wholesale randomization of it: the evidence set consumed by the
+LLMremainsinformativeunderattack,butindividualsignflipswithinthetop- kuniondooccurandjustify
+propagatingtheper-classstabilityscoresintothegeneratedreportsasanexplicituncertaintysignal.
+4.3.5LocalExplanationAnalysis
+Fig.7 presentsthelocalSHAPdecisionplotsforarepresentativesampleunderclean,FGSM,andPGD
+conditions. Under clean conditions (Fig.7a), the model predictsDDoS with high confidence (probability
+0.99),andthelocalexplanationattributesthepredictionprimarilytoaclusterofforwardinter-arrivaltiming
+features: Fwd IAT Totaland Fwd IAT Maxcontribute the largest positive attributions, consistent with the
+high-frequency,burst-likeconnectionpatternscharacteristicofDDoSattacks.
+UnderFGSMperturbation( Fig.7b),thepredictedclassshiftsto PortScan(probability0.45forPortScan,
+0.40forDDoS),representingamisclassificationevent.Thisisanexampleof predictionrobustnessfailing(the
+labelflips);weexaminebelowhowthe explanationreactstothesameperturbation.Thelocalexplanationis
+dramatically reorganised: the timing features that dominated the clean explanation are replaced by packet-
+level features includingFwd Act Data Pktsand Bwd Bulk Rate Avgas the primary positive attributors.
+Critically,attributionsignsflipforseveralfeatures: BwdPacket/BulkAvg transitionsfromapositiveattributor
+(supporting DDoS classification) to a negative attributor (arguing against PortScan), illustrating semantic
+instabilityatthelocallevel.
+UnderPGD( Fig.7c),thepredictionshiftsto PortScanwithhigherconfidence(probability0.46)relative
+to FGSM, consistent with PGD’s stronger optimization. The local SHAP bars (Fig.7c) show that the adver-
+sarialsamplesinduceafurtherreorganizationofattributionsrelativetoFGSM,with BwdBulkRateAvg now
+the dominant positive attributor and the inter-arrival timing features appearing with reduced magnitude.
+Thereorganizationoffeaturesacrossclean,FGSM,andPGD,providesacasestudyofhowadversarialattacks
+canincrementallychangetheevidencelandscapethatisavailabletoanLLMreasoningengine.
+
+ComputMaterContin. 2026;89(2):50 19
+Figure7: LocalexplanationsgeneratedbySHAPforasampleselectedfromtheCICIDStestingset.( a)Representsthe
+top-20featuresaffectingthepredictionofthemodelfortheoriginalsample,( b)representsthetop-20featuresaffecting
+thepredictionofthemodelfortheFGSMsample,and( c)representsthetop-20featuresaffectingthepredictionofthe
+modelforthePGDsample.
+4.3.6ExampleLLMReport
+An example of the structured incident report generated by LLM reasoning engine (As reported
+inSection3,StageS3)fortheDDoS-classifiedcleansampleanalyzedin Section4.3.5 isillustratedin Table 5.
+Theproposedreportisgroundedin Ek(x)andconstrainsallrecommendedactionstothepredefinedcatalog
+Aasdescribedpreviouslyin Section3.Thereportstrictlyfollowstheschema S andexposeseighttop-level
+fields as reported previously, where thealert_summary field provides a single-sentence triage headline
+
+20 ComputMaterContin. 2026;89(2):50
+incorporating the predicted class by the DNN model and the dominant evidence signal. This enables rapid
+analystprioritizationwithoutrequiringinspectionofthefullJSONobjectbythesecurityanalyst.Moreover,
+the predicted_labelfieldcontainsthefullclassnameasreturnedbytheDNNmodel,whichis“ DDoS”
+inthissample.
+Each entry intop_evidence carries six subfields: the rawfeature name, its min-max normal-
+ized value, the SHAP attributionshap,i t ssign (+1o r−1 indicating whether the feature increases
+or decreases the predicted class score), aqualitative_token produced by the deterministic map-
+ping ϕ(⋅), and a one-sentence interpretation; the abridged listing inTable 5omits the value
+and interpretation subfields for space. This structure directly implements constraint C1 in order
+to force the LLM to allow only to reference the features present inEk(x) and every interpretation sen-
+t e n c ei sa n c h o r e dt ot h ea s s o c i a t e df e a t u r et u p l e .I nt h i se x a m p l e ,Fwd IAT Total (SHAP=0.048,
+sign=+1) is mapped to the qualitative token “burst-like inter-arrival timing” ,w h i c ht h e
+interpretation links explicitly to the high-frequency flood pattern that characterizes volumetric DDoS
+traffic.Similarly, Fwd Bulk Rate Avg (SHAP=0.040,sign=+1)iscontextualizedas“high-volume
+flow”,whichisconsistentwiththeglobalSHAPanalysisin Section4.3.2 wherethisfeatureisrankedfirst
+undercleanconditions.
+Thethreat_hypothesisfieldaskstheLLMtosynthesizetheevidenceintoasinglecoherentattack
+reportratherthansimplyrepeatingfeatureattributionstomakeiteasierforthesecurityanalysttounderstand
+the report. For the DDoS sample that is provided inTable 5, the engine identifies a high-frequency burst
+pattern and infers a coordinated source flood, a hypothesis consistent with the local SHAP decision plot
+in Fig.7, in which forward inter-arrival timing features collectively dominate the positive-attribution side.
+The confidence_notes field serves a dual purpose: first, it records the model’s softmax confidence
+(0.99 for the clean sample) and, second, the adversarial stability context derived from the Stab
+k scores
+defined in Stage S3. So, for this sample, the field records the sample-level Stabk values computed for this
+specific flow under both attacks, which the analyst reads alongside the per-class stability context (τk, σk,
+and Stabk; Table 4), flagging that, while the feature ranking is substantially preserved under perturbation,
+individual attribution signs within the top-k union may flip, even though the clean-condition prediction is
+highlyconfident.
+The field offalse_positive_checks provides the actionable verification steps that a security
+analystshouldperformbeforeescalatingthealert(onesuchstepisshownintheabridgedlistingof Table 5).
+These are generated by the LLM from the qualitative contextQ(x) and the Explainable NetworkG,
+then they are phrased as concrete, operationally testable questions. Such checks mitigate false-positive
+escalation rates by directing security analyst attention to the most plausible benign explanations for the
+observed traffic pattern. Therecommended_actions field implements constraint reported in C2: it
+is a plain list of string keys drawn exclusively from the predefined
+A catalog (Table 1). In this example
+the two actions areinspect_zeek_conn (“Examine Zeek/Bro connection logs for this source IP”)
+and rate_limit_source (“Apply temporary rate limiting to the source IP”). These keys are validated
+programmatically by validate_soc_report against A before the report is accepted; so, any hallu-
+cinated action key not present in the catalog causes the report to be rejected and re-requested with an
+explicit violation message. Therequired_logs field complements the action list by specifying the log
+sources an analyst must retrieve to execute the recommended actions (zeek_conn.log), making the
+reportself-containedforSOCanalysts.
+
+ComputMaterContin. 2026;89(2):50 21
+Table 5:ExamplestructuredincidentreportproducedbythegroundedLLMstageforaDDoS-classifiedsample(clean
+sample).Thelistingisabridged:onlythefirst top_evidenceentryisshown,andits valueand interpretation
+subfieldsareomittedforspace.
+{
+"alert_summary":
+"High-confidence DDoS alert driven by burst–like
+timing behavior.",
+"predicted_label":
+"DDoS",
+"top_evidence": [
+{
+"feature":"FwdIATTotal",
+"shap": 0.04821,
+"sign": 1,
+"qualitative_token":
+"burst–like inter–arrival timing"
+},
+{ "...": "..." }
+],
+"threat_hypothesis":
+"High–frequency burst pattern consistent with
+volumetric DDoS activity.",
+"confidence_notes":
+"Model confidence 0.99.
+Stab_k(FGSM) = 0.505,
+Stab_k(PGD) = 0.503.",
+"false_positive_checks": [
+"Verify source IP is not a legitimate
+load balancer."
+],
+"recommended_actions": [
+"inspect_zeek_conn",
+"rate_limit_source"
+],
+"required_logs": [
+"zeek_conn.log"
+]
+}
+As described in Section4.3.5, when the same sample is passed through the pipeline under both
+FGSM and PGD attacks, the predicted class shifts to PortScan. In those cases, the LLM report correctly
+updates predicted_label and top_evidence to reflect the new prediction and its corresponding
+Ek(x)explanations,whilethe confidence_notesfieldflagstheper-classstabilityscoresandthepartial
+
+22 ComputMaterContin. 2026;89(2):50
+sign agreement between the clean and adversarial explanations. This illustrates the pipeline’s transparency
+property:ratherthansilentlygeneratingaconfidentbutpotentiallymisleadingreportbasedonadversarially
+distortedevidence,theframeworksurfacestheexplanationdriftexplicitlyinthestructuredoutput,allowing
+thereceivinganalysttoappropriatelydownweightthetriageconfidence.
+Although the present work demonstrates the structure of the grounded LLM report through the
+representative case study, a large-scale quantitative evaluation of LLM-generated reports is not included in
+the current version. We therefore stress that hallucination mitigation in this work is enforcedstructurally,
+through the evidence-bounding constraint C1 and the catalog-restriction constraint C2, both checked
+programmatically by validate_soc_report, but that its effectiveness has not yet been measured
+quantitatively; consequently we do not report or claim a measured hallucination rate, and the qualitative
+grounding analysis presented here should not be read as a validation of the LLM reporting stage. Future
+workwillconductasystematicreport-generationevaluationusinghallucinationrate,evidencefaithfulness,
+schemacompliance,action-catalogvalidity,predicted-labelconsistency,regenerationfrequency,andhuman
+analyst usefulness ratings. This evaluation will alsocompare grounded LLM reports against deterministic
+non-LLMtemplatereportsinordertoquantifytheadditionalvalueofLLM-basedcontextualreasoning.
+5 Conclusion
+This work proposed an LLM-enhanced explainable IDS framework that mitigates the operational gap
+between raw model explanations and actionable security guidance to enhance the capability of a security
+analyst taking actions. The proposed method integrates a DNN classifier, a post-hoc XAI method (SHAP),
+and a grounded LLM reasoning engine that converts sample-level feature attributions into structured,
+machine-readable incident reports conforming to a fixed JSON schema. Through constraining the LLM
+to evidence supplied by the XAI stage and restricting recommended actions to a predefined catalog, the
+proposedmethodprovidesanauditablereportstructuredesignedtosupportSOC-styletriageinacontrolled
+benchmark setting. Experiments on the refined CICIDS2017 dataset show strong performance on majority
+traffic classes, while minority and subtle attack classes remain more challenging. Although the present
+workdemonstratesthestructureofgroundedLLM-generatedreports,large-scalequantitativeevaluationof
+hallucination rate, evidence faithfulness, grounding quality, and human analyst usefulness remains future
+work. To address the highly imbalanced class distribution, we evaluated class weighting and focal loss with
+per-class threshold calibration: focal-loss training with calibration raises macro-F1 from 0.726 to 0.776 and
+improves per-class F1 for seven of the nine classes, including most of the minority attack classes, while one
+class (DoS slowloris) regresses due to a precision effect that we report transparently and that remains an
+open case for future imbalance treatments. A central finding of this work concerns the robustness under
+adversarialattacks.Decomposingthesigned-rankstabilitymetricStab
+k intoitsKendallrankcomponent( τk)
+andsign-agreementcomponent( σk),withbootstrapconfidenceintervalsandpermutation-testsignificance,
+we found that both FGSM and PGD attacks only partially disrupt SHAP explanations: feature ranks retain
+substantialorder( τk between0.58and0.77)andattributio nsignsagreewellabovechancelevel( σk between
+0.46 and 0.66; allp<0.005 against a feature-shuffle null), with composite stability between 0.52 and 0.72
+and clear heterogeneity across the nine traffic classes. This result has implications for LLM-grounded
+securityreasoning:theevidencesetconsumedbytheLLMremainsinformativeunderattack,butindividual
+attribution-sign flips within the top-k union do occur, so the per-class stability scores are propagated into
+thegeneratedreportsasanexplicituncertaintysignalratherthantreatedasabinarytrustdecision.
+Several directions remain open for future work: First, adversarially robust XAI methods, such as
+smoothedorcertifiedattributiontechniques,shouldbeinvestigatedasareplacementforstandardSHAPin
+high-threat environments. Second, the proposed method should be evaluated on more recent and diverse
+
+ComputMaterContin. 2026;89(2):50 23
+datasets. A further limitation is that the present work demonstrates the structure of grounded LLM-
+generatedreportsthrougharepresentativecasestudy,butdoesnotincludelarge-scalequantitativeevaluation
+of hallucination rate, evidence faithfulness, grounding quality, or human analyst usefulness under real
+SOCconditions.
+Acknowledgement: Not applicable.
+FundingStatement: Theauthorsreceivednospecificfundingforthisstudy.
+AuthorContributions: MohammedAtoum:conceptualization,methodology,software,formalanalysis,investigation,
+writing—original draft, writing—review & editing. Malik AL-Essa: conceptualization, methodology, software, formal
+analysis, investigation, writing—original draft, writing—review & editing, project administration. Yazeed Alsarhan:
+conceptualization,supervision,writing—review&editing,resources.AhmadK.AlHwaitat:conceptualization,super-
+vision, writing—review & editing, resources. Muhammad Imran: supervision, writing—review & editing. All authors
+reviewed andapprovedthefinalversion ofthemanuscript.
+Availability of Data and Materials:The dataset analyzed during the current study is publicly available. The code
+supportingthefindingsofthisstudywillbemadeavailableuponacceptanceofthemanuscript.
+EthicsApproval: Not applicable.
+ConflictsofInterest: Theauthorsdeclarenoconflictsofinterest.
+References
+1. Lundberg SM, Lee SI. A unified approach to interpreting model predictions. Adv Neural Inf Process Syst.
+2017;30:4768–77.
+2. Al-EssaM,AlsharoM,AlnsourY ,AliW A,AlmomaniO.T ransformingdatarepresentation:acomparativeanalysis
+oftabularandimage-basedapproacheswithXAI.JComputCognEng.2026;5(2):333–40.
+3 . A l - E s s aM ,A l iW A ,A l s h a r oM ,A t o u mM S ,I m r a nM .C O B R A :c o u n t e r f a c t u a lo v e r s a m p l i n gf r a m e w o r kf o r
+imbalancedstructureddataclassification.ExpertSystAppl.2025;304:130764.
+4. Lu H, Ma Z, Li X, Bi S, He X, Wang K. TrafficHD: efficient hyperdimensional computing for real-time network
+traffic analytics. In: Proceedings of the 61st ACM/IEEE Design Automation Conference; 2024 Jun 23–27; San
+F rancisco ,CA,USA.p .1–6.
+5. AL-EssaM,AndresiniG,AppiceA,MalerbaD.Strivingforsimplicityindeepneuralmodelstrainedformalware
+detection.In:MeoR,SilvestriF,editors.Machinelearningandprinciplesandpracticeofknowledgediscoveryin
+da tabases.Cham,S wi tzerland:S p ringerN a tur e;20 25.p .5 29–40.
+6. KimH,YoonY.Anensembleoftextconvolutionalneuralnetworksandmulti-headattentionlayersforclassifying
+threatsinnetworkpackets.Electronics.2023;12(20):4253.doi:10.3390/electronics12204253.
+7. Muhuri PS, Chatterjee P, Yuan X, Roy K, Esterline A. Using a long short-termmemoryrecurrentneuralnetwork
+(LSTM-RNN)toclassifynetworkattacks.Information.2020;11(5):243.doi:10.3390/info11050243.
+8. MoslemiA,BriskinaA,DangZ,LiJ.Asurveyonknowledgedistillation:recentadvancements.MachLearnAppl.
+2024;18(6):100605.doi:10.1016/j.mlwa.2024.100605.
+9. AL-Essa M, Andresini G, Appice A, Malerba D. An XAI-based adversarial training approach for cyber-
+threat detection. In: Proceedings of the 2022 IEEE International Conference on Dependable, Autonomic and
+SecureComputing,InternationalConferenceonPervasiveIntelligenceandComputing,InternationalConference
+on Cloud and Big Data Computing, International Conference on Cyber Science and Technology Congress
+(DASC/PiCom/CBDCom/CyberSciTech);2022Sep12–15;Falerna,Italy.p.1–8.
+10. SundararajanM,TalyA,YanQ.Axiomaticattributionfordeepnetworks.In:Proceedingsofthe34thInternational
+ConferenceonMachineLearning;2017Aug6–11;Sydney,Australia.p.3319–28.
+
+24 ComputMaterContin. 2026;89(2):50
+11. Ribeiro MT, Singh S, Guestrin C. “Why should I trust you?” Explaining the predictions of any classifier. In:
+Proceedings of the 22nd ACM SIGKDD International Conference on Knowledge Discovery and Data Mining;
+2016A ug13–17;SanF rancisco ,CA,USA.p .1135–44.
+12. BiecekP.DALEX:explainersforcomplexpredictivemodelsinR.JMachLearnRes.2018;19(84):1–5.
+13. Hossain MA, Ishtiaq W, Islam MS. A comparative analysis of ensemble-based machine learning approaches with
+explainable AI for multi-class intrusion detection in drone networks. Secur Priv. 2026;9(1):e70164. doi:10.1002/
+spy2.70164.
+14. Oswal S. From detection to diagnosis: TCAE–DBSCAN with LIME for interpretable ICS anomaly analysis. Int J
+ApplMath.2025;38(1s):828–39.
+15. Al-Essa M, Qatawneh M, Al-Shamayleh AS, Abualghanam O, Almobaideen W. From hardening to under-
+standing: adversarial training vs. CF-Aug for explainable cyber-threat detection system. Comput Mater Contin.
+2026;87(3):76608.doi:10.32604/cmc.2026.076608.
+16. Goodfellow IJ, Shlens J, Szegedy C. Explaining and harnessing adversarial examples. In: Proceedings of the 3rd
+InternationalConferenceonLearningRepresentations,ICLR2015,ConferenceTrackProceedings;2015May7–9;
+SanDiego,CA,USA.p.1–11.
+17. MadryA,MakelovA,SchmidtL,TsiprasD,VladuA.Towardsdeeplearningmodelsresistanttoadversarialattacks.
+In:Proceedingsofthe6thInternationalConferenceonLearningRepresentations,ICLR2018;2018Apr30–May3;
+Vancouver,BC,Canada.
+18. Rai MHA, Noor Y, Faisal M, Nawazish MF. Adversarial robustness of deep learning-based intrusion detection
+systemsagainstAI-poweredcyberattacks.SpectrEngSci.2025;3(11):899–922.
+19. Wu L, Zhu Z, Tai C. Understanding and enhancing the transferability of adversarial examples. arXiv:1802.09707.
+2018.
+20. Hassanin M, Moustafa N. A comprehensive overview of large language models (LLMs) for cyber defences:
+opportunitiesanddirections.arXiv:2405.14487.2024.
+21. T sengP ,Y ehZ,DaiX,LiuP.U singLLMstoa utoma tethrea tin telligenceanalysisworkflo wsinsecurityopera tion
+centers.arXiv:2407.13093.2024.
+22. Haque MA, Siddique S, Rahman MM, Hasan AR, Das LR, Kamal M, et al. SOK: exploring hallucinations and
+securityrisksinAI-assistedsoftwaredevelopmentwithinsightsforLLMdeployment.In:Proceedingsofthe2025
+SixthInternationalConferenceonIntelligentDataScienceTechnologiesandApplications(IDSTA);2025Sep1–4;
+Varna, Bulgaria. p. 57–64.
+23. Alqahtani H, Kumar G. Large language models for cybersecurity intelligence: a systematic review of emerging
+threats,defensivecapabilities,andsecurityevaluationframeworks.ComputMaterContin.2026;87(3):77367.
+24. Sharafaldin I, Lashkari AH, Ghorbani AA. Toward generating a new intrusion detection dataset and intrusion
+trafficcharacterization.IntConfInfSystSecurPriv.2018;1(2018):108–16.doi:10.5220/0006639801080116.
+25. EngelenG,RimmerV,JoosenW.Troubleshootinganintrusiondetectiondataset:theCICIDS2017casestudy.In:
+Proceedings of the 6th IEEE European Symposium on Security and Privacy Workshops, EuroS&PW 2021; 2021
+Sep6–10;Vienna,Austria.p.7–12.
+26. Glorot X, Bordes A, Bengio Y. Deep sparse rectifier neural networks. In: Proceedings of the Fourteenth Inter-
+national Conference on Artificial Intelligence and Statistics; 2011 Apr 11–13; Fort Lauderdale, FL, USA. p. 315–23.

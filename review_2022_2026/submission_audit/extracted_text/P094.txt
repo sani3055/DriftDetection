@@ -1,0 +1,1396 @@
+Data Mining and Knowledge Discovery (2026) 40:66
+https://doi.org/10.1007/s10618-026-01235-6
+Extended author information available on the last page of the article
+Received: 12 October 2025 / Accepted: 9 June 2026 / Published online: 3 July 2026
+© The Author(s) 2026
+Graph neural networks based log anomaly detection and 
+explanation
+Zhong Li1,2  · Jiayang Shi1  · Matthijs van Leeuwen1
+Abstract
+Event logs are widely used to record the status of high-tech systems, making log 
+anomaly detection important for monitoring those systems. Most existing log anom-
+aly detection methods take a log event count matrix or log event sequences as 
+input, exploiting quantitative and/or sequential relationships between log events 
+to detect anomalies. However, only considering quantitative or sequential relation -
+ships may result in low detection accuracy. To alleviate this problem, we propose a 
+graph-based method for unsupervised log anomaly detection, dubbed Logs2Graphs, 
+which first converts event logs into attributed, directed, and weighted graphs, and 
+then leverages graph neural networks to perform graph-level anomaly detection. 
+Specifically, we introduce One-Class Digraph Inception Convolutional Networks, 
+abbreviated as OCDiGCN, a novel graph neural network model for detecting graph-
+level anomalies in a collection of attributed, directed, and weighted graphs. By inte -
+grating graph representation and anomaly detection, OCDiGCN learns a specialized 
+representation that leads to high detection accuracy. Crucially, we furnish a concise 
+set of nodes pivotal in OCDiGCN’s prediction as explanations for each detected 
+anomaly, offering valuable insights for subsequent root cause analysis. Experiments 
+on five benchmark datasets show that Logs2Graphs exhibits comparable or superior 
+performance when compared to state-of-the-art log anomaly detection methods.
+Keywords Log analysis · Log anomaly detection · Graph neural networks · 
+Knowledge discovery from graphs
+1 Introduction
+Modern high-tech systems, such as cloud computers or lithography machines, typi -
+cally consist of a large number of components. Over time these systems have become 
+larger and more complex, making manual system operation and maintenance hard or 
+
+1 3
+66 Page 2 of 33
+Z. Li et al.
+even infeasible (Li and van Leeuwen 2022). Therefore, automated system operation 
+and maintenance is highly desirable. To achieve this, system logs are universally 
+used to record system states and important events. By analyzing these logs, faults 
+and potential risks can be identified, and remedial actions may be taken to prevent 
+severe problems. System logs are usually semi-structured texts though, and identify-
+ing anomalies through log anomaly detection is often challenging.
+Since both industry and academia show great interest in identifying anomalies 
+from logs, a plethora of log anomaly detection methods have been proposed. Exist -
+ing log anomaly detection methods can be roughly divided into three categories: 
+quantitative-based, sequence-based, and graph-based methods. Specifically, quan -
+titative-based methods, such as OCSVM (Schölkopf et al. 2001) and PCA (Xu 
+et al. 2009), utilize a log event count matrix to detect anomalies, and are therefore 
+unable to capture semantic information of and sequential information between log 
+events. Meanwhile, sequence-based methods, including DeepLog (Du et al. 2017) 
+and LogAnomaly (Meng et al. 2019), aim to detect anomalies by taking sequen -
+tial (and sometimes semantic) information into account. They cannot consider the 
+full structure among log events though. In contrast, graph-based methods, such as 
+GLAD-PAW (Wan et al. 2021) and GLAD (Li et al. 2023), convert logs to graphs 
+and exploit semantic information as well as the structure among log events, exhibit -
+ing the following three advantages over the former two categories of methods (Jia 
+et al. 2017): (1) they are able to identify problems for which the structure among 
+events is crucial, such as performance degradation; (2) they are capable of providing 
+contextual log messages corresponding to the identified problems; and (3) they can 
+provide the ‘normal’ operation process in the form of a graph, helping end-users find 
+root-causes and take remedial actions. However, graph-based methods like GLAD 
+transform log events into undirected graphs though, which may fail to capture impor-
+tant information on the order among log events. Moreover, most existing graph-based 
+methods perform graph representation and anomaly detection separately, leading to 
+suboptimal detection accuracy.
+Moreover, as highlighted by Li et al. (2023), with the growing adoption of anomaly 
+detection algorithms in safety-critical domains, there is a rising demand for providing 
+explanations for the decisions made within those domains. This requirement, driven 
+by ethical considerations and regulatory mandates, underscores the importance of 
+accountability and transparency in such contexts. Moreover, in practical applications, 
+the attainment of precise anomaly explanations contributes to the timely isolation and 
+diagnosis of anomalies, which can mitigate the impact of anomalies by facilitating 
+early intervention (Yang et al. 2021b). However, to our knowledge, most existing log 
+anomaly detection methods focus exclusively on accurate detection without giving 
+explanations.
+To overcome these limitations, we propose Logs2Graphs, a graph-based unsuper-
+vised log anomaly detection approach for which we design a novel one-class graph 
+neural network. Specifically, Logs2Graphs first utilizes off-the-shelf methods to learn 
+a semantic embedding for each log event, and then assigns log messages to different 
+groups. Second, Logs2Graphs converts each group of log messages into an attrib -
+uted, directed, and weighted graph, with each node representing a log event, the 
+node attributes containing its semantic embedding, directed edges representing how 
+
+1 3
+Page 3 of 33 66
+Graph neural networks based log anomaly detection and explanation
+an event is followed by other events, and the corresponding edge weights indicat -
+ing the number of times the events follow each other. Third, by coupling the graph 
+representation learning and anomaly detection objectives, we introduce One-Class 
+Digraph Inception Convolutional Networks (OCDiGCN) as a novel method to detect 
+anomalous graphs from a set of graphs. As a result, Logs2Graphs leverages the rich 
+and expressive power of attributed, directed, and edge-weighted graphs to repre -
+sent logs, followed by using graph neural networks to effectively detect graph-level 
+anomalies, taking into account both semantic information of log events and structure 
+information (including sequential information as a special case) among log events. 
+Importantly, by decomposing the anomaly score of a graph into individual nodes 
+and visualizing these nodes based on their contributions, we provide understandable 
+explanations for identified anomalies.
+Overall, our contributions can be summarized as follows: (1) We introduce Logs-
+2Graphs, which recasts log anomaly detection as unsupervised graph-level anom -
+aly detection and represents log groups as attributed, directed, and edge-weighted 
+graphs, thereby enabling quantitative, sequential, and richer structural anomalies 
+to be analyzed within one unified representation; (2) We introduce OCDiGCN, a 
+general end-to-end unsupervised graph-level anomaly detection method for attrib -
+uted, directed and edge-weighted graphs. By coupling the graph representation and 
+anomaly detection objectives, we improve the potential for accurate anomaly detec -
+tion over existing approaches; (3) For each detected anomaly, we identify important 
+nodes as explanations, offering cues for subsequent root cause diagnosis; (4) We 
+empirically compare our approach to eight state-of-the-art log anomaly detection 
+methods on five benchmark datasets, showing that Logs2Graphs performs at least on 
+par with and often better than its competitors.
+Comparison with our previous work . This paper has been accepted as a two-
+pages extended abstract (Li et al. 2024c) in ICSE 2024, in which we only presented 
+the problem addressed, a brief summary of the algorithm, and the achieved main 
+results. In contrast, in this full paper we give the motivations of designing algorithms, 
+present related work and the design details of algorithms, elucidate the experiment 
+setting, and present full experiment results with detailed interpretation.
+Organization of the paper. The remainder of this paper is organized as follows. 
+Section 2 revisits related work, after which Sect. 3 formalizes the problem. Section 4 
+describes Digraph Inception Convolutional Networks (Tong et al. 2020a), which are 
+used for Logs2Graphs in Sect. 5. We then evaluate Logs2Graphs in Sect. 6 with pub-
+licly available datasets. We conclude this paper in Sect. 8.
+2 Related work
+Graph-based log anomaly detection methods usually comprise five steps: log parsing, 
+log grouping, graph construction, graph representation learning, and anomaly detec-
+tion. In this paper we focus on graph representation learning, log anomaly detection, 
+and explanation, thus only revisiting related work in these fields.
+
+1 3
+66 Page 4 of 33
+Z. Li et al.
+2.1 Graph representation learning
+Graph-level representation learning methods, such as GIN (Xu et al. 2018) and Graph-
+2Vec (Narayanan et al. 2017), are able to learn a mapping from graphs to vectors. 
+Further, graph kernel methods, including Weisfeiler-Lehman (WL) (Shervashidze 
+et al. 2011) and Propagation Kernels (PK) (Neumann et al. 2016), can directly pro -
+vide pairwise distances between graphs. Both types of methods can be combined 
+with off-the-shelf anomaly detectors, such as OCSVM (Schölkopf et al. 2001) and 
+iForest (Liu et al. 2008), to perform graph-level anomaly detection.
+To improve on these naïve approaches, efforts have been made to develop graph 
+representation learning methods especially for anomaly detection. For instance, 
+OCGIN (Zhao and Akoglu 2021) and GLAM (Zhao et al. 2022) combine the GIN 
+(Xu et al. 2018) representation learning objective with the SVDD objective (Tax and 
+Duin 2004) to perform graph-level representation learning and anomaly detection in 
+an end-to-end manner. GLocalKD (Ma et al. 2022) performs random distillation of 
+graph and node representations to learn ‘normal’ graph patterns. Further, OCGTL 
+(Qiu et al. 2022) combines neural transformation learning and one-class classifica -
+tion to learn graph representations for anomaly detection. Besides, ARMET (Li et al. 
+2024b) aims to identify anomalous graphs from a set of unlabeled graphs by using 
+easily accessible normal graphs from a different but related domain. Although these 
+methods are unsupervised or semi-supervised, they can only deal with attributed, 
+undirected, and unweighted graphs.
+iGAD (Zhang et al. 2022b) considers graph-level anomaly detection as a graph 
+classification problem and combines attribute-aware graph convolution and substruc-
+ture-aware deep random walks to learn graph representations. However, iGAD is 
+a supervised method, and can only handle attributed, undirected, and unweighted 
+graphs. CODEtect (Nguyen et al. 2023) takes a pattern-based modeling approach 
+using the minimum description length principle and identifies anomalous graphs 
+based on motifs. CODEtect can (only) deal with labeled, directed, and edge-weighted 
+graphs, but is computationally very expensive. In contrast, we introduce a general 
+unsupervised method for graph-level anomaly detection that can handle attributed, 
+directed and edge-weighted graphs.
+Moroever, several studies have explored one-class graph neural networks for 
+anomaly detection at the node level. Wang et al. ( 2021) propose one-class graph 
+neural networks for attributed networks by jointly learning node representations and 
+a hypersphere that encloses normal nodes. Similarly, Zhou et al. (2021) introduce 
+subtractive aggregation to model node abnormality as deviation from local neighbor-
+hoods and optimize a hypersphere-based objective for attributed network anomaly 
+detection. These methods demonstrate the effectiveness of combining graph repre -
+sentation learning with one-class classification objectives, but they focus on detect -
+ing anomalous nodes in attributed, undirected networks.
+2.2 Log anomaly detection and explanation
+Log anomaly detection methods can be roughly divided into: (1) traditional, ‘shal -
+low’ methods, such as principal component analysis (PCA) (Xu et al. 2009), one-
+
+1 3
+Page 5 of 33 66
+Graph neural networks based log anomaly detection and explanation
+class SVM (OCSVM) (Schölkopf et al. 2001), isolation forest (iForest) (Liu et al. 
+2008), and histogram-based outlier score (HBOS) (Goldstein and Dengel 2012), 
+which take a log event count matrix as input and analyze quantitative relationships; 
+(2) deep learning based methods, such as DeepLog (Du et al. 2017), LogAnomaly 
+(Meng et al. 2019), AutoEncoder (Farzad and Gulliver 2020), and transformer-based 
+models such as LogBERT (Guo et al. 2021), which employ sequences of log events 
+(and sometimes their semantic embeddings) as input, analyzing sequential informa -
+tion and possibly semantic information of log events to identify anomalies; and (3) 
+graph-based methods, such as TCFG (Jia et al. 2017) and GLAD-PAW (Wan et al. 
+2021), which first convert logs into graphs and then perform graph-level anomaly 
+detection.
+To our knowledge, at the time of the original study design in early 2024, only a 
+few studies (Wan et al. 2021; Zhang et al. 2022a; Xie et al. 2022; Li et al. 2023) had 
+explored the use of graph neural networks for log anomaly detection. GLAD (Li 
+et al. 2023) transforms logs into undirected, weighted, and attributed heterogeneous 
+graphs and proposes a temporal-attentive graph edge anomaly detection model to 
+detect anomalous relations. However, converting logs into undirected graphs may 
+result in loss of important sequential information. DeepTraLog (Zhang et al. 2022a) 
+combines traces and logs to generate a so-called Trace Event Graph, which is attrib-
+uted and directed; on this basis, it trains a Gated Graph Neural Networks based Deep 
+Support Vector Data Description model to identify anomalies. However, its approach 
+requires the availability of both traces and logs, and is unable to handle edge weights. 
+GLAD-PAW (Wan et al. 2021) formulates anomaly detection through next-event 
+prediction on weighted directed session graphs, whereas LogGD (Xie et al. 2022) 
+performs supervised graph classification and therefore requires labeled normal and 
+anomalous training data. In contrast, Logs2Graphs recasts log anomaly detection 
+as unsupervised graph-level anomaly detection  on attributed, directed, and edge-
+weighted graphs, couples representation learning and one-class detection in an end-
+to-end manner, and provides anomaly explanations aligned with the anomaly score. 
+These differences clarify that our contribution is not merely “unsupervised + explain-
+able”, but a distinct formulation and end-to-end treatment of log anomaly detection 
+on expressive directed log graphs.
+Beyond anomaly detection, several studies have investigated modeling depen -
+dencies among log events to support system-level understanding and diagnosis. For 
+example, LADDERS (Mondal et al. 2024) integrates anomaly scoring with causal 
+discovery to identify dependencies across heterogeneous subsystems and facilitate 
+root cause analysis in enterprise environments. Relatedly, recent advances in high-
+dimensional causal discovery (Mondal et al. 2025) focus on scalable inference of 
+dependency structures from observational data. While these approaches primarily 
+target diagnosis and causal analysis rather than representation learning for anomaly 
+detection, they highlight the importance of capturing inter-event dependencies in 
+complex systems.
+Since the initial public release of our work, including a preliminary version in 
+the ICSE 2024 Companion Proceedings  (Li et al. 2024c) and an openly released 
+technical report and implementation, the broader log anomaly detection literature 
+has expanded rapidly, as also reflected in recent comprehensive empirical studies 
+
+1 3
+66 Page 6 of 33
+Z. Li et al.
+(Ali et al. 2025). Given this rapid growth, the discussion below focuses on closely 
+related graph-based follow-up work rather than attempting to re-survey the entire log 
+anomaly detection field. Closely related post-2024 examples include LogGT (Wang 
+et al. 2024), which models cross-system log sequences as heterogeneous graphs and 
+combines graph transformers with transfer learning; IST-GCN (Xu and Li 2024), 
+which jointly models temporal and event-similarity relations through directed and 
+undirected graphs while emphasizing interpretability; RTGNN (Han et al. 2026), 
+which introduces temporal event graphs and reinforcement learning for class-imbal-
+anced log anomaly detection; and BertGCN-style raw-log graph modeling (Alsalmi 
+et al. 2026). These studies reinforce the continued interest in graph-based log model-
+ing, while also exploring complementary settings such as heterogeneous graphs, dual 
+spatial-temporal graphs, temporal event graphs, cross-system transfer, and raw-log 
+graph construction. We discuss them here to position the paper against the current 
+literature as of 2026, but do not add them retrospectively to the original benchmark 
+comparison because they postdate the original experimental study design reported in 
+this manuscript.
+Although anomaly explanation has received much attention in traditional anomaly 
+detection (Li et al. 2023; Li and Van Leeuwen 2023), only a few studies (Yang et al. 
+2021a) considered log anomaly explanation. Specifically, PLELog (Yang et al. 2021a) 
+offers explanations by quantifying the significance of individual log events within an 
+anomalous log sequence, thereby facilitating improved identification of relevant log 
+events by operators. Similarly, our method provides explanations for anomalous log 
+groups by identifying and visualising a small subset of important nodes.
+3 Problem statement
+Before we state the log anomaly detection problem, we first introduce notation and 
+definitions regarding event logs and graphs.
+Event logs. Logs are used to record system status and important events, and are 
+usually collected and stored centrally as log files. A log file typically consists of many 
+log messages. Each log message is composed of three components: a timestamp, an 
+event type (log event or log template), and additional information (log parameters). 
+Log parsers are used to extract log events from log messages.
+Further, log messages can be grouped into log groups (a.k.a. log sequences) using 
+certain criteria. Specifically, if a log identifier is available for each log message, one 
+can group log messages based on such identifiers. Otherwise, one can use a fixed or 
+sliding window to group log messages. Besides, counting the occurrences of each log 
+event within a log group yields an event count vector . Consequently, for a log file 
+consisting of many log groups, one can obtain an event count matrix. The process of 
+generating an event count matrix (or other feature matrix) is known as feature extrac-
+tion. Extracted features are often used as input to an anomaly detection algorithm 
+to identify log anomalies, i.e., log messages or log groups that deviate from what is 
+considered ‘normal’.
+In this work, “normal” behavior is defined with respect to the training data. That 
+is, any operational setting (e.g., workload characteristics or usage patterns) that is 
+
+1 3
+Page 7 of 33 66
+Graph neural networks based log anomaly detection and explanation
+sufficiently represented in the training set can be learned as normal and will not be 
+regarded as anomalous. For clarity of presentation, we focus on the common setting 
+where the training data corresponds to a single system under normal operation with 
+a relatively stable workload, but the proposed formulation is not inherently restricted 
+to this setting.
+Graphs. We consider an attributed, directed, and edge-weighted graph 
+G =( V , E, X, Y), where V = {v 1, ..., v|V|} denotes the set of nodes and 
+E = {e 1, ..., e|E|}⊆V×V  represents the set of edges. If (v i,v j ) ∈E , then there is 
+an edge from node vi to node vj . Moreover, X ∈ R|V|×d is the node attribute matrix, 
+with the i-th row representing the attributes of node vi, and d is the number of attri-
+butes. Besides, Y ∈ N|E|×|E| is the edge-weight matrix, where Yij  represents the 
+weight of the edge from node vi to node vj .
+Equivalently, G can be described as (A, X, Y), with adjacency matrix 
+A ∈ R|V|×|V|, where Aij = I[(v i,v j ) ∈E ] indicates whether there is an edge from 
+node vi to node vj , for i, j ∈{ 1, ...,|V|}.
+3.1 Graph-based log anomaly detection
+Given a set of log files, we let L = {L 1, ..., L|L|} denote the set of unique log events. 
+We divide the log messages into M log groups Q = {q1, ..., qm, ..., qM }, where 
+qm = {qm1 , ..., qmn, ..., qmN } is a log group and qmn a log message.
+For each log group qm, we construct an attributed, directed, and edge-weighted 
+graph Gm =( Vm, Em, Xm, Ym) to represent the log messages and their relation -
+ships. Specifically, each node vi ∈V m  corresponds to exactly one log event L ∈L  
+(and vice versa). Further, an edge eij ∈E m  indicates that log event i is at least once 
+immediately followed by log event j in qm. Attributes xi ∈ X m  represent the seman-
+tic embedding of log event i, and yij ∈ Ym  is the weight of edge eij , representing 
+the number of times event i was immediately followed by event j. In this manner, we 
+construct a set of log graphs {G1, ..., Gm, ..., GM }.
+We use these definitions to define graph-based log anomaly detection:
+Problem 1 (Graph-based Log Anomaly Detection) Given a set of attributed, directed, 
+and weighted graphs that represent logs, find those graphs that are notably different 
+from the majority of graphs.
+What we mean by ‘notably different’ will have to be made more specific when we 
+define our method, but we can already discuss what types of anomalies can poten -
+tially be detected. Most methods aim to detect two types of anomalies:
+ ● A log group (here a graph) is considered a quantitative anomaly if the occurrence 
+frequencies of some events in the group are higher or lower than expected from 
+what is commonly observed. For example, if a file is opened (event A) twice, it 
+should normally also be closed (event B) twice. In other words, the number of 
+event occurrences #A =# B in a normal pattern and an anomaly is detected if 
+#A ̸=#B.
+ ● A log group is considered to contain sequential anomalies if the order of certain 
+
+1 3
+66 Page 8 of 33
+Z. Li et al.
+events violates the normal order pattern. For instance, a file can be closed only af-
+ter it has been opened in a normal workflow. In other words, the order of event oc-
+currences A → B is considered normal while B → A is considered anomalous.
+An advantage of graph-based anomaly detection is that it can detect these two types 
+of anomalies, but also anomalies reflected in the structures of the graphs. Moreover, 
+no unsupervised log anomaly detection approaches represent event logs as attributed, 
+directed, weighted graphs, which allow for even higher expressiveness than undi -
+rected graphs (and thus limiting the information loss resulting from the representa -
+tion of the log files as graphs).
+4 Preliminaries: digraph inception convolutional nets
+To learn node representations for attributed, directed, and edge-weighted graphs, 
+Tong et al. (2020a) proposed Digraph Inception Convolutional Networks (DiGCN).
+Specifically, given a graph G described by an adjacency matrix A ∈ R|V|×|V|, a 
+node attribute matrix X ∈ R|V|×d, and an edge-weight matrix Y ∈ R|V|×|V|, DiGCN 
+defines the k-th order digraph convolution as
+ 
+Z(k) =
+
+
+
+XΘ(0) k =0 ,
+ΨXΘ (1) k =1 ,
+ΦXΘ(k) k ≥ 2,
+ (1)
+where Ψ = 1
+2  (Π(1) 1
+2 P(1)Π(1) −1
+2  + Π(1) −1
+2 P(1)T Π(1) 1
+2 ) and Φ = W(k) −1
+2 P(k)W (k) −1
+2 . 
+Particularly, Z(k) ∈R |V|×f denotes the convolved output with f output dimension, 
+and Θ(0), Θ(1), Θ(k) represent the trainable parameter matrices.
+Moreover, P(k) is the k-th order proximity matrix defined as
+ 
+P(k) =
+
+
+
+I k=0 ,
+˜D −1 ˜A k=1 ,
+Ins
+(
+(P(1))(k−1) (P(1)T )(k−1) )
+k ≥ 2,
+ (2)
+where I ∈R |V|×|V| is an identity matrix, ˜A = A + I, and ˜D denotes the diago -
+nal degree matrix with ˜Dii = ∑
+j ˜Aij . Besides, Ins
+(
+(P(1))(k−1) (P(1)T )(k−1) )
+ is 
+defined as
+ 
+1
+2 Intersect
+(
+(P(1))(k−1) (P(1)T )(k−1) ,(P(1)T )(k−1) (P(1))(k−1)
+)
+,
+with Intersect(·) denoting the element-wise intersection of two matrices (see Tong 
+et al. (2020a) for computation details). In addition, W(k) is the diagonalized weight 
+matrix of P(k), and Π(1) is the approximate diagonalized eigenvector of P(1). Par-
+ticularly, the approximate diagonalized eigenvector is calculated based on personal -
+ized PageRank (Bahmani et al. 2010), with a parameter α to control the degree of 
+
+1 3
+Page 9 of 33 66
+Graph neural networks based log anomaly detection and explanation
+conversion from a digraph to an undirected graph. We omit the details to conserve 
+space, and refer to Tong et al. (2020a) for more details.
+After obtaining the multi-scale features {Z(0), Z(1), ..., Z(k)}, DiGCN defines an 
+Inception block as
+ Z = σ
+(
+Γ
+(
+Z(0),Z(1), ...,Z(k)
+))
+, (3)
+where σ represents an activation function, and Γ(·) denotes a fusion operation, which 
+can be summation, normalisation, and concatenation. In practice, we often adapt a 
+fusion operation that keeps the output dimension unchanged, namely Z ∈R |V|×f. 
+As a result, the i-th row of Z (namely Zi) denotes the learned vector representation 
+for node vi in a certain layer.
+5 Graph-based anomaly detection for event logs
+We propose Logs2Graphs, a graph-based log anomaly detection method tailored to 
+event logs. The overall pipeline consists of the usual main steps, i.e., log parsing, log 
+grouping, graph construction, graph representation learning, and anomaly detection, 
+and is illustrated in Fig. 1. Note that we couple the graph representation learning 
+and anomaly detection steps to accomplish end-to-end learning once the graphs have 
+constructed.
+Fig. 1 The Logs2Graphs pipeline. We use attributed, directed, and weighted graphs for representing 
+the log files with high expressiveness, and integrate representation learning and anomaly detection for 
+accurate anomaly detection. We use off-the-shelf methods for log parsing, log grouping, and graph 
+construction
+ 
+
+1 3
+66 Page 10 of 33
+Z. Li et al.
+First, after collecting logs from a system, the log parsing step extracts log events 
+and log parameters from raw log messages. Since log parsing is not the primary 
+focus of this article, we use Drain (He et al. 2017) for this task. Drain is a log pars -
+ing technique with fixed depth tree, and has been shown to generally outperform its 
+competitors (Zhu et al. 2019). We make the following assumptions on the log files:
+ ● Logs files are written in English;
+ ● Each log message contains at least the following information: date, time, opera -
+tion detail, and log identifier;
+ ● The logs contain enough events to make the mined relationships (quantitative, 
+sequential, structural) statistically meaningful, i.e., it must be possible to learn 
+from the logs what the ‘normal’ behaviour of the system is.
+Second, the log grouping step uses the log identifiers to divide the parsed log mes -
+sages into log groups. Third, for each resulting group of log messages, the graph con-
+struction steps builds an attributed, directed, and edge-weighted graph, as described 
+in more detail in Sect. 5.1. Fourth and last, in an integrated step for graph repre-
+sentation learning and anomaly detection , we learn a One-Class Digraph Inception 
+Convolutional Network (OCDiGCN) based on the obtained set of log graphs. The 
+resulting model can be used for graph-level anomaly detection. This model couples 
+the graph representation learning objective and anomaly detection objective, and is 
+thus trained in an end-to-end manner. The model, its training, and its use for graph-
+level anomaly detection are explained in detail in Sect. 5.2.
+5.1 Graph construction
+We next explain how to construct an attributed, directed, and edge-weighted graph 
+given a group of parsed log messages, and illustrate this in Fig. 2.
+First, we utilise nodes to represent different log events. As a result, the number of 
+nodes depends on the number of unique log events that occur within the log group. 
+Second, starting from the first line of log messages in chronological order, we add a 
+directed edge from log event Li to Lj  and set its edge-weight to 1 if the next event 
+Fig. 2 The construction of an attributed, directed, and edge-weighted graph from a group of log 
+messages
+ 
+
+1 3
+Page 11 of 33 66
+Graph neural networks based log anomaly detection and explanation
+after Li is Lj . If the corresponding edge already exists, we increase its edge-weight 
+by 1. In this manner, we obtain a labelled, directed, and edge-weighted graph.
+However, using only the labels (e.g., open or write) of log events for graph con -
+struction may lead to missing important information. That is, we can improve on this 
+by explicitly taking the semantic information of log events into account, by which 
+we mean that we should look at the text of the log event in entirety. Specifically, we 
+generate a vector representation for each log event as follows: 
+1. Preprocessing: for each log event, we first remove non-character words and stop 
+words, and split compound words into separate words;
+2. Word embedding: we use Glove (Pennington et al. 2014), a pre-trained word 
+embedding model with 200 embedding dimensions to generate a vector represen-
+tation for each word in a log event;
+3. Sentence embedding : we generate a vector representation for each log event. 
+Since the words in a sentence are usually not of equal importance, we use Term 
+Frequency-Inverse Document frequency (TF-IDF) (Ramos 2003) to measure the 
+importance of words. As a result, the weighted sum of word embedding vectors 
+composes the vector representation of a log event.
+By augmenting the nodes with the vector representations of the log events as attri -
+butes, we obtain an attributed, directed, and edge-weighted graph.
+5.1.1 Discussion
+The proposed graph construction is designed to capture key structural and semantic 
+information from log data in a simple and effective manner. At the same time, several 
+aspects can be further extended in future work.
+(i) Temporal information. While the construction preserves the temporal ordering 
+of log events within a log group via directed edges and captures interaction 
+strength through edge weights, it does not explicitly encode absolute time -
+stamps, inter-event time gaps, or event durations as node or edge attributes. 
+Incorporating richer temporal information, such as duration or time-gap fea -
+tures, or adopting temporal or dynamic graph representations, constitutes a 
+promising direction for future work.
+(ii) Log grouping strategy. The current construction aggregates log events within 
+a predefined log group, which determines the granularity at which normal 
+behavior is learned. Although such grouping strategies (e.g., identifier-based or 
+window-based grouping) are commonly adopted in log anomaly detection, dif -
+ferent log groups may naturally exhibit varying activity levels during normal 
+operation. More adaptive grouping strategies that account for heterogeneous or 
+evolving logging patterns may further improve robustness in practice.
+(iii) Log type relationships. In the current formulation, log events are treated as dis-
+tinct nodes without explicitly encoding semantic relationships among differ -
+ent log types (e.g., warnings, errors, and informational messages). While such 
+relationships may be implicitly reflected through co-occurrence patterns and 
+
+1 3
+66 Page 12 of 33
+Z. Li et al.
+temporal dependencies in the constructed graph, explicitly modeling log-type 
+semantics or causal relations could further improve interpretability and detec -
+tion capability.
+5.2 OCDiGCN: one-class digraph inception convolutional nets
+We next describe One-Class Digraph Inception Convolutional Networks, abbreviated 
+as OCDiGCN, a novel method for end-to-end graph-level anomaly detection. We 
+chose to build on Digraph Inception Convolutional Networks (DiGCN) (Tong et al. 
+2020a) for their capability to handle directed graphs, which we argued previously is 
+an advantage in graph-based log anomaly detection.
+Given that DiGCN was designed for node representation learning, we repurpose it 
+for graph representation learning as follows:
+ z = Readout(Zi |i ∈{ 1, 2, ...,|V|}). (4)
+That is, at the final iteration layer, we utilise a so-called Readout(·) function to 
+aggregate node vector representations to obtain a graph vector representation. Impor-
+tantly, Readout(·) can be a simple permutation-invariant function such as maximum, 
+sum or mean, or a more advanced graph-level pooling function (Ying et al. 2018).
+Next, note that DiGCN work did not explicitly enable learning edge features (i.e., 
+Y). However, as DiGCN follows the Message Passing Neural Network (MPNN) 
+framework (Gilmer et al. 2017), incorporating Y into Eq. (1) and conducting compu-
+tations in Eqs. (2–4) analogously enables learning edge features.
+Now, given a set of graphs {G1, ..., Gm, ..., GM }, we can use Eq. ( 4) to obtain an 
+explicit vector representation for each graph, respectively. We denote the vector pre-
+sentation of Gm learned by the DiGCN model as DiGCN(G m;H ).
+In graph anomaly detection, anomalies are typically identified based on a recon -
+struction or distance loss (Kim et al. 2022). In particular, the One-Class Deep SVDD 
+objective (Ruff et al. 2018) is commonly used for two reasons: it can be easily com -
+bined with other neural networks, and more importantly, it generally achieves a 
+state-of-the-art performance (Pang et al. 2021). To detect anomalies, we thus train 
+a one-class classifier by optimizing the following One-Class Deep SVDD objective:
+ 
+min
+H
+1
+M
+M∑
+m=1
+∥DiGCN(Gm ;H )− o∥2
+2 + λ
+2
+L∑
+l=1
+∥H(l)∥2
+F , (5)
+where H(l) represents the trainable parameters of DiGCN at the l-th layer, namely 
+(Θ (0)(l), Θ (1)(l), ..., Θ (k)(l))T , H denotes {H(1), ..., H(L)}, λ> 0 represents the 
+weight-decay hyperparameter, ∥·∥ 2 is the Euclidean norm, and ∥·∥ F  denotes the 
+Frobenius norm. Moreover, o is the center of the hypersphere in the learned represen-
+tation space. Ruff et al. (2018) empirically found that setting o to the average of the 
+network representations (i.e., graph representations in our case) obtained by perform-
+ing an initial forward pass is a good strategy.
+
+1 3
+Page 13 of 33 66
+Graph neural networks based log anomaly detection and explanation
+Ruff et al. (2018) also pointed out, however, that One-Class Deep SVDD clas -
+sification may suffer from a hypersphere collapse, which will yield trivial solutions, 
+namely mapping all graphs to a fixed center in the representation space. To avoid a 
+hypersphere collapse, the hypersphere center o is set to the average of the network 
+representations, the bias terms in the neural networks are removed, and unbounded 
+activation functions such as ReLU are preferred.
+After training the model on a set of non-anomalous graphs (or with a very low 
+proportion of anomalies), given a test graph Gm, we define its distance to the center 
+in the representation space as its anomaly score, namely
+ score(Gm)= ∥DiGCN(Gm ;H )− o∥2. (6)
+ 
+Fig. 3 Pseudo-code of Logs2Graphs
+Training and hyperparameters:  In summary, OCDiGCN is composed of an 
+L-layer DiGCN architecture to learn node representations, plus a Readout(·) func-
+tion to obtain the graph representation. It is trained in an end-to-end manner via 
+optimising the SVDD objective, which can be optimised using stochastic optimisa -
+tion techniques such as Adam (Kingma and Ba 2014). Overall, OCDiGCN takes a 
+collection of non-anomalous graphs and a set of hyperparameters, which are outlined 
+in Table 2, as inputs. The pseudo-code for Logs2Graphs is given in Algorithm 3.
+Choice of DiGCN.  We adopt DiGCN as the backbone of OCDiGCN primarily 
+because it is designed to operate directly on directed graphs and provides a principled 
+inception-based mechanism for capturing higher-order proximities. In log graphs, 
+directed edges preserve temporal execution order between events, and anomalous 
+behavior may manifest not only as unexpected immediate transitions, but also as 
+deviations in longer-range execution patterns spanning multiple steps. DiGCN’s 
+proximity-based formulation explicitly supports aggregating information from 
+neighborhoods at different hop distances, which aligns well with this multi-scale 
+nature of log-derived graphs. Although benchmark datasets typically yield relatively 
+small graphs where first-order neighborhood aggregation ( k =1 ) is sufficient (see 
+Sect. 6.9), real-world logs may produce much larger graphs under identifier-based 
+grouping. In such cases, higher-order proximity allows a node to incorporate infor -
+mation from more distant but semantically related events, enabling the model to cap-
+ture abnormal execution flows that are not evident from immediate transitions alone. 
+Recent independent work by Sarkima (2025) empirically confirms this behavior: on 
+
+1 3
+66 Page 14 of 33
+Z. Li et al.
+large industrial log graphs, increasing the proximity parameter to k =2  significantly 
+improves detection performance. This evidence highlights the practical relevance of 
+DiGCN’s inception-based design, which offers both local sensitivity and the flexibil-
+ity to model longer-range dependencies when required.
+5.2.1 Alternative directed GNN backbones
+DiGCN was not selected in isolation. Representative pre-2022 directed graph archi -
+tectures form a clear line of development, from motif-based and directed-Laplacian 
+reformulations such as MotifNet (Monti et al. 2018) and spectral-based GCNs for 
+directed graphs (Ma et al. 2019), to more scalable directional propagation models 
+such as DGCN (Tong et al. 2020b) and DiGCN (Tong et al. 2020a), and later mag -
+netic-Laplacian approaches such as MagNet (Zhang et al. 2021). Within this line, 
+we choose DiGCN because it operates directly on generic directed graphs, offers 
+a principled proximity-based mechanism for multi-hop aggregation, and integrates 
+naturally with our graph-level readout and one-class objective. At the same time, 
+these models were introduced mainly for node classification or link prediction rather 
+than unsupervised graph-level anomaly detection  on attributed, directed, and edge-
+weighted log graphs. A fair benchmark would therefore require adapting each back -
+bone to a common graph-level readout and Deep SVDD-style training pipeline, 
+rather than simply swapping encoders. The present study does not attempt such a 
+full directed-backbone benchmark under a unified protocol; we therefore regard it as 
+valuable future work and list it explicitly as a limitation in Sect. 7.
+5.2.2 Technical contribution of OCDiGCN
+OCDiGCN does not claim a new generic graph convolution operator or a new one-
+class objective in isolation. Rather, its technical contribution lies in the algorithmic 
+adaptation required to make directed graph convolution work coherently in a previ -
+ously unsupported setting: unsupervised graph-level anomaly detection on attrib -
+uted, directed, and edge-weighted log graphs. This is more than appending a Readout 
+function and an SVDD loss to an existing encoder. DiGCN was originally proposed 
+for directed node representation learning, whereas our setting requires graph-level 
+representations, one-class optimization, preservation of directionality and edge 
+weights from log-derived graphs, and explanations that remain faithful to the final 
+anomaly score. Concretely, OCDiGCN contributes this task-specific integration in 
+three ways. First, it lifts DiGCN from node representation learning to graph-level 
+anomaly detection by introducing an appropriate graph readout while preserving the 
+directed and edge-weighted structure of log graphs. Second, it couples the resulting 
+graph representation with the Deep SVDD objective in an end-to-end manner, so 
+that the encoder is trained specifically for one-class anomaly detection rather than 
+for generic representation quality. Third, it aligns the explanation mechanism with 
+this distance-based anomaly score, yielding anomaly explanations tied directly to the 
+actual decision function. The contribution of OCDiGCN therefore lies in enabling 
+a new methodological capability for log anomaly detection, rather than in claiming 
+DiGCN or SVDD themselves as new primitives.
+
+1 3
+Page 15 of 33 66
+Graph neural networks based log anomaly detection and explanation
+5.3 Anomaly explanation
+We provide a model-faithful explanation for anomalous log groups by combining 
+representation-level counterfactual analysis (Guidotti 2024) with post-hoc feature 
+attribution. The goal of our explanation is to support human understanding of anoma-
+lous behaviors by identifying influential log events and their semantic characteristics, 
+rather than to perform causal inference or automated root-cause diagnosis.
+Recall that a graph Gm is identified as anomalous if its graph-level representation 
+deviates significantly from the learned hypersphere center (Eq. 6). The graph-level 
+representation is obtained by applying an attributable Readout(·) function (e.g., sum 
+or mean pooling) over node representations in the penultimate layer (Eq. 4). This 
+design enables a principled decomposition of the anomaly score with respect to indi-
+vidual node representations.
+5.3.1 Representation-level counterfactual explanation
+For a given anomalous graph Gm, we quantify the importance of node vj  by measur-
+ing the change in anomaly score when its learned representation Zj  is excluded from 
+the readout operation. Formally, the importance score of node vj  is defined as
+ 
+Imp(vj)= |score (Gm )− score (Gm \{ Zj})|
+score(Gm ) , (7)
+where score(Gm) denotes the anomaly score defined in Eq. 6, and score(G m \{ Zj}) 
+is obtained by excluding Zj  when computing the graph-level representation.
+This counterfactual analysis is performed at the representation level rather than 
+directly perturbing the input graph. Directly removing nodes or edges at the input 
+level would introduce cascading effects in message passing, making it difficult to 
+attribute changes in the anomaly score to individual components. In contrast, rep -
+resentation-level counterfactuals provide a controlled and stable explanation that 
+directly reflects the model’s decision mechanism.
+By ranking nodes according to their importance scores, we identify a small sub -
+set of influential log events. If these nodes are connected in the original graph, the 
+induced subgraph highlights the key event interactions associated with the anomaly, 
+providing an intuitive structural view of abnormal behavior.
+5.3.2 Input-level feature explanation
+While representation-level counterfactual analysis identifies which log events 
+are most influential for an anomaly, it does not directly explain which input fea -
+tures of these events contribute to their importance. To bridge this gap, we employ 
+GraphLIME (Huang et al. 2022), a local, post-hoc, and model-agnostic explanation 
+method, to provide feature-level interpretations for the most influential nodes.
+Specifically, for each highly influential node, GraphLIME fits a local linear sur -
+rogate model in the node’s neighborhood to estimate the contribution of input fea -
+tures to the node’s learned representation. In our setting, this enables identification 
+
+1 3
+66 Page 16 of 33
+Z. Li et al.
+of which semantic features of a log event (e.g., components derived from its tex -
+tual representation) are most relevant to the anomaly. GraphLIME complements the 
+proposed counterfactual explanation by providing interpretable input-level insights 
+while remaining agnostic to the internal architecture of the anomaly detection model.
+5.3.3 Discussion of alternative explanation methods
+Multiple post-hoc explanation methods have been proposed for interpreting neural 
+network models, including gradient-based attribution techniques such as Layer-wise 
+Relevance Propagation (LRP) (Bach et al. 2015). In the context of graph neural net-
+works, gradient-based and relevance-propagation methods are typically used to attri-
+bute importance to node features or edges, and can provide useful local insights in 
+certain settings. However, recent studies have shown that such post-hoc, gradient-
+based GNN explanation methods can be fundamentally unreliable. In particular, Li 
+et al. (2024a) demonstrate that a wide range of popular GNN explainers—including 
+gradient-based, decomposition-based, and perturbation-based methods—are highly 
+susceptible to prediction-preserving adversarial perturbations: small, imperceptible 
+changes to the input graph that do not alter the model’s prediction can nevertheless 
+lead to drastically different explanations. This instability calls into question the trust-
+worthiness of gradient-based relevance propagation when explanations are expected 
+to faithfully reflect the underlying anomaly scoring mechanism. In this work, we 
+therefore favor local surrogate-based explanations over gradient-based relevance 
+propagation. This choice is motivated by the objective of maintaining a clear and 
+faithful alignment between the explanation and the distance-based anomaly scoring 
+function. GraphLIME offers a simple and interpretable feature attribution mechanism 
+that does not rely on backpropagation through the model and can be naturally com -
+bined with the proposed representation-level counterfactual analysis. We also note 
+that structure-oriented explanation methods such as GNNExplainer (Ying et al. 2019) 
+are primarily designed to preserve class predictions in supervised classification set -
+tings. Adapting such methods to a distance-based one-class anomaly detection objec-
+tive is non-trivial and may introduce additional optimization complexity. Instead, 
+our approach explains structural contributions through counterfactual analysis at the 
+representation level, which directly reflects changes in the anomaly score.
+Overall, the proposed explanation framework combines representation-level 
+counterfactual reasoning with input-level feature attribution, providing interpretable 
+and model-faithful explanations while maintaining a clear scope and avoiding over -
+claiming causal interpretations.
+6 Experiments
+We perform extensive experiments to answer the following questions: 
+1. Detection accuracy: How effective is Logs2Graphs at identifying log anomalies 
+when compared to state-of-the-art methods?
+
+1 3
+Page 17 of 33 66
+Graph neural networks based log anomaly detection and explanation
+2. Directed vs. undirected graphs : Is the directed log graph representation better 
+than the undirected version for detecting log anomalies?
+3. Node Labels vs. Node Attributes : How important is it to use semantic embed -
+dings of log events as node attributes?
+4. Robustness analysis: To what extent is Logs2Graphs robust to contamination of 
+the training data?
+5. Ability to detect structural anomalies:  Can Logs2Graphs better capture struc -
+tural anomalies and identify structurally equivalent normal instances than its 
+contenders?
+6. Explainability Analysis:  How understandable are the anomaly explanations 
+given by Logs2Graphs?
+7. Sensitivity analysis:  How do the values of the hyperparameters influence the 
+detection accuracy?
+8. Runtime analysis: What are the runtimes for the different methods?
+6.1 Experiment setup
+6.1.1 Datasets
+The five datasets that we use, summarized in Table 1, were chosen for three reasons: 
+(1) they are commonly used for the evaluation of log anomaly detection methods; 
+(2) they contain ground truth labels that can be used to calculate evaluation metrics; 
+and (3) they include log identifiers that can be used for partitioning log messages into 
+groups. For each group of log messages in a dataset, we label the group as anomalous 
+if it contains at least one anomaly. More details are given as follows:
+ ● HDFS (Xu et al. 2009) consists of Hadoop Distributed File System logs obtained 
+by running 200 Amazon EC2 nodes. These logs contain block_id, which can be 
+used to group log events into different groups. Moreover, these logs are manually 
+labeled by Hadoop experts.
+ ● Hadoop (Lin et al. 2016) was collected from a Hadoop cluster consisting of 46 
+cores over 5 machines. The ContainerID variable is used to divide log messages 
+into different groups.
+ ● BGL, Spirit, and Thunderbird contain system logs collected from the BlueGene/L 
+(BGL), Spirit, and Thunderbird supercomputing systems located at Sandia Na -
+Table 1 Summary of datasets
+Name #Events #Graphs #Anomalies #Nodes #Edges
+HDFS 48 575,061 16,838 7 20
+Hadoop 683 978 811 34 120
+BGL 1848 69,251 31,374 10 30
+Spirit 834 10,155 4,432 6 24
+Thunderbird 1013 52,160 6,814 16 52
+#Events refers to the number of log event templates obtained using log parser Drain (He et al. 2017). 
+#Groups means the number of generated graphs. #Anomalies represents the number of anomalous 
+graphs. #Nodes denotes the average number of nodes in generated graphs. #Edges indicates the average 
+number of edges in the generated graphs
+
+1 3
+66 Page 18 of 33
+Z. Li et al.
+tional Labs, respectively. For those datasets, each log message was manually in -
+spected by engineers and labelled as normal or anomalous. For BGL, we use all 
+log messages, and group log messages based on the Node variable. For Spirit and 
+Thunderbird, we only use the first 1 million and first 5 million log messages for 
+evaluation, respectively. Furthermore, for these two datasets, the User is used 
+as log identifier to group log messages. However, considering that an ordinary 
+user may generate hundreds of thousands of logs, we regard every 100 consecu -
+tive logs of each user as a group. If the number of logs is less than 100, we also 
+consider it as a group.
+We note that identifier-based grouping is a common and convenient choice in the log 
+anomaly detection literature (He et al. 2016; Lu et al. 2018; Zhang et al. 2020; Le and 
+Zhang 2022). When such identifiers are unavailable, alternative grouping strategies 
+such as fixed-size or sliding windows can be adopted, although the choice of group -
+ing strategy may influence detection performance (Le and Zhang 2022).
+6.1.2 Baselines
+To investigate the performance of Logs2Graphs, we compare it with the following 
+seven log anomaly detection methods: Principal Component Analysis (PCA) (Xu 
+et al. 2009), One-Class SVM (OCSVM) (Schölkopf et al. 2001), Isolation Forest 
+(iForest) (Liu et al. 2008), HBOS (Goldstein and Dengel 2012), DeepLog (Du et al. 
+2017), LogAnomaly (Meng et al. 2019), and AutoEncoder (Farzad and Gulliver 
+2020), and one state-of-the-art graph level anomaly detection method: GLAM (Zhao 
+et al. 2022).
+We choose these methods as baselines because they are often regarded to be rep -
+resentatives of traditional machine learning-based (PCA, OCSVM, IForest, HBOS) 
+and deep learning-based approaches (DeepLog, LogAnomaly and AutoEncoder), 
+respectively. All methods are unsupervised or semi-supervised methods that do not 
+require labeled anomalous samples for training the models.
+6.1.2.1 Clarification on excluded graph-based log baselines We note that several 
+closely related graph-based log anomaly detection methods, including LogGD, 
+GLAD-PAW, and GLAD, are highly relevant to our work but are not included in the 
+quantitative benchmark for different reasons. LogGD (Xie et al. 2022) is a super -
+vised method that requires substantial labeled normal and anomalous training data, 
+whereas our study focuses on the unsupervised/one-class setting and trains on nor -
+mal data only. Directly comparing a supervised detector trained with anomaly labels 
+against unsupervised methods trained without such labels would therefore not con -
+stitute an apples-to-apples evaluation. GLAD-PAW (Wan et al. 2021) does not pro -
+vide publicly available code, which makes faithful reproduction difficult. GLAD (Li 
+et al. 2023), in turn, constructs undirected, weighted, and attributed heterogeneous 
+dynamic log graphs and focuses on anomalous relation/edge detection rather than 
+graph-level anomaly detection on directed log graphs. To assess the impact of this 
+key design choice, we include a controlled directed-versus-undirected comparison 
+using GLAM in the corresponding subsection below. There, the undirected variant 
+
+1 3
+Page 19 of 33 66
+Graph neural networks based log anomaly detection and explanation
+consistently underperforms Logs2Graphs on all datasets except Hadoop, supporting 
+the practical importance of preserving edge directionality in our setting.
+6.1.3 Evaluation metrics
+The Area Under Receiver Operating Characteristics Curve (ROC AUC) and the Area 
+Under the Precision-Recall Curve (PRC AUC) are widely used to quantify the detec-
+tion accuracy of anomaly detection (Aggarwal and Aggarwal 2017). This is mainly 
+because they can provide a single value that summarizes the overall performance of 
+the anomaly detection model across various thresholds. In contrast, other metrics 
+such as Precision, Recall and F1-score depend on choosing a threshold to determine 
+whether an instance is anomalous or normal. Consequently, different thresholds can 
+result in different values. Therefore, we employ ROC AUC and PRC AUC to eval -
+uate and compare the different log anomaly detection methods. PRC AUC is also 
+known as Average Precision (AP). For both ROC AUC and PRC AUC, values closer 
+to 1 indicate better performance.
+6.2 Model implementation and configuration
+Traditional machine learning based approaches—such as PCA, OCSVM, iForest, 
+and HBOS—usually first transform logs into log event count vectors, and then apply 
+traditional anomaly detection techniques to identify anomalies. For these methods, 
+we utilise their open-source implementations provided in PyOD (Zhao et al. 2019). 
+Meanwhile, for deep learning methods DeepLog, LogAnomaly, and AutoEncoder, 
+we use their open-source implementations in Deep-Loglizer (Chen et al. 2021). For 
+these methods, we use their default hyperparameter values.
+For all deep learning based methods, the experimental design adopted in this study 
+follows a train/validation/test strategy with a distribution of 70% : 5% : 25%  for nor-
+mal instances. Specifically, the model was trained using 70% of normal instances, 
+while 5% of normal instances and an equal number of abnormal instances were 
+employed for validation (i.e., hyperparameter tuning). The remaining 25% of normal 
+instances and the remaining abnormal instances were used for testing. Table 2 sum-
+marizes the hyperparameters involved in OCDiGCN as well as their recommended 
+values.
+We implemented and ran all algorithms in Python 3.8 (using PyTorch (Paszke 
+et al. 2019) and PyTorch Geometric (Fey and Lenssen 2019) libraries when applica-
+ble), on a workstation equipped with an Intel i7-11700KF CPU and Nvidia RTX3070 
+GPU. For reproducibility, all code and datasets are released on GitHub.1
+1 https://github.com/ZhongLIFR/Logs2Graph.
+
+1 3
+66 Page 20 of 33
+Z. Li et al.
+6.3 Comparison to the state of the art
+We first compare Logs2Graphs to the state of the art (as of the writing of this paper, 
+namely the year of 2024). We have the following main observations according to the 
+results in Table 3:
+ ● In terms of ROC AUC, Logs2Graphs achieves the best performance against its 
+competitors on three out of five datasets. Particularly, Logs2Graphs outperforms 
+the closet competitor on BGL with 9.6% and delivers remarkable results (i.e., an 
+ROC AUC larger than 0.99) on Spirit and Thunderbird. Similar observations can 
+be made for Average Precision.
+ ● Deep learning based methods generally outperform the traditional machine learn-
+ing based methods. One possible reason is that traditional machine learning based 
+methods only leverage log event count vectors as input, which makes them un -
+able to capture and exploit sequential relationships between log events and the 
+semantics of the log templates.
+ ● The performance of (not-graph-based) deep learning methods is often inferior to 
+that of Log2Graphs on the more complex datasets, i.e., BGL, Spirit, and Thun -
+derbird, which all contain hundreds or even thousands of log templates. This 
+suggests that LSTM-based models may not be well suited for logs with a large 
+number of log templates. One possible reason is that the test dataset contains 
+many unprecedented log templates, namely log templates that are not present in 
+the training dataset.
+ ● In terms of ROC AUC score, all methods except for OCSVM and AutoEncoder 
+achieve impressive results (with RC > 0.91) on HDFS. One possible reason is 
+that HDFS is a relatively simple log dataset that contains only 48 log templates. 
+Concerning AP, PCA and LSTM-based DeepLog achieve impressive results 
+(with AP > 0.89) on HDFS. Meanwhile, Logs2Graphs obtains a competitive 
+performance (with AP =0 .87) on HDFS.
+Table 2 Description of hyperparameters involved in OCDiGCN
+Symbol Meaning Range
+Bs Batch size {16, 32, 64, 128, 256, 512, 1024, 1536, 2048, 2560}
+Op Optimisation method Adam, SGD
+L Number of layers {1, 2, 3, 4, 5}
+λ Weight decay parameter {0.0001, 0.001, 0.01, 0.1}
+η Learning rate {0.0001, 0.001, 0.01}
+k Proximity parameter {1, 2}
+α Teleport probability {0.05, 0.1, 0.2}
+Γ Fusion operation if k ≥ 2 Sum, concatenation
+Re Readout function Mean, sum, max
+d Embedding dimension {32, 64, 128, 256, 300}
+Ep Epochs for training Range(100,1000,50)
+Range indicates the values that we have tried on validation data, and boldfaced values are the values 
+suggested to use in experiments. Particularly, for the embedding dimensions: 300 is suggested for BGL 
+and 128 for others. For the batch sizes: 32 is suggested for HDFS and 128 for others. For the training 
+epochs: 100 for BGL and Thunderbird, 200 for HDFS, 300 for Hadoop and 500 for Spirit are suggested
+
+1 3
+Page 21 of 33 66
+Graph neural networks based log anomaly detection and explanation
+Table 3 Anomaly detection accuracy on five benchmark datasets for Logs2Graphs and its eight competitors
+HDFS Hadoop BGL Spirit Thunderbird
+Method AP RC AP RC AP RC AP RC AP RC
+PCA 0.91 ± 0.03 1.0 ± 0.00 0.84 ± 0.00 0.52 ± 0.00 0.73 ± 0.01 0.82 ± 0.00 0.31 ± 0.00 0.19 ± 0.00 0.11 ± 0.00 0.34 ± 0.01
+OCSVM 0.18 ± 0.01 0.88 ± 0.01 0.83 ± 0.00 0.45 ± 0.00 0.47 ± 0.00 0.47 ± 0.01 0.34 ± 0.00 0.29 ± 0.00 0.12 ± 0.00 0.45 ± 0.01
+IForest 0.73 ± 0.04 0.97 ± 0.01 0.85 ± 0.01 0.55 ± 0.01 0.79 ± 0.01 0.83 ± 0.01 0.32 ± 0.03 0.23 ± 0.02 0.11 ± 0.01 0.24 ± 0.10
+HBOS 0.74 ± 0.04 0.99 ± 0.00 0.84 ± 0.00 0.50 ± 0.00 0.84 ± 0.02 0.87 ± 0.03 0.35 ± 0.00 0.22 ± 0.00 0.15 ± 0.01 0.29 ± 0.05
+DeepLog 0.92 ± 0.07 0.97 ± 0.04 0.96 ± 0.00 0.47 ± 0.00 0.89 ± 0.00 0.72 ± 0.00 0.99 ± 0.00 0.97 ± 0.00 0.91 ± 0.01 0.96 ± 0.00
+LogAnomaly 0.89 ± 0.09 0.95 ± 0.05 0.96 ± 0.00 0.47 ± 0.00 0.89 ± 0.00 0.72 ± 0.00 0.99 ± 0.00 0.97 ± 0.00 0.90 ± 0.01 0.96 ± 0.00
+AutoEncoder 0.71 ± 0.03 0.84 ± 0.01 0.96 ± 0.00 0.52 ± 0.00 0.91 ± 0.01 0.79 ± 0.02 0.96 ± 0.00 0.92 ± 0.01 0.44 ± 0.02 0.46 ± 0.05
+GLAM 0.78 ± 0.08 0.89 ± 0.04 0.95 ± 0.00 0.61 ± 0.00 0.94 ± 0.02 0.90 ± 0.03 0.93 ± 0.00 0.91 ± 0.00 0.75 ± 0.02 0.85 ± 0.01
+Logs2Graphs 0.87 ± 0.04 0.91 ± 0.02 0.95 ± 0.00 0.59 ± 0.00 0.96 ± 0.01 0.93 ± 0.01 1.0 ± 0.00 1.0 ± 0.00 0.99 ± 0.00 1.0 ± 0.00
+AP and RC denote Average Precision and ROC AUC, respectively. HDFS, BGL, and Thunderbird have been downsampled to 10,000 graphs each while maintaining the 
+original anomaly rates. For each method on each dataset, to mitigate potential biases arising from randomness, we conducted ten experimental runs with varying random 
+seeds and report the average values along with standard deviations of AP and RC. Moreover, we highlight the best results with bold and the runner-up with Italic
+
+1 3
+66 Page 22 of 33
+Z. Li et al.
+6.4 Directed vs. undirected graphs
+To investigate the practical added value of using directed log graphs as opposed 
+to undirected log graphs, we convert the logs to attributed, undirected, and edge-
+weighted graphs, and apply GLAM (Zhao et al. 2022), a graph-level anomaly detec-
+tion method for undirected graphs. We use the same graph construction method as for 
+Logs2Graphs, except that we use undirected edges. Similar to our method, GLAM 
+also couples the graph representation learning and anomaly detection objectives by 
+optimising a single SVDD objective. The key difference with OCDiGCN is that 
+GLAM leverages GIN (Xu et al. 2018), which can only tackle undirected graphs, 
+while OCDiGCN utilizes DiGCN (Tong et al. 2020a) that is especially designed for 
+directed graphs.
+The results in Table 3 indicate that GLAM’s detection performance is comparable 
+to that of most competitors. However, it consistently underperforms on all datasets, 
+except for Hadoop, when compared to Logs2Graphs. Given that the directed vs undi-
+rected representation of the log graphs is the key difference between the methods, a 
+plausible explanation is that directed graphs have the capability to retain the temporal 
+sequencing of log events, whereas undirected graphs lack this ability. Consequently, 
+GLAM may encounter difficulties in detecting sequential anomalies and is outper -
+formed by Logs2Graphs.
+6.5 Node labels vs. node attributes
+To investigate the importance of using semantic embeddings of log events as node 
+attributes, we replace the node semantic attributes with one-hot-encoding of node 
+labels (i.e., using an integer to represent a log event). The performance comparisons 
+in terms of ROC AUC for Logs2Graphs are depicted in Fig. 4, which shows that 
+using semantic embeddings is always superior to using node labels. Particularly, it 
+can lead to a substantial performance improvement on the Hadoop, Spirit and HDFS 
+datasets. The PRC AUC results show a similar behaviour and thus are omitted.
+6.6 Robustness to contamination
+To investigate the robustness of Logs2Graphs when the training dataset is contami -
+nated (namely integrating anomalous graphs in training data), we report its perfor -
+Fig. 4 The comparative performance analysis of Logs2Graphs, measured by ROC AUC, demonstrating 
+the distinction between utilizing node semantic attributes and node labels
+ 
+
+1 3
+Page 23 of 33 66
+Graph neural networks based log anomaly detection and explanation
+mance in terms of ROC AUC under a wide range of contamination levels. Figure 5 
+shows that the performance of Logs2Graphs decreases with an increase of contami -
+nation in the training data. The PRC AUC results show a similar behaviour and thus 
+are omitted. Hence, it is important to ensure that the training data contains only nor -
+mal graphs (or with a very low proportion of anomalies).
+Practical considerations for training data selection.  While the above experi -
+ment highlights the sensitivity of Logs2Graphs to contaminated training data, this 
+behavior is shared by many deep anomaly detection methods (Wu et al. 2022). In 
+practice, high-quality normal training data can often be obtained from real systems 
+by leveraging logs collected during controlled tests, stable operational periods, or 
+successful executions, which are commonly treated as representative of normal 
+behavior in industrial settings (Nguyen et al. 2019). When applying Logs2Graphs 
+to new datasets, we recommend the following practical guidelines. First, training 
+should start from log data that are known, or strongly believed, to correspond to 
+normal system behavior. Second, robustness can be assessed by conducting con -
+tamination analysis or monitoring validation curves as small amounts of anomalous 
+data are introduced. Third, as system behavior evolves over time, the model can be 
+periodically retrained or updated using newly collected normal data. Recent inde -
+pendent evaluation on large-scale industrial logs further supports the practicality of 
+this approach. In particular, Sarkima (2025) demonstrates that Logs2Graphs achieves 
+strong detection performance on substantially larger and more complex telecommu -
+nications log graphs when trained on carefully selected normal data, even under real-
+istic operational conditions.
+6.7 Ability to detect structural anomalies and recognise unseen normal instances
+To showcase the effectiveness of different neural networks in detecting structural 
+anomalies, we synthetically generate normal and anomalous directed graphs as 
+shown in Fig. 6. As Deeplog, LogAnomaly and AutoEncoder require log sequences 
+as inputs, we convert directed graphs into sequences by sequentially presenting the 
+endpoints pair of each edge. Moreover, for GLAM we convert directed graphs into 
+undirected graphs by turning each directed edge into an undirected edge.
+Moreover, to investigate their capability of recognising unseen but structurally 
+equivalent normal instances, we generate the following normal log sequences based 
+Fig. 5 ROC AUC results of Logs2Graphs w.r.t. a wide range of contamination levels. Results are aver-
+aged over 10 runs. Particularly, HDFS contains only 3% anomalies and thus results at 5% and 10% 
+are not available
+ 
+
+1 3
+66 Page 24 of 33
+Z. Li et al.
+on the synthetic normal graph as training data: A → B → C → D → A (1000), 
+B → C → D → A → B (1000) and C → D → A → B → C (1000), and the fol -
+lowing as test dataset: D → A → B → C → D (1000).
+The results in Table 4 indicate that Logs2Graphs, Deeplog and LogAnomaly can 
+effectively detect structural anomalies, while AutoEncoder and GLAM fail in some 
+cases. However, log sequences based methods, namely Deeplog, LogAnomaly and 
+AutoEncoder, can lead to high false positive rates due to their inability of recognising 
+unseen but structurally equivalent normal instances.
+6.8 Anomaly explanation
+Fig. 7 provides an example of log anomaly explanation with the HDFS dataset. For 
+each detected anomalous log graph (namely a group of logs), we first quantify the 
+importance of nodes according to the description in Sect. 5.3. Next, we visualise the 
+anomalous graph by assigning darker shade of red to more important nodes. In this 
+example, the node “WriteBlock(WithException)” contributes the most to the anom -
+aly score of an anomalous log group and thus is highlighted in red.
+6.9 Sensitivity analysis
+We examine the effects of four hyperparameters in OCDiGCN on the detection per -
+formance, including the number of convolutional layers L, the embedding dimension 
+d, the proximity parameter k, and the teleport probability α.
+The Number of Convolutional Layers: L is a potentially important parameter as 
+it determines how many convolutional layers to use in OCDiGCN. Figure 8 (top row) 
+depicts PRC AUC and ROC AUC for the five benchmark datasets when L is varied 
+Table 4 ROC AUC results (higher is better) of detecting structural anomalies and False Positive Rate 
+(lower is better) of recognising unseen normal instances
+Case Deeplog LogAnomaly AutoEncoder GLAM Ours
+S1 (ROC) 1.0 1.0 0.0 0.0 1.0
+S2 (ROC) 1.0 1.0 0.50 1.0 1.0
+S3 (ROC) 1.0 1.0 1.0 1.0 1.0
+S4 (ROC) 1.0 1.0 1.0 1.0 1.0
+N1 (FPR) 100% 100% 100% 0% 0%
+S1: Reverse Edge Direction; S2: Change Edge Endpoint; S3: Delete Edge; S4: Add Edge; N1: Unseen 
+normal instances
+Fig. 6 Synthetic generation of normal (10000) and structurally anomalous (200 each) graphs
+ 
+
+1 3
+Page 25 of 33 66
+Graph neural networks based log anomaly detection and explanation
+from 1 to 5. We found that L =1  yields consistently good performance. As the value 
+of L is increased, there is only a slight enhancement in the resulting performance or 
+even degradation, while the associated computational burden increases substantially. 
+We thus recommend to set L =1 .
+The Embedding Dimension  d : From Figure 8 (bottom row), one can see that 
+d = 128 yields good performance on Spirit, Hadoop, HDFS and Thunderbird, while 
+further increasing d obtains negligible performance improvement or even degrada -
+tion. However, an increase of d on BGL leads to substantially better performance. 
+One possible reason is that BGL is a complex dataset wherein anomalies and normal 
+instances are not easily separable on lower dimensions.
+The Proximity Parameter k : As this parameter increases, a node can gain more 
+information from its further neighbours. Figure 9 (top row) contrasts the detection 
+performance when k is set to 1 and 2, respectively. Particularly, we construct one 
+Fig. 8 The effects of the number of layers (top row) and the embedding dimensions (bottom row) on 
+AP (left column) and ROC AUC (right column)
+ 
+Fig. 7 Example of anomaly explanation with HDFS (the log event templates are simplified for better 
+visualisation)
+ 
+
+1 3
+66 Page 26 of 33
+Z. Li et al.
+Inception Block when k =2 , using concatenation to fuse the results. We observe that 
+there is no large improvement in performance when using a value of k =2  in com-
+parison to k =1 . It is important to recognize that a node exhibits 0th-order proxim -
+ity with itself and 1st-order proximity with its immediately connected neighbors. If 
+k =2 , a node can directly aggregate information from its 2nd-order neighbours. As 
+described in Table 1, graphs generated from logs usually contain a limited number of 
+nodes, varying from 6 to 34. Therefore, there is no need to utilise the Inception Block, 
+which was originally designed to handle large graphs in Tong et al. (2020a).
+The Teleport Probability  α: The teleport probability α is a key hyperparam -
+eter in DiGCN that controls the strength of the digraph-to-undigraph conversion. 
+To analyze its impact, we evaluate OCDiGCN under a wider range of values 
+α ∈{ 0.05,0.1,0.2,0.3,0.4}. Figure 9 (bottom row) reports the corresponding PR 
+and ROC AUC results. Overall, the detection performance remains relatively stable 
+across this range, indicating that OCDiGCN is not sensitive to the choice of α. In 
+particular, α = 0.1 consistently achieves strong or near-optimal performance across 
+datasets, which supports our default setting used in the experiments. These results 
+suggest that α mainly acts as a stabilizing parameter rather than a highly sensitive 
+tuning factor in log anomaly detection.
+6.10 Runtime analysis
+Traditional machine learning methods, including PCA, OCSVM, IForest and HBOS, 
+usually perform log anomaly detection in a transductive way. In other words, they 
+require the complete dataset beforehand and do not follow a train-and-test strategy. 
+In contrast, neural network based methods, such as DeepLog, LogAnomaly, Auto -
+Encoder, and Logs2Graphs, perform log anomaly detection in an inductive manner, 
+namely following a train-and-test strategy.
+Fig. 9 The effects of the proximity parameter k (top row) and the teleport probability α (bottom row) 
+on AP (left column) and ROC AUC (right column)
+ 
+
+1 3
+Page 27 of 33 66
+Graph neural networks based log anomaly detection and explanation
+Figure 10 shows that most computational time demanded by Logs2Graphs is 
+allocated towards the graph generation phase. In contrast, the training and testing 
+phases require a minimal time budget. The graph generation phase can be amenable 
+to parallelisation though, thereby potentially reducing the overall processing time. 
+As a result, Logs2Graphs shows great promise in performing online log anomaly 
+detection. Meanwhile, other neural networks based models—such as DeepLog, 
+LogAnomaly, and AutoEncoder—demand considerably more time for the training 
+and testing phases.
+Scalability considerations. We analyze the computational and memory character -
+istics of Logs2Graphs with respect to the number of log messages per group and the 
+resulting graph size. Let a log group contain n parsed log messages and | L| unique 
+log events (templates). The constructed graph has |V | = |L| nodes and at most 
+|E|≤ n − 1 directed edges (before merging repeated transitions by edge weights). 
+Graph construction can be implemented in a single pass over the n messages: map-
+ping each message to a template ID and updating an edge-weight counter for each 
+consecutive pair. Using a hash map (or sparse accumulator) for edge counting, this 
+yields time complexity O(n) and memory complexity O (|V|+ |E|) for each group.
+Effect of |  L |, | V |, and |  E |. The downstream GNN computation scales with 
+the graph size per log group rather than the total log volume. In our implementa -
+tion, OCDiGCN is configured with k =1 , which corresponds to standard digraph 
+convolution without higher-order proximity expansion. Under this setting, for an 
+Fig. 10 Runtime for all eight methods on all datasets, wherein HDFS, BGL, and Thunderbird have 
+been downsampled to 10,000 graphs. Runetimes are averaged over 10 repetitions. We report the train-
+ing time per epoch for neural network based methods
+ 
+
+1 3
+66 Page 28 of 33
+Z. Li et al.
+L-layer message passing model, the forward (and backward) cost per epoch is linear 
+in the number of edges and feature dimensions, i.e., approximately O (L ·|E |·d) for 
+sparse graphs. The memory footprint is dominated by storing node features and inter-
+mediate activations, i.e., O (|V|·d), together with O (|E|) for sparse adjacency and 
+edge weights. In our setting, | V| is bounded by the number of distinct log templates 
+observed within a group, and |E| is bounded by the group length n. This design keeps 
+individual graphs relatively small and avoids the higher-order proximity expansion 
+that may lead to quadratic memory usage in worst-case scenarios, as discussed in the 
+original DiGCN formulation.
+Implications for online/near-real-time analysis.  Graph construction and infer -
+ence are performed per log group and do not require access to the complete dataset. 
+Therefore, graphs can be constructed and scored incrementally as groups close (e.g., 
+by identifier completion or window expiration). Moreover, different log groups can 
+be processed independently, enabling efficient parallelization across CPU cores or 
+machines in practical deployments.
+Semantic embedding overhead.  The semantic node attributes are computed at 
+the log-template level rather than per message. In practice, the embedding of each 
+template can be precomputed once (or lazily computed upon first appearance) and 
+cached, so the embedding cost scales with the number of unique templates rather than 
+the total number of log messages. This significantly reduces both computation and 
+memory overhead when processing large log volumes.
+7 Limitations
+While the proposed framework performs strongly in our experiments, several limita-
+tions should be kept in mind.
+Grouping and graph construction. The method assumes that log messages can 
+be partitioned into meaningful groups and currently constructs edges by linking con-
+secutive events. This preserves order and frequency, but does not explicitly encode 
+richer temporal information such as durations or inter-event gaps, nor more advanced 
+domain-specific relations among log types.
+Training-data assumptions.  Like many one-class anomaly detection meth -
+ods, Logs2Graphs assumes access to training data that are predominantly normal. 
+Although our contamination analysis and practical discussion help characterize this 
+requirement, performance can still degrade when the training set is heavily polluted 
+or when system behavior drifts substantially over time.
+Coverage of empirical comparisons.  Our benchmark prioritizes methods that 
+are assumption-compatible and reproducible under a common protocol. As a result, 
+it does not include supervised approaches such as LogGD, nor methods without suf-
+ficiently reproducible implementations such as GLAD-PAW. Likewise, while we 
+motivate DiGCN as a suitable directed backbone and compare against an undirected 
+alternative, we do not provide a full benchmark over all possible directed GNN 
+encoders.
+Scope of explanation. The proposed explanation mechanism is intended to iden-
+tify influential log events and provide human-understandable cues for diagnosis. It 
+
+1 3
+Page 29 of 33 66
+Graph neural networks based log anomaly detection and explanation
+should not be interpreted as causal root-cause analysis, nor as a guarantee that the 
+highlighted nodes uniquely determine the underlying system fault.
+8 Conclusions
+We introduced Logs2Graphs, a new approach for unsupervised log anomaly detec -
+tion. It first converts log files to attributed, directed, and edge-weighted graphs, 
+translating the problem to an instance of graph-level anomaly detection. Next, this 
+problem is solved by OCDiGCN, a novel method based on graph neural networks 
+that performs graph representation learning and graph-level anomaly detection in an 
+end-to-end manner. Important properties of OCDiGCN include that it can deal with 
+directed graphs and do unsupervised learning.
+Extensive results on five benchmark datasets reveal that Logs2Graphs is at least 
+comparable to and often outperforms state-of-the-art log anomaly detection methods 
+such as DeepLog and LogAnomaly. Furthermore, a comparison to a similar method 
+for graph-level anomaly detection on undirected graphs demonstrates that using 
+directed log graphs leads to better detection accuracy in practice.
+Author contributions  Zhong Li: Conceptualization, methodology, validation, investigation, software, 
+writing, visualization, project administration. Jiayang Shi: Methodology, investigation, software, writing. 
+Matthijs van Leeuwen: Methodology, validation, writing, funding acquisition, supervision.
+Funding Zhong Li and Matthijs van Leeuwen: This publication is part of the project Digital Twin with 
+project number P18-03 of the research programme TTW Perspective, which is (partly) financed by the 
+Dutch Research Council (NWO). Jiayang Shi: This research is co-financed by the European Union H2020-
+MSCA-ITN-2020 under grant agreement no. 956172 (xCTing).
+Data availability Data is provided within online supplementary information files.
+Declarations
+Conflict of interest The authors declare no competing interests.
+Ethical approval This study does not involve human and animal data, and thus the need for approval was 
+waived.
+Open Access  This article is licensed under a Creative Commons Attribution 4.0 International License, 
+which permits use, sharing, adaptation, distribution and reproduction in any medium or format, as long 
+as you give appropriate credit to the original author(s) and the source, provide a link to the Creative 
+Commons licence, and indicate if changes were made. The images or other third party material in this 
+article are included in the article’s Creative Commons licence, unless indicated otherwise in a credit line 
+to the material. If material is not included in the article’s Creative Commons licence and your intended use 
+is not permitted by statutory regulation or exceeds the permitted use, you will need to obtain permission 
+directly from the copyright holder. To view a copy of this licence, visit  h t t p : / / c r e a t i v e c o m m o n s . o r g / l i c e n 
+s e s / b y / 4 . 0 /     .  
+
+1 3
+66 Page 30 of 33
+Z. Li et al.
+References
+Aggarwal CC, Aggarwal CC (2017) An introduction to outlier analysis. Springer
+Ali S, Boufaied C, Bianculli D et al (2025) A comprehensive study of machine learning techniques for 
+log-based anomaly detection. Empir Softw Eng 30:129. https://doi.org/10.1007/s10664-025-10669-3
+Alsalmi E, Alhuzali A, Alhothali A (2026) Log-based anomaly detection of system logs using graph neural 
+network. Comput Mater Contin
+Bach S, Binder A, Montavon G et al (2015) On pixel-wise explanations for non-linear classifier decisions 
+by layer-wise relevance propagation. PLoS ONE 10(7):e0130140
+Bahmani B, Chowdhury A, Goel A (2010) Fast incremental and personalized pagerank. Proc VLDB 
+Endow 4(3):173–184
+Chen Z, Liu J, Gu W (2021) Experience report: deep learning-based system log analysis for anomaly 
+detection. arXiv:2107.05908 arXiv preprint
+Du M, Li F, Zheng G (2017) Deeplog: anomaly detection and diagnosis from system logs through deep 
+learning. pp 1285–1298
+Farzad A, Gulliver TA (2020) Unsupervised log message anomaly detection. ICT Express 6(3):229–237
+Fey M, Lenssen JE (2019) Fast graph representation learning with PyTorch geometric. ICLR 2019, RLGM 
+Workshop
+Gilmer J, Schoenholz SS, Riley PF (2017) Neural message passing for quantum chemistry. In: Interna -
+tional conference on machine learning. PMLR, pp 1263–1272
+Goldstein M, Dengel A (2012) Histogram-based outlier score (hbos): a fast unsupervised anomaly detec -
+tion algorithm. KI-2012: poster and demo track, vol 1. pp 59–63
+Guidotti R (2024) Counterfactual explanations and how to find them: literature review and benchmarking. 
+Data Min Knowl Disc 38(5):2770–2824
+Guo H, Yuan S, Wu X (2021) Logbert: log anomaly detection via bert. IEEE, pp 1–8
+Han Y , Du L, Zhao J (2026) Reinforced temporal graph neural networks for class-imbalanced log anomaly 
+detection. Expert Syst Appl 301:130438. https://doi.org/10.1016/j.eswa.2025.130438
+He P, Zhu J, Zheng Z (2017) Drain: An online log parsing approach with fixed depth tree. In: 2017 IEEE 
+international conference on web services (ICWS). IEEE, pp 33–40
+He S, Zhu J, He P, et al (2016) Experience report: system log analysis for anomaly detection. IEEE, pp 
+207–218
+Huang Q, Yamada M, Tian Y et al (2022) Graphlime: local interpretable model explanations for graph 
+neural networks. IEEE Trans Knowl Data Eng 35(7):6968–6972
+Jia T, Chen P, Yang L (2017) An approach for anomaly diagnosis based on hybrid graph model with logs 
+for distributed services. In: 2017 IEEE international conference on web services (ICWS). IEEE, pp 
+25–32
+Kim H, Lee BS, Shin WY (2022) Graph anomaly detection with graph neural networks: current status and 
+challenges. IEEE Access
+Kingma DP, Ba J (2014) Adam: A method for stochastic optimization. arXiv:1412.6980 arXiv preprint
+Le VH, Zhang H (2022) Log-based anomaly detection with deep learning: How far are we?. In: Proceed-
+ings of the 44th international conference on software engineering. pp 1356–1367
+Li Y , Liu Y , Wang H, et al (2023a) Glad: content-aware dynamic graphs for log anomaly detection. arXiv 
+preprint arXiv:2309.05953
+Li Z, van Leeuwen M (2022) Feature selection for fault detection and prediction based on event log analy-
+sis. ACM SIGKDD Explor Newsl 24(2):96–104
+Li Z, Van Leeuwen M (2023) Explainable contextual anomaly detection using quantile regression forests. 
+Data Min Knowl Disc 37(6):2517–2563
+Li Z, Zhu Y , van Leeuwen M (2023) A survey on explainable anomaly detection. ACM Trans Knowl Dis-
+cov Data. https://doi.org/10.1145/3609333
+Li Z, Geisler S, Wang Y , et al (2024a) Explainable graph neural networks under fire. arXiv preprint 
+arXiv:2406.06417
+Li Z, Liang S, Shi J et al (2024) Cross-domain graph level anomaly detection. IEEE Trans Knowl Data 
+Eng 01:1–12
+Li Z, Shi J, Van Leeuwen M (2024c) Graph neural networks based log anomaly detection and explana -
+tion. In: Proceedings of the 2024 IEEE/ACM 46th international conference on software engineering: 
+companion proceedings, pp 306–307
+
+1 3
+Page 31 of 33 66
+Graph neural networks based log anomaly detection and explanation
+Lin Q, Zhang H, Lou JG (2016) Log clustering based problem identification for online service systems. 
+IEEE, pp 102–111
+Liu FT, Ting KM, Zhou ZH (2008). Isolation forest. IEEE, pp 413–422
+Lu S, Wei X, Li Y , et al (2018) Detecting anomaly in big data system logs using convolutional neural net-
+work. In: 2018 IEEE 16th Intl Conf on dependable, autonomic and secure computing, 16th interna -
+tional conference on pervasive intelligence and computing, 4th international conference on big data 
+intelligence and computing and cyber science and technology congress (DASC/PiCom/DataCom/
+CyberSciTech), IEEE, pp 151–158
+Ma R, Pang G, Chen L (2022) Deep graph-level anomaly detection by glocal knowledge distillation. 
+In: Proceedings of the fifteenth ACM international conference on web search and data mining. pp 
+704–714
+Ma Y , Hao J, Yang Y , et al (2019) Spectral-based graph convolutional network for directed graphs. CoRR 
+abs/1907.08990. https://arxiv.org/abs/1907.08990
+Meng W, Liu Y , Zhu Y (2019) Loganomaly: unsupervised detection of sequential and quantitative anoma-
+lies in unstructured logs. pp 4739–4745
+Mondal SA, Rv P, Rao S et al (2024) Ladders: log based anomaly detection and diagnosis for enterprise 
+systems. Ann Data Sci 11(4):1165–1183
+Mondal SA, Rv P, Rao S (2025) A fast algorithm for high-dimensional causal discovery. Int J Data Sci 
+Anal 1–10
+Monti F, Otness K, Bronstein MM (2018) Motifnet: a motif-based graph convolutional network 
+for directed graphs. In: 2018 IEEE data science workshop (DSW), IEEE, pp 225–228, 10.1109/
+DSW.2018.8439897
+Narayanan A, Chandramohan M, Venkatesan R, et al (2017) graph2vec: learning distributed representa -
+tions of graphs. In: International workshop on mining and learning with graphs (MLG)
+Neumann M, Garnett R, Bauckhage C et al (2016) Propagation kernels: efficient graph kernels from propa-
+gated information. Mach Learn 102(2):209–245
+Nguyen HT, Liang PJ, Akoglu L (2023) Detecting anomalous graphs in labeled multi-graph databases. 
+ACM Trans Knowl Discov Data. https://doi.org/10.1145/3533770
+Nguyen T, Liao TL, Vu TA (2019) Anomaly detection using one-class svm for logs of juniper router 
+devices. In: International conference on industrial networks and intelligent systems. Springer, pp 
+302–312
+Pang G, Shen C, Cao L et al (2021) Deep learning for anomaly detection: a review. ACM Comput Surv 
+(CSUR) 54(2):1–38
+Paszke A, Gross S, Massa F (2019) Pytorch: An imperative style, high-performance deep learning library. 
+Adv Neural Inform Process Syst 32
+Pennington J, Socher R, Manning CD (2014) Glove: Global vectors for word representation. In: Proceed-
+ings of the 2014 conference on empirical methods in natural language processing (EMNLP). pp 
+1532–1543
+Qiu C, Kloft M, Mandt S (2022) Raising the bar in graph-level anomaly detection. In: International joint 
+conference on artificial intelligence
+Ramos J (2003) Using tf-idf to determine word relevance in document queries. In: Proceedings of the first 
+instructional conference on machine learning, Citeseer. pp 29–48
+Ruff L, Vandermeulen R, Goernitz N (2018) Deep one-class classification. International conference on 
+machine learning. PMLR, pp 4393–4402
+Sarkima A (2025) Graph-based anomaly detection: evaluating logs2graphs with non-benchmark logs. 
+Master’s thesis, Aalto University, Espoo, Finland
+Schölkopf B, Platt JC, Shawe-Taylor J et al (2001) Estimating the support of a high-dimensional distribu-
+tion. Neural Comput 13(7):1443–1471
+Shervashidze N, Schweitzer P, Van Leeuwen EJ (2011) Weisfeiler-Lehman graph kernels. J Mach Learn 
+Res 12(9)
+Tax DM, Duin RP (2004) Support vector data description. Mach Learn 54(1):45–66
+Tong Z, Liang Y , Sun C et al (2020) Digraph inception convolutional networks. Adv Neural Inf Process 
+Syst 33:17907–17918
+Tong Z, Liang Y , Sun C, et al (2020b) Directed graph convolutional network. CoRR abs/2004.13970. 
+arxiv:org/abs/2004.13970
+Wan Y , Liu Y , Wang D, et al (2021) Glad-paw: graph-based log anomaly detection by position aware 
+weighted graph attention network. Springer, pp 66–77
+
+1 3
+66 Page 32 of 33
+Z. Li et al.
+Wang P, Zhang X, Cao Z et al (2024) Loggt: cross-system log anomaly detection via heterogeneous graph 
+feature and transfer learning. Expert Syst Appl 251:124082.  h t t p s : / / d o i . o r g / 1 0 . 1 0 1 6 / j . e s w a . 2 0 2 4 . 1 2 
+4 0 8 2       
+Wang X, Jin B, Du Y et al (2021) One-class graph neural networks for anomaly detection in attributed 
+networks. Neural Comput Appl 33(18):12073–12085
+Wu S, Zhao J, Tian G (2022) Understanding and mitigating data contamination in deep anomaly detection: 
+a kernel-based approach. IJCAI 2319–2325
+Xie Y , Zhang H, Babar MA (2022) Loggd: detecting anomalies from system logs with graph neural net -
+works. In: IEEE 22nd international conference on software quality, reliability and security (QRS). 
+pp 299–310
+Xu K, Hu W, Leskovec J (2018) How powerful are graph neural networks?. In: International conference 
+on learning representations
+Xu R, Li Y (2024) Interpretable spatial-temporal graph convolutional network for system log anomaly 
+detection. Adv Eng Inform 62:102803. https://doi.org/10.1016/j.aei.2024.102803
+Xu W, Huang L, Fox A (2009) Detecting large-scale system problems by mining console logs. pp 117–132
+Yang L, Chen J, Wang Z, et al (2021a) Plelog: Semi-supervised log-based anomaly detection via probabi-
+listic label estimation. In: 2021 IEEE/ACM 43rd international conference on software engineering: 
+companion proceedings (ICSE-Companion), IEEE, pp 230–231
+Yang L, Chen J, Wang Z, et al (2021b) Semi-supervised log-based anomaly detection via probabilistic 
+label estimation. In: 2021 IEEE/ACM 43rd international conference on software engineering (ICSE), 
+IEEE, pp 1448–1460
+Ying Z, You J, Morris C (2018) Hierarchical graph representation learning with differentiable pooling. Adv 
+Neural Inform Process Syst 31
+Ying Z, Bourgeois D, You J (2019) Gnnexplainer: generating explanations for graph neural networks. Adv 
+Neural Inform Process Syst 32
+Zhang B, Zhang H, Moscato P, et al (2020) Anomaly detection via mining numerical workflow rela -
+tions from logs. In: 2020 international symposium on reliable distributed systems (SRDS), IEEE, 
+pp 195–204
+Zhang C, Peng X, Sha C, et al (2022a) Deeptralog: trace-log combined microservice anomaly detection 
+through graph-based deep learning. In: Proceedings of the 44th international conference on software 
+engineering, pp 623–634
+Zhang G, Yang Z, Wu J, et al (2022b) Dual-discriminative graph neural network for imbalanced graph-
+level anomaly detection. Adv Neural Inform Process Syst
+Zhang X, He Y , Brugnone N et al (2021) Magnet: a neural network for directed graphs. Adv Neural Inf 
+Process Syst 34:27003–27015
+Zhao L, Akoglu L (2021) On using classification datasets to evaluate graph outlier detection: peculiar 
+observations and new insights. Big Data
+Zhao L, Sawlani S, Srinivasan A (2022) Graph anomaly detection with unsupervised GNNs. IN: IEEE 
+international conference on data mining (ICDM) short
+Zhao Y , Nasrullah Z, Li Z (2019) Pyod: a python toolbox for scalable outlier detection. J Mach Learn Res 
+20:1–7
+Zhou S, Tan Q, Xu Z, et al (2021) Subtractive aggregation for attributed network anomaly detection. In: 
+Proceedings of the 30th ACM international conference on information & knowledge management, 
+pp 3672–3676
+Zhu J, He S, Liu J (2019) Tools and benchmarks for automated log parsing. In: 2019 IEEE/ACM 41st 
+international conference on software engineering: software engineering in practice (ICSE-SEIP). 
+IEEE, pp 121–130
+Publisher's Note Springer Nature remains neutral with regard to jurisdictional claims in published maps 
+and institutional affiliations.
+Authors and Affiliations
+Zhong Li1,2  · Jiayang Shi1  · Matthijs van Leeuwen1
+
+1 3
+Page 33 of 33 66
+Graph neural networks based log anomaly detection and explanation
+  Zhong Li
+z.li@liacs.leidenuniv.nl
+Jiayang Shi
+j.shi@liacs.leidenuniv.nl
+Matthijs van Leeuwen
+m.van.leeuwen@liacs.leidenuniv.nl
+1 Leiden Institute of Advanced Computer Science (LIACS), Leiden University, Leiden, The 
+Netherlands
+2 The Intelligent Computing Research Center, Great Bay University, Dongguan, China

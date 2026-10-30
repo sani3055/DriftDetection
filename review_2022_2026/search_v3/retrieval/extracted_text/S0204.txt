@@ -1,0 +1,1948 @@
+Computer Modeling in
+Engineering & Sciences echT PressScience
+Doi:10.32604/cmes.2025.072023
+ARTICLE
+AutoSHARC:FeedbackDrivenExplainableIntrusionDetectionwith
+SHAP-GuidedPost-HocRetrainingforQoSSensitiveIoTNetworks
+MuhammadSaadFarooqui 1, AizazAhmadKhattak 2, BakriHossainAwaji3, NazikAlturki4,
+NohaAlnazzawi5, MuhammadHanif6,* andMuhammadShahbazKhan 2
+1DepartmentofComputerScience,HITECUniversity,Taxila,47080,Pakistan
+2SchoolofComputing,EngineeringandtheBuiltEnvironment,EdinburghNapierUniversity,Edinburgh,EH105DT,UK
+3DepartmentofComputerScience,CollegeofComputerScienceandInformationSystems,NajranUniversity,
+Najran,6646,SaudiArabia
+4DepartmentofInformationSystems,CollegeofComputeran dInformationSciences,PrincessNourahbintAbdulrahman
+University,P.O.Box84428,Riyadh,11671,SaudiArabia
+5ComputerScienceandEngineeringDepartment,YanbuIndustrialCollege,RoyalCommissionforJubailandYanbu,
+Yanbu,46444,SaudiArabia
+6DepartmentofInformatics,SchoolofBusiness,ÖrebroUniversitet,Örebro,SE-70182,Sweden
+*CorrespondingAuthor:MuhammadHanif.Email:muhammad.hanif@oru.se
+Received:18August2025;Accepted:24October2025;Published:23December2025
+ABSTRACT: Quality of Service (QoS) assurance in programmable IoT and 5G networks is increasingly threatened
+by cyberattacks such as Distributed Denial of Service (DDoS), spoofing, and botnet intrusions. This paper presents
+AutoSHARC, a feedback-driven, explainable intrusion detection framework that integrates Boruta and LightGBM–
+SHAP feature selection with a lightweight CNN–Attention–GRU classifier. AutoSHARC employs a two-stage feature
+selection pipeline to identify the most informative features from high-dimensional IoT traffic and reduces 46 features
+to 30 highly informative ones, followed by post-hoc SHAP-guided retraining to refine feature importance, forming a
+feedbackloopwhereonlythemostimpactfulattributesarereusedtoretrainthemodel.Thisiterativerefinementreduces
+computational overhead, accelerates detection latency, and improves transparency. Evaluated on the CIC IoT 2023
+dataset, AutoSHARC achieves 98.98% accuracy, 98.9% F1-score, and strong robustness with a Matthews Correlation
+Coefficient of 0.98 and Cohen’s Kappa of 0.98. The final model contains only 531,272 trainable parameters with a
+compact 2 MB size, enabling real-time deployment on resource-constrained IoT nodes. By combining explainable AI
+withiterativefeaturerefinement,AutoSHARCprovidesscalableandtrustworthyintrusiondetectionwhilepreserving
+keyQoSindicatorssuchaslatency,throughput,andreliability.
+KEYWORDS: QoS preservation; intelligent programmable networks; intrusion detection; IoT security; feature
+selection;SHAPexplainability;Boruta;LightGBM;explainabledeeplearning;resource-efficientAI
+1I n t r o d u c t i o n
+Intelligent programmable networks, powered by technologies such as software-defined networking
+(SDN), network function virtualization (NFV), and 5G network slicing, are rapidly emerging as the
+backbone of modern communication infrastructures [1]. These networks aim to ensure stringent Quality
+of Service (QoS) requirements across diverse applications, including Internet of Things (IoT), autonomous
+systems, and industrial control. Maintaining low latency, high throughput, and service reliability in such
+programmable environments is, however, increasingly challenged by both dynamic traffic conditions and
+Copyright©2025TheAuthors. PublishedbyTechSciencePress.
+This work is licensed under a Creative Commons Attribution 4.0 International License, which permits
+unrestricteduse,distribution,andreproductioninanymedium,providedtheoriginalworkisproperlycited.
+
+4396 ComputModelEngSci. 2025;145(3)
+evolvingcyberthreats.SecurityplaysapivotalroleinQoSassurance.IntrusionssuchasDistributedDenial
+ofService(DDoS),spoofing,reconnaissance,andbotnet-drivenattacksdirectlydegradeQoSbyintroducing
+congestion, excessive jitter, and packet loss [2]. As a result, intrusion detection is no longer only a security
+function,butalsoafundamentalQoSenablerinprogrammablenetworks.Ensuringthatnetworkslicesand
+IoT-enabled services remain resilient against attacks requires lightweight, adaptive, and interpretable AI
+modelscapableofreal-timeanalysisunderresourceconstraints.
+Traditional intrusion detection systems (IDS) struggle to meet these demands due to their reliance
+on high-dimensional, noisy, and redundant features. The rapidly growing high-dimensional data from
+various applications overwhelms analytics and machine learning systems. This results in noisy, irrelevant,
+and redundant information, which increases model overfitting and leads to higher error rates in pattern
+recognition tasks [3]. Feature and variable selection makes data easier to interpret and visualize, cutting
+down on the need for excessive data collection and storage, speeding up both training and execution
+phases of models, and combating the challenges posed by high-dimensional datasets to boost prediction
+accuracy [4]. Classical feature selection methods—whether filter-based, wrapper-based, or embedded—
+lackthe scalabilityandinterpretability required for real-time QoS-sensitive environments.In addition,one
+of the key hurdles in designing intrusion detection systems involves identifying which data features are
+truly relevant. Many datasets used to train intelligent IDS models contain unnecessary attributes that don’t
+contribute meaningfully to the detection process and end up increasing computational load [5]. Hence,
+by applying feature selection, only the most informative attributes would be retained, thereby reducing
+model-buildingtimeandboostingintrusion-detectionperformance[ 6].
+Recent advances in deep learning have improved detection accuracy, but often at the cost of trans-
+parency, computational efficiency, and adaptability. Various approaches have emerged that utilize deep
+learning,hybrid,andensemblefeatureselectiontechniques,forexample,methodslikeIGRF-RFEcombine
+Random Forest importance with recursive elimination tailored to neural network architectures [7], but
+without regard to model interpretability. Distributed deep-learning-based IDSs align well with the large-
+scale, self-organizing, and decentralized nature of IoT networks. Future models that are computationally
+lightweight and efficient will be better suited for deployment on resource-constrained devices, making
+them practical in real-world IoT environments. Such efficiency is also crucial for handling real-time data
+streams, where rapid detection is essential to safeguard IoT communications. Another important avenue
+lies in addressing the scarcity of labeled intrusion data. Here, unsupervised and semi-supervised learning
+techniquesholdsignificantpotential,enablingIDSstole arnpatternswithoutheavyrelianceonmanuallabel-
+ing [8]. Researchers also propose hybrid feature selection approaches that combine model interpretability
+via SHAP with deep learning and machine learning techniques [9]. Some hybrid IDS pipelines have also
+beenproposed[ 10]thatpairunsuperviseddimensionalityreductionwithboostedclassifiersandhaveshown
+promise.However,thesemethodsdidnotincorporatefilterorwrapper-basedtoolsalongsidethem.Thisgap
+motivates the development of methods that combine explainability, scalability, and resource efficiency for
+IDSinprogrammablenetworks.
+1.1 ProblemFormulation
+IntrusionDetectionSystems(IDS)designedforpr ogrammablenetworksfacesignificantchallengesin
+maintainingefficiency,accuracy,andinterpretabilityunderreal-worldconditions.TraditionalIDSsolutions
+rely heavily on high-dimensional, noisy, and redundant features, which increase the risk of overfitting,
+degrade detection accuracy, and impose unnecessary computational burdens. While feature selection
+methods such as filter, wrapper, and embedded-based approaches can reduce dimensionality, they often
+lack the scalability and interpretability required in real-time, QoS-sensitive environments. Deep learning
+
+ComputModelEngSci. 2025;145(3) 4397
+models, on the other hand, achieve strong performance but are typically resource-intensive and operate as
+black-boxsystems,makingthemunsuitablefordeploymentinconstrainedIoTandnetwork-edgescenarios
+where transparency and efficiency are critical. Existing hybrid approaches have shown promise but remain
+incomplete, as they fail to integrate filter and wrapper techniques with explainable AI and deep learning
+i nau n i fi e df r a m e w o r k .Th i sg a pu n d e r s c o r e st h en e e df o ral i g h t w e i g h t ,a d a p t i v e ,a n de x p l a i n a b l ef e a t u r e
+selection strategy that can generalize across diverse intrusion detection datasets while preserving both
+accuracyandinterpretability.
+1.2 TheProposedSolution
+In this paper, we propose AutoSHARC (Automated SHapley-Attention Recurrent Classifier), a
+feedback-driven deep feature selection framework that integrates ensemble-based filtering (Boruta and
+LightGBM/SHAP) with a lightweight CNN-Attention-GRU architecture. By incorporating SHAP explain-
+ability both before and after training, AutoSHARC establishes a closed-loop mechanism that automatically
+refines feature sets and retrains the model with only the most impactful features. This approach reduces
+computationaloverhead,enhancestransparency,andacceleratesdetectionlatency,directlysupportingQoS
+preservationinprogrammableIoT-enablednetworks.
+The key contributions of this paper are as follows:
+1. A two-stage ensemble feature selection strategy that combines Boruta with LightGBM and SHAP to
+reliablyidentifyinformativefeaturesfromhigh-dimensionalintrusiondetectiondatasets.
+2. A lightweight CNN-Attention-GRU deep learning model tailored for feature weighting and inter-
+pretableintrusiondetectioninQoS-sensitiveIoTandprogrammablenetworks.
+3. Afeedback-drivenpost-hocretrainingmechanismu singSHAPexplainabilitytoiterativelyrefinemodel
+performance,reduceinputdimensionality,andimprovecomputationalefficiency.
+4. ComprehensiveevaluationontheCICIoT2023dataset,demonstratingthatAutoSHARCachieveshigh
+detection accuracy while preserving resource efficiency, making it suitable for real-world deployment
+inIoTandintelligentprogrammablenetworks.
+Thepaperisorganizedasfollows. Section1 framestheproblem,statestheresearchgap,andsummarizes
+the proposed solution.Section2 reviews related work and situates the contribution within existing IDS
+literature. Section3 describes the dataset and then details dataset preparation, preprocessing, and the
+stratified split and selective rebalancing strategy applied prior to model training.Section4 presents the
+design and mathematical modeling of the ensemble feature selector.Section5 introduces the classifier, its
+architectural components and low-level architectural equations, plus training dynamics, hyperparameters
+and model parameter counts.Section6 explains how SHAP can be used for post-hoc explainability and
+top-kfeatureselection. Section7 reportsexperimentalsetup,training/validationcurves,evaluationmetrics,
+computational performance and the classification results together with SHAP analyses.Section8 contains
+comparative experiments andanablation study.Finally,Section9 concludes the paper by summarizing the
+keyresultsanddescribingitslimitations.
+2L i t e r a t u r eR e v i e w
+A substantial body of research has been devoted to the development of feature selection techniques,
+driven by the need to reduce dimensionality, improve model generalization, and enhance interpretability
+across diverse domains such as cybersecurity, bioinformatics, and finance. Over time, researchers have
+proposed a wide spectrum of methods that can be broadly categorized into machine learning-based,
+neural network-driven, hybrid, and ensemble approaches. In the following section, we briefly review some
+
+4398 ComputModelEngSci. 2025;145(3)
+of these existing techniques and the contributions they have made in the field of feature selection for
+intelligentsystems.
+Traditionalfilterandwrappermethodslaidthegroundworkforearlyfeatureselection,whileembedded
+techniques, particularly those integrated into tree-based models like Random Forest and XGBoost, offered
+scalable and efficient alternatives. In [11], Wardana et al. propose a Federated Random Forest (FRF)
+frameworkenhancedwithfeatureselectiontoaddressintrusiondetectioninIoTenvironments,prioritizing
+privacy and resource efficiency across decentralized devices. Their method, applied to the CIC IoT Dataset
+2023, demonstrates exceptional performance of 99.68% accuracy, underscoring the model’s robustness;
+however, there’s no confusion matrix or breakdown of accuracy by class, so performance on minority
+a t t a c kt y p e si su n c l e a r .I n[12], Phan et al. evaluated five feature selection techniques, Random Forest,
+RecursiveFeatureElimination(RFE),LogisticRegre ssion,XGBoost,andInformationGain,acrossmachine
+learning classifiers (DT, RF, k-NN, GB, MLP) using the CIC IoT 2023 dataset. Their experiments showed
+RFE combined with RF achieved the highest accuracy of 99.57% using 30 features, while a 5-feature RFE–
+kNNconfigurationwasoptimalforresource-constrainedenvironments.In[ 13],Chikkalwaretal.applieda
+machine learning–based SelectPercentile feature selection method in two widely used benchmark datasets,
+NSL-KDD and CSE-CIC-IDS2018, prior to classification with a Regularized LSTM model; their approach
+achieved a detection accuracy of 99.95% and 99.33%, respectively. In an IoT DDoS attack detection [14],
+Modi et al. proposed a machine learning-driven approach utilizing a hybrid feature selection algorithm to
+identifycriticalfeaturesbeforeclassificationviaXGBoost.ThemethodwasevaluatedCICIDS2017andCIC
+IoT2023,recording99.993%accuracyonCICIDS2017andarecallof97.64%onCICIoT2023.In[ 15],Wang
+etal.introducedKD-TCNN,anintrusiondetectionmodeldesignedforindustrialCPSthatintegratesdeep
+metriclearning,knowledgedistillation,andamachinel earningbasedfeatureselectionprocessusingBinary
+GreyWolfOptimization(BGWO);themodelwasevaluatedontheNSL-KDDandCIC-IDS2017,achievinga
+mere0.4%accuracydropwhilereducingcomputationalcostandmodelsizebyapproximately86%.Existing
+ML-based IDS often lack interpretability, making it hard for security professionals to trust the results. The
+RF3WCmodel,formulatedbyWahabetal.[ 16],addressesthisbyintroducingarankedfilter-basedthree-way
+clustering strategy that enhances accuracy and interpretability in high-security IoT environments. Unlike
+traditional binary classifiers, it uses three-way decisions, malicious, non-malicious, and suspicious and has
+shown excellent results. This nuanced approach could offer a promising path forward for reliable ML-based
+intrusiondetection.
+On the other end of the spectrum, deep learning models introduced novel selection mechanisms
+through attention layers, autoencoders, and saliency maps that can rank or prune features based on
+gradientsignalsorlearnedrelevance.In[ 17],Westphaletal.proposeFSNID,aninformation-theoreticdeep
+learning framework that trains a neural network, optionally augmented with a recurrent layer to capture
+temporal dependencies, to rank and prune non-informative network features; evaluated on the TON-IoT,
+NSL-KDD, CIC-DDoS2019, CICIDS17 and UNSW-NB15 datasets, FSNID reduces feature dimensionality
+by over 70% while preserving or slightly improving detection accuracy and F1-scores. In their proposed
+XDLTDS framework [18], Shoukat et al. employ a deep learning-driven intrusiondetection system tailored
+for industrial IoT environments, leveraging LSTM-AE for feature representation and AGRU for multiclass
+threatclassification,whileincorporatingSHAPforpost-hocinterpretability.Themodel’sefficacyisvalidated
+across three benchmark datasets, N-BaIoT, Edge-IIoTset, and CIC-IDS2017. However, the features were
+not reused to measure the extent to which the model could have improved. Younisse et al. [19]p r o p o s e d
+an interpretability-centric framework for CNN-based intrusion detection systems using SHAP (Shapley
+Additive Explanations) and kernel density estimation (KDE) plots to assess feature relevance and visualize
+modeldecisionbehavior.Theirmethodologywasapplie dtotheKDD99andDistilledKitsune-2018datasets,
+
+ComputModelEngSci. 2025;145(3) 4399
+achieving accuracies ranging from 95% to 100%. In [20], the authors employed deep convolutional neural
+networks and interpretability methods such as SHAP and Grad-CAM to identify feature relevance within
+learnedmodels,usingtheCICIDS2017datasetasthebenchmark,andreportedadetectionaccuracyof99.4%.
+Gaspar et al. [21] investigated the interpretability of IoT-based Intrusion Detection Systems by applying
+LIME and SHAP to a Multi-Layer Perceptron classifier, with model accuracy reported at 93.71%. Their
+evaluation relied on a generated version of the ADFA-LD dataset. In their IDS framework [22], Ravi et al.
+integraterecurrentdeeplearningmodelswithkernel-ba sedprincipalcomponentanalysis(KPCA)forfeature
+selection,followedbyfeaturefusionandclassificationviaensemblemeta-classifiers;themodel’sefficacywas
+validatedacrossfivebenchmarkdatasets,SDN-IoT,KDD-Cup-1999,UNSW-NB15,WSN-DS,andCICIDS-
+2017,achievingpeakdetectionaccuracyof99%andclassificationaccuracyof97%onSDN-IoT.Inspiredby
+rough set theory, Wahab et al. [23] extend neural networks with a Three-Way Decision (3WD) framework
+alongside XAI, introducing a third class—suspicious—alongside attack and normal. This enables deferred
+decisions under ambiguity, reducing misclassification. At the same time, some questions about compute
+complexity and resource overhead could be raised. Cerasuolo et al. [24] emphasize adaptability across
+different IoT network domains in their model by combining Class Incremental Learning (CIL), Domain
+IncrementalLearning(DIL),andXAIwitha2D-CNNarchitecture.Theirfocusisongeneralizationbetween
+datasetscollectedfromdifferentnetworks,essentiallyexploringtransferabilityofNIDSmodels.WhileXAI
+is mentioned, it is primarily used to probe decision-making, not as an integral part of the feature selection
+ormodeldesign.
+Hybrid models emerged to bridge the gap between traditional ML interpretability and deep learning
+performance,combiningstatisticalmeasureswithneuralrelevancetracking.Morerecently,ensemble-based
+feature selection strategies have gained popularity due to their ability to aggregate the strengths of multiple
+techniques, improving robustness and reducing model bias. These methods are particularly useful when
+working with noisy, high-dimensional datasets, such as those encountered in intrusion detection. In [25],
+Ji et al. proposed a hybrid feature selection method for intrusion detection in cyber-physical systems that
+combined bagging (Random Forest) and boosting (AdaBoost) ensembles to rank and select features based
+on aggregated importance scores. Using the CIC IoT 2023 dataset, the authors demonstrated that selecting
+the top 21 out of 46 features significantly reduced computational cost while achieving high performance
+metrics,including98.27%accuracy.In[ 26],Chohraetal.introducedChameleon,ahybridfeatureselection
+frameworkthatintegratesparticleswarmoptimization(PSO)withensembleclassifierstoenhancenetwork
+anomalydetectionusingdeeplearningautoencoders.Theyvalidatedtheirapproachonthreedatasets,NSL-
+KDD and UNSW-NB15 and IoT-Zeek yielding up to 97.302% on them, showcasing the effectiveness of
+PSO-guidedfeatureselection.In[ 27],Zadaetal.proposedalean-basedhybridIntrusionDetectionSystem
+(IDS) for IoT environments that integrates Particle Swarm Optimization (PSO) and Genetic Algorithm
+(GA) for feature selection, paired with Extreme Learning Machine and Bootstrap Aggregation (ELM-BA)
+forclassification.LeveragingtheCICIDS-2017dataset, theyachievedperfectdetec tionaccuracyformultiple
+criticalattacktypes.In[ 28],Otokwalaetal.introducedahybridfeatureselectionframeworkcalledOCFSDA,
+optimized common features selection and deep-autoencoder, for lightweight intrusion detection in IoT
+environments.Themethodintegratesstatisticalfilteri ngwithdeeplearning-baseddimensionalityreduction,
+yielding a compact model optimized for edge devices. Evaluated on the MQTT-IoT-IDS2020 and CIC-
+IDS2017 datasets, the system demonstrated strong performance with classification accuracies of 99% and
+97%andultra-lowmemoryusage(2KB).However,themodel’sgeneralizabilityacrossdiverseIoTcontexts
+and resilience to adversarial manipulation remain underexplored. In [29], Ji et al. introduced two hybrid-
+enhanced intrusion detection frameworks, SelectKBest-MI and CNN-SVM-GWO using the CICIDS2017
+andCICIoT2023datasets.ThefirstframeworkfusedSelectKBestandmutualinformationfiltertechniques,
+
+4400 ComputModelEngSci. 2025;145(3)
+while the second combined CNN-based extraction with SVM and Gray Wolf Optimizer for selection,
+leveraging both Random Forest and XGBoost classifiers for intrusion detection. They achieved 99.99%
+accuracyonCICIDS2017and99.60%accuracyontheCICIoT2023.In[ 30],Bakroetal.proposedacloud-
+basedintrusiondetectionsystemleveragingahybridfeatureselectionapproachthatcombinesGrasshopper
+OptimizationAlgorithm(GOA)andGeneticAlgorithm( GA),integratedwithaRandomForestclassifierfor
+optimal performance, achieving classification accuracies of 98% on UNSW-NB15, 99% on CIC-DDoS2019,
+and92%onCICBellDNSEXF2021,showcasingstrongmulti-classandindividualclassperformance.Finally,
+in[31],Dasarietal.introducedIDSELSE,astackedensemblelearning-basedintrusiondetectionmodelthat
+employs Boruta for feature selection and combines LightGBM and Decision Tree classifiers with Logistic
+Regression as the meta-model, but no deep learning layer has been used.Tables 1and 2 summarize the
+reviewed literature.
+Table 1:Summaryofreviewedworksandtheirdistinctivecharacteristics
+Authors(Year) Technique/Model Feature
+selection
+Post-training
+interpretability
+Iterative
+retraining Keycontributions/Focus
+Wardana et al.
+(2024)[11]
+FederatedRandom
+Forest(FL) ✓ XX
+FederatedIoTIDSwith
+SelectFromModelFS,
+balancingprivacyand
+performance.
+Phanetal.
+(2024)[12]
+RF,RFE,LR,
+XGBoost,InfoGain
++MLclassifiers
+✓ XX
+Comparative study of five
+FStechniques;RFE +RF
+yieldedbestaccuracy.
+Chikkalwar&
+Garapati
+(2025)[13]
+SelectPercentileFS
++Regularized
+LSTM
+✓ XX
+Dimensionalityreduction
+viaSelectPercentile;high
+detectionaccuracywith
+LSTM.
+Modi(2024) Hybrid FS+
+XGBoost ✓ XX
+HybridFSwithXGBoost
+fo rDDoSdetectio n;
+strong recall on IoT
+datasets.
+Wang et al.
+(2022)[15]
+KD-TCNN+Deep
+Metric Learning+
+BGWOFS
+✓ XX
+CompressedIDSwith
+GreyWolfFS;reduced
+modelsizeby86%.
+Wahab et al.
+(2025)[23]
+Three-wayNeural
+Network+SHAP X ✓ X
+3-classIDS(benign,
+suspicious,malicious)
+withexplainability.
+Westphaletal.
+(2025)[17]
+FSNID–Neural
+TransferEntropy
+FS
+✓ XX
+Feature selection via
+transferentropy;reduced
+featuresby∼70%.
+Shoukatetal.
+(2024)[18]
+LSTM
+Autoencoder+
+Attentive GRU+
+SHAP
+X ✓ X
+Autoencoder+GRU
+pipeline;SHAP-based
+feature importance.
+Younisseetal.
+(2022)[19]
+CNN+
+SHAP/KDE X ✓ X
+CNNIDSwithSHAP
+explanationsforfeature
+attribution.
+Pande &
+Khamparia
+(2023)[20]
+DeepNeural
+Network+SHAP X ✓ X
+DNNIDSwith
+global/localSHAP-based
+interpretability.
+Gasparetal.
+(2024)[21]
+MLP+LIME&
+SHAP X ✓ X
+IDSwithdual
+explainabilitymethods
+forinterpretability
+validation.
+(Continued)
+
+ComputModelEngSci. 2025;145(3) 4401
+Table 1 (continued)
+Authors(Year) Technique/Model Feature
+selection
+Post-training
+interpretability
+Iterative
+retraining Keycontributions/Focus
+Ravietal.
+(2022)[22]
+RNNEnsemble+
+Kernel-PCAFS+
+Meta-classifier
+✓ XX
+Hiddenfeatureextraction
+withKPCA+ensemble
+fusion.
+Cerasuoloetal.
+(2025)[24]
+Incremental
+Learning+XAI X ✓✓
+Incrementaladaptation
+acrossnetworkswith
+explainability.
+Jietal.(2024)[ 29]
+SelectKBest+MI+
+RF/CNN +SVM
++GWO+RF/XGB
+✓ XX
+T woh yb ridframewo rks
+combiningFSwith
+classical/deepclassifiers.
+Chohraetal.
+(2022)[26]
+PSO-based
+Multi-objectiveFS
++Ensemble
+✓ XX
+ChameleonIDS
+frameworkwith
+multi-objectiveFS.
+Zadaetal.
+(2025)[27]
+PSO+GAFS+
+ELM+Bagging ✓ XX LeanIDSwithhybridFS
++ensembleELM.
+Table 2:Summaryofreviewedworksandtheirdistinctivecharacteristics(continuation)
+Authors(Year) Technique/Model Feature
+selection
+Post-training
+interpretability
+Iterative
+retraining Keycontributions/Focus
+Otokwalaetal.
+(2024)[28]
+OCFSDA-
+CommonFS+
+DeepAutoencoder
+✓ XX
+CompactFS+
+autoencoderIDS;pruned
+forIoTedgeuse.
+Bakroetal.
+(2024)[30]
+GOA+GAFS+
+RandomForest ✓ XX Bio-inspiredhybridFS
+withimbalancehandling.
+Dasarietal.
+(2024)[31]
+StackedEnsemble
+(LightGBM+DT) XX X
+High-performing
+ensembleIDS;noFSor
+interpretabilityused.
+Proposedmodel
+CNN-Attention-
+GRU+Boruta+
+LightGBM+SHAP
+FeedbackLoop
+✓✓ ✓
+Novelfeatureselection
+frameworkcombining
+ensembleFS(Boruta,
+LightGBM),
+attention-baseddeep
+model,andSHAP-driven
+retraining.Provides
+interpretable,
+resource-efficientIDS
+withautomatedfeedback
+loopforfeature
+refinement.
+3D a t a s e t
+TheCI CI oT20 23da taset[32]waschosenforthiswork,whichisacomprehensiveintrusiondetection
+dataset tailored specifically for modern IoT (Internet of Things) environments. What makes this dataset
+uniqueisthelevelofeffortputintoreplicatingareal-worldsmartenvironmentusingactualhardwarerather
+than simulations. The researchers behind the dataset constructed a physical lab setup mimicking a smart
+home and smart city ecosystem by integrating a wide range of devices such as smart TVs, thermostats,
+speakers, sensors, and even surveillance systems. These devices were configured to communicate using
+typicalIoTprotocolsoverbothwiredandwirelessnetworks,justlikewhatweseeinrealdeployments.
+
+4402 ComputModelEngSci. 2025;145(3)
+Tomakethedatasettrulyrepresentativeoftoday’scyberthreatlandscape,thecreatorsgeneratedamix
+oflegitimateandmaliciousnetworktraffic.Fortheattackscenarios,theylaunchedover30differenttypesof
+intrusions, including well-known categories like Distributed Denial of Service (DDoS), brute force attacks,
+spoofing, reconnaissance, web-based exploits, and even malware behaviors like backdoors and botnet
+communication.Thiswasdoneusingvariousattacktoolsandscriptstoemulatehowactualcybercriminals
+target vulnerable devices. One particularly important strength of this dataset is that it combines both the
+diversity and volume of attacks, which helps in building robust machine learning models. From a data
+collection standpoint, they used powerful traffic capturing tools like Wireshark and tcpdump and then
+extracted meaningful flow-based features. Each network flow is represented with more than 40 carefully
+engineered features, such as packet counts, flag statistics, inter-arrival times, protocol types, and durations.
+These features reflect both low-level TCP/IP behaviors and high-level application patterns, making them
+extremelyusefulforlearningattackpatternsinsupervisedmodels.
+The reason for selecting this dataset for our feature selection-based deep learning model is twofold.
+First, the dataset is compatible with deep learning architectures designed for tabular data due to the way it
+was generated and preprocessed. According to the authors of the dataset, network traffic was first captured
+atthepacketlevelandthenseveralfeatureswereextractedusingtheDPKTpackage,whichwerethenstored
+in separate csv files. They also removed the timestamp from the list since it did not illustrate the network
+behavior[32].Eachrowinthedatasetcorrespondstoanindependentnetworkflow,summarizedintostatis-
+ticaldescriptorsincludinginter-arrivaltime,packet sizestatistics(minimum,maximum,average,variance),
+protocol flag counts, and byte totals. This transformation removes raw sequential packet dependencies,
+producingafixed-lengthfeaturevectorforeveryflow.Asaresult,thedatasetlacksexplicittemporalorspatial
+dependenciesacrosssamples.Flowsarenotordered,nordotheydirectlyinfluenceoneanother,andthereis
+alsononeedfortechniquessuchasslidingwindows.Second,thedataset’sscaleandvariety,intermsofboth
+benignandattackclasses,providesarealisticandchall enginggroundforbuildinggeneralizablemodelsthat
+can perform well on unseen traffic types. Its richness in both balanced and imbalanced classes gives way to
+testadvancedtechniqueslikeSMOTE,focalloss,andSHAPinterpretabilityunderrealisticconditions.
+3.1 DatasetPreparationandPreprocessing
+With a total of 46,686,579 samples, the CIC IoT 2023 dataset captures flows from various real-world
+attack vectors including DDoS, DoS, Mirai, Brute Force, Spoofing, and Web-based attacks. Given the
+computational and memory constraints typically associated with training deep learning models, it was
+neither feasible nor necessary to train on the entire dataset. Therefore, approximately 18.5 million samples,
+roughly40%ofthetotal,wereselectedfortrainingandevaluationpurposes.Thisselectionstrategyensured
+diversitywhilemaintainingpracticaltrainingtimes.
+The dataset labels were then mapped into 8 consolidated classes, grouping multiple sub-attack types
+under broader categories (e.g., all types of DDoS attacks were grouped under a single “DDoS” class). This
+consolidation made the classification task more robust and interpretable, while also helping balance the
+granularityofdetectionwiththedataset’sinherentskew.Tomaximizetherepresentationofunderrepresented
+behaviors, all available samples from the minority classes (Brute Force, Web-based, Recon, Spoofing, Mirai
+andBenign)wereincludedentirely.Theseclasseseachhadrelativelysmallsamplesizes,makingthemsuitable
+for full inclusion without the risk of overwhelming the dataset. For the major classes, DDoS and DoS, the
+datasetwasrandomlyundersampledtoensuretheydidnotdominatethemodel’slearningprocess.Thefinal
+class-wisesampledistributionpriortosplittingisshownin Table 3.
+
+ComputModelEngSci. 2025;145(3) 4403
+Table 3:Chosendistributionofdataset
+Classes Samples
+DDoS 9,000,000
+DoS 5,000,000
+Mirai 2,634,124
+Benign 1,098,195
+Spoofing 486,504
+Recon 354,565
+Web-based 24,829
+BruteForce 13,064
+Following the data selection, the 46 original features were then filtered using a two-stage feature
+selection strategy: first, Boruta was applied to eliminate statistically irrelevant and redundant features, and
+then LightGBM with SHAP values was used to rank and refine the remaining features based on their
+importance to the prediction task. This process reduced the number of features to 30 highly relevant ones,
+removing unnecessary noise and improving model interpretability. Finally, a StandardScaler was used to
+normalize the data such that each feature had zero mean and unit variance. This step is crucial in neural
+networktrainingtoensurefasterconvergenceandtopreventtheoptimizerfromgettingstuckinsuboptimal
+local minima due to disproportionately scaled input features. After scaling, the dataset was shuffled to
+eliminate any unintended ordering that might bias the model, especially since flows from the same attack
+typecouldhavebeenloggedincontiguousblocksduringcollection.
+3.2 DatasetSplittingandRebalancing
+Afterpreprocessing,thecleanedandscaleddatasetwassplitintotrainingandtestingsetsusingan80:20
+stratifiedsplit.Stratificationwasnecessarytomainta intheoriginalclassproportionsinbothsubsets,which
+iscriticalwhendealingwithhighlyimbalanceddata.The trainingclassdistributionremainedheavilyskewed
+after the initial split, with dominant classes such as DDoS and DoS vastly outnumbering minority classes
+like Brute Force and Web-based attacks. To mitigate this issue, SMOTE (Synthetic Minority Over-sampling
+Technique) was used to generate synthetic samples inside the training split, specifically for the two most
+underrepresentedclasses(BruteForceandWeb-based), untiltheyreachedparitywiththethirdsmallestclass
+(Recon).Thisselectivebalancingapproachallowedforbetterlearningonrareattacktypeswithoutdisturbing
+the natural class distribution of the more representative classes. The final training and testing distributions
+areshownin Table 4.
+Table 4:Trainingandtestingsplitbyclass
+Classes Trainingsplit Testingsplit
+DDoS 7,200,000 1,800,000
+DoS 4,000,000 1,000,000
+Mirai 2,107,299 526,825
+Benign 878,556 219,639
+Spoofing 389,203 97,301
+Recon 283,652 70,913
+Web-based 283,652 4966
+Bruteforce 283,652 2613
+
+4404 ComputModelEngSci. 2025;145(3)
+Instead of forcing all classes to have identical sample sizes, which might introduce synthetic bias or
+overfitting, the rebalancing was designed to elevate only the smallest classes to a reasonable threshold. This
+retainedtheintegrityofnaturallyfrequentclasseslikeDDoSandDoSwhilepreventingtheminorityclasses
+frombeingignoredduringtraining.Therandomshuffleappliedafterwardensuredthatalltrainingdatawas
+well-distributed,furtheraidinggeneralizationduringthelearningphase.
+4 DesignandModelingoftheProposedFeatureSelector
+Given the high dimensionality and potential noise present in tabular intrusion detection datasets, a
+carefulfeatureselectionstrategywascriticaltoimprovemodelefficiencyandinterpretability.Tothatend,two
+complementary approaches were applied prior to training the deep learning model: Boruta and LightGBM
+with SHAP. These techniques were chosen not only for their ability to reduce dimensionality but also for
+theireffectivenessinuncoveringrelevantrelations hipsinnon-linearandimbalanceddataenvironments.
+4.1 Boruta
+Borutawasusedasanall-relevantfeatureselectionmethod,builtontopoftheRandomForestclassifier .
+The method works by creating “shadow features”, shuffled versions of the original features that serve as
+noise benchmarks. A Random Forest is trained using both original and shadow features, and each real
+feature is then compared to the best-performing shadow feature. If a feature significantly outperforms its
+n o i s yc o u n t e r p a r tb a s e do nZ - s c o r es t a t i s t i c s ,i ti sr e t a i n e d .Th i sc o m p a r i s o np r o c e s si sr e p e a t e di t e r a t i v e l y ,
+eliminating irrelevant features at each round until only confirmed or rejected features remain. Boruta is
+especially well-suited for intrusion detection datasets, which often contain redundant features such as Rate
+and Srate, or flags with overlapping meanings. By not arbitrarily favoringonly thestrongestsignals,Boruta
+ensures that all relevant, but potentially subtle, features are preserved. Its robustness against noise and
+ability to capture non-linear interactions make it ideal for scenarios where patterns like syn_flag_number
+in teractingwi thRa tepla yakeyr oleiniden tifyinga ttacktypessuchasS YNfloods.
+The derivation below outlines the core mathematical principles used by Boruta to score and validate
+features [33]. Letx
+t ∈Rn denote the vector ofn input features for thet-th sample, and letyt ∈R be the
+correspondingtargetvalue,where t =1,2,..., Tforatotalof Tinstances.Foreveryoriginalfeaturevector xt,
+arandomlyshuffledduplicate(calledashadowfeature)iscreated,denotedas x′
+t.Todeterminetherelevance
+of a feature, its Mean Decrease in Accuracy (MDA) is computed by comparing the model’s prediction
+performancewhenusingtheoriginalfeaturevs.itsshuffled(shadow)versionasgivenin Eq.(1) [34].
+MDA = 1
+mtree
+mtree
+∑
+m=1
+∑t∈OOB I(yt = f(xt))∑t∈OOB I(yt = f(x′
+t))
+∣OOB∣ (1)
+wheremtree isthetotalnumberoftrees(e.g.,500), I(⋅)istheindicatorfunction: I(A)= 1if Aistrue, and0
+otherwise, while OOB refers to the Out-of-Bag samples (those excluded from training them-th tree),f(⋅)
+isthepredictionfunctionofthetrainedmodel.
+Thismeasureshowm uchpredictionaccuracydropsonOOBsam pleswhentherealfea tureisreplaced
+by its permuted counterpart. Next, to normalize the importance of each feature, the Z-score is calculated
+usingthestandarddeviationofMDAvaluesacrossalltreesasin Eq.(2).
+Z-score = MDA
+SD (2)
+
+ComputModelEngSci. 2025;145(3) 4405
+whereSDisthestandarddeviationoftheaccuracylosses(MDAs)acrosstrees.Furthermore,adecisionrule
+for feature selection is applied where each feature is compared to the shadow features based on its Z-score.
+Afea tur eis:
+Confirmedimportantif Z-score > Zmax,
+Rejected(orunimportant)if Z-score < Zmax,
+whereZmax isthehighestZ-scoreamongallshadow(randomized)features.
+4.2 LightGBM+SHAP
+Complementing Boruta, LightGBM combined with SHAP (SHapley Additive Explanations) was also
+employed. LightGBM is a fast, high-performance gradient boosting framework that is particularly adept at
+handlinghigh-dimensional,sparse,andimbalancedda tasets,commoncharacteristicsinnetworkintrusion
+data. Once a LightGBM model was trained on the preselected features, SHAP values were computed to
+assign a unique importance score to every feature for each prediction. These SHAP scores are grounded in
+cooperativegametheory,measuringhowmucheachfeaturecontributestothemodel’spredictionrelativeto
+abaselineexpectation.ByaveragingtheabsoluteSH APvaluesacrossallsamples,aglobalrankingoffeature
+importancewasobtained.Thisrankinghelpedidentifywhichfeatureshadthemostinfluenceonthemodel’s
+decision-making process, for instance, highlighting that high values of Rate were strongly associated with
+DDoSattacks,orthatsyn_flag_numberwasonlyimpactfulwhenTCPwasenabled.
+LightGBM’s roots can be traced back to Gradient Boosting Decision Trees (GBDT), which laid the
+foundation for many tree-based ensemble methods, and were the starting point for SHAP explainability,
+which was later adapted for XGBoost and then LightGBM. In its core form, the forward additive model is
+definedas Eq.(2) [35]
+f(x)=
+M
+∑
+i=1
+βih(x;θi) (3)
+wherexisaninputfeaturevectorand h(x;θi)denotesthe i-thbaselearner.Theoverallmodelisconstructed
+a sas u mo fM such learners weighted byβi. The objective is tominimizethe loss overN traininginstances
+using
+min
+f
+N
+∑
+j=1
+L(f(xj),yj)= min
+f
+N
+∑
+j=1
+L(
+M
+∑
+i=1
+βih(xj;θi),yj) (4)
+where (xj,yj)N
+j=1isthedatasetandthemodelisconstructedincrementally.Thenegativegradientoftheloss
+with respect to each sample prediction is computed as inEq.(5) and the goal is to findh(xj;θM) and βM
+thatbestfitthisresidualinaleast-squaressenseasgivenin Eq.(6)
+gj =−∂L(fM−1(xj),yj)
+∂fM−1(xj) (5)
+θM,βM =argmin
+θ,β
+N
+∑
+j=1
+∣gj −βh(xj;θ)∣2 (6)
+Afteridentifyingthebest-fittingfunction,theoptimalstepsize ρM isthendeterminedvia:
+ρM =argmin
+ρ
+N
+∑
+j=1
+L(fM−1(xj)+ ρh(xj),yj),( 7 )
+
+4406 ComputModelEngSci. 2025;145(3)
+resulting in the updated model
+f(x)= fM−1 +ρMβMh(x;θM) (8)
+While effective, traditional GBDT is susceptible to overfitting and can be computationally expensive
+due to the need to scan all feature values for split selection. XGBoost improved on this by introducing reg-
+ularizationandasecond-orderTaylorapproximation,requiringbothgradientsandHessians (x
+j,gj,hj)N
+j=1,
+anduses Eq.(9) forcalculatingsplitgain,whilecomputingtheleafvalueusing Eq.(10)
+Gain = 1
+2 [ G2
+L
+HL +λ+ G2
+R
+HR +λ− (GL +GR)2
+HL +HR +λ]− γ,( 9 )
+Wj =− Gj
+Hj +λ (10)
+where GL and HL are the gradient and Hessian sums for the left node, andGR, HR are for the right.Wj is
+the weight for leafj,a n dλ, γare regularization terms. XGBoost struggled with large datasets due to high
+memory and training demands. LightGBM was proposed to address these scalability issues and extend the
+utility of SHAP explainability to larger problems [36]. It improves performance by growing trees leaf-wise
+(ratherthanlevel-wise)andintroducinghistogram-baseddecisiontrees,whichbucketcontinuousvaluesto
+reducememoryandspeeduptraining.Furthermore,itleveragesGradient-basedOne-SideSampling(GOSS)
+tofocusoninstanceswithlargegradientsandimplementsseveralparallelismstrategies.Thetrainingcostof
+eachtreenodesplitisdefinedas:
+cost
+time =featurenum ×samplenum ×pointnum (11)
+wherefeaturenum isthenumberofinputfeatures,sample num thetraininginstances,andpoint num thenumber
+of candidate splits. LightGBM’s ability to natively handle categorical features, its efficient histogram and
+sampling strategies, and cache-aware memory access have made it one of the most powerful and scalable
+implementations of GBDT, allowing it to be paired effectively with SHAP for reliable feature importance
+estimationinlarge-scaleintrusiondetectiontasks.
+4.3TheProposedEnsem bleofF eatureSelection
+To address the high dimensionality and redundancy inherent in intrusion detection datasets, we pro-
+pose a mathematically grounded hybrid feature selection ensemble that combines the statistical robustness
+ofBorutawiththefine-grainedinterpretabilityofLightGBM +SHAP. As shown inFig.1,Bo ru ta ,a sa nall -
+relevantselector,prunesthedatasetbyremovingnoisyorredundanttrafficfeaturesinastatisticallyreliable
+way while preserving all potentially important features. Since it builds on Random Forest, it is more robust
+than plain tree-based rankings and avoids bias toward high-cardinality features. LightGBM+ SHAP then
+adds a complementary stage, providing clear, interpretable explanations of feature importance—without
+reducing features into hard-to-interpret components as in PCA or relying solely on linear assumptions
+as in mutual information. This two-step approach is still underexplored in IDS research, and we chose it
+specifically to provide both novelty and stronger interpretability compared to conventional single method
+feature selection. Exactly 10,000 samples were taken from all 8 classes and after applying the ensemble, the
+results consisted of a concise, well-informed set of features that balanced interpretability, predictive power,
+and robustness against overfitting, setting a solid foundation for the subsequent deep learning model. In
+the end, 30 out of 46 features were selected to be sent to the next phase. Once the model is trained, an
+explainability tool will be used to assess the key predictive features, and those features can be saved and
+
+ComputModelEngSci. 2025;145(3) 4407
+usedtoretraintheexistingmodelordevelopanewmodel.The30selectedfeaturesonwhichthemodelwas
+trainedonarediscussedin Section7.6.
+Figure1: TheproposedAutoSHARCpipelineforfeatureselectionwithSHAP-guidedretraining
+The two-stage feature selector is formulated to identify all relevant features (strong and weak)a n d
+then re-rank them based on their contribution to predictive performance. Let the original dataset be
+denotedby D ={ (x(i),y(i))}N
+i=1,where x(i) ∈Rd isthe i-thfeaturevectorwith d dimensions,and y(i) isits
+correspondinglabel.
+4.3.1 Stage 1: Boruta Pruning via Shadow Features
+TheBorutaalgorithmfirstaugments Dbygeneratingpermuted“shadow”features x′(i)foreachoriginal
+feature:
+D′={ (x(i)∥x′(i),y(i))}N
+i=1,( 1 2 )
+where ∥denotes feature-wise concatenation. A random forest classifier is trained onD′to compute
+importancescores Ij for each featurexj basedontheMeanDecreaseinAccuracy(MDA):
+Ij = 1
+T
+T
+∑
+t=1
+1
+∣OOBt∣ ∑
+i∈OOBt
+[I(y(i) = ft(x(i))) −I(y(i) = ft(x(i)
+[j←perm]))],( 1 3 )
+whereT i st h en u m b e ro ft r e e s ,OO Bt denotes out-of-bag samples for treet,a n dft is the prediction of the
+t-th tree. FeaturejisretainedifitsaverageZ-scoreacrosstreessatisfies:
+Zj = Ij −μshadow
+σshadow
+>max
+k
+Zshadow
+k ,( 1 4 )
+where μshadow andσshadow arethemeanandstandarddeviationofshadowfeatureimportances.
+Let Fboruta ⊂{1,2,..., d}denotethesetoffeaturesretainedafterBoruta.
+4.3.2Stage2:SHAP-BasedRankingviaLightGBM
+Using the reduced feature setFboruta , a LightGBM model is trained and Shapley valuesϕ(i)
+j are
+computedforeachfeature j ∈Fboruta foreachinstance i:
+f(x(i))= ϕ0 + ∑
+j∈Fboruta
+ϕ(i)
+j ,( 1 5 )
+
+4408 ComputModelEngSci. 2025;145(3)
+whereϕ0 istheexpectedmodelo u t p u to vertheda taset.Theglobalim po rtanceo feachf ea t ur eisq uan tified
+bythemeanabsoluteShapleyvalue:
+Φj = 1
+N
+N
+∑
+i=1
+∣ϕ(i)
+j ∣, j ∈Fboruta .( 1 6 )
+F ea tur esar ethenrankedindescendingo r dero fΦj,andtheto p-k featuresareselected:
+Fselected =Topk ({Φj ∣j ∈Fboruta }),( 1 7 )
+with k =30determinedempiricallytobalancemodelaccuracyanddimensionality.
+Thus,thecompletefeatureselectionoperator S canbeexp r essedastheco m posi tefunctio n:
+Fselected = S(D)= RSHAP ○BBoruta (D),( 1 8 )
+where BBoruta denotestheBorutafilterand RSHAP denotestheLightGBM +SHAPranker.
+This selected feature setFselected is then forwarded to the deep learning classifier for training. The full
+AutoSHARCpipeline(see Fig.1)thusleveragesthismathematicaldesigntoensurerelevance,interpretability,
+andperformanceinhigh-dimensionalintrusiondetection.
+5 TheProposedModelforIntrusionDetection
+The intrusion detection model designed for the CIC IoT 2023 dataset is a hybrid deep learning
+architecture that combines 1D Convolutional Neural Networks (CNNs), an attention mechanism, a Gated
+Recurrent Unit (GRU), and a final dense output layer. Unlike traditional models that focus purely on
+classification performance, this model is specificallydesigned with feature selection as a primary objective.
+The goal is not only to predict attack types accurately but also to identify and isolate the most important
+inputfeaturescontributingtoeachdecision.
+5.1 ArchitecturalComponentsoftheProposedModel
+5.1.1CNNLayer—LocalFeatureTransformation
+D e s p i t et h ea b s e n c eo fn a t u r a ls p a t i a lo rt e m p o r a ls t r u c t u r ei nt h ed a t a s e t ,a1 DC N Ni su s e da st h e
+firstlayer.Intraditionalsettings,CNNsareappliedtoimagedatatodetectspatialpatterns.However,inthis
+architecture,theConv1Dlayeractsmorelikeanonlinearfeatureextractor.Applyinga1Dconvolutionhelps
+capturelocalpatternsorrelationshipsamongneighboringfeaturesineachsample.Itscanstheinputfeature
+vectorwithasmallkernel,capturinglocalgroupingsorinteractionsbetweenadjacentfeatures.Althoughthe
+featuresintheCICIoT2023datasetarenotorderedintimeorspace,itisstillplausiblethatcertainadjacent
+orco-occurringfeatures(e.g.,packetsizeandpacketrate)interactmeaningfullywhenviewedtogether.
+The real value of CNN here lies in its ability to transform the input into a richer latent representation
+through parameter sharing and local filtering. It’s a computationally efficient way to project the raw input
+featuresintoanewspace,preparingthemformoreexpressiveattentionandrecurrentlayers.Importantly,the
+CNNdoesnotassumeorenforcespatialcontinuity.Itjusthelpsextractcompact,meaningfulrepresentations
+at the feature level.
+A 1D Convolutional Neural Network (1D-CNN) processes sequential data by extracting local patterns
+usingconvolutionandpoolingoperations.Ineachconvolutionallayer,afeaturemap Z
+m iscomputedusinga
+
+ComputModelEngSci. 2025;145(3) 4409
+slidingwindowacrossinputsequences,whereeachoutputelement zm,r isderivedfromlocalizedfilters[ 37].
+Mathematically,theoutputofthe rth unitinthe mth featureiscalculatedas:
+zm,r = ϕ(
+U
+∑
+u=1
+V
+∑
+v=1
+au,v+r−1 ⋅Ku,m,v +bm) ,( 1 9 )
+whereϕdenotestheactivationfunction, au,v representsthe vth elementofthe uth inputsequence, Ku,m,v is
+thefilterkernellinkingthe uth inputtothe mth outputmap,and bm isatrainablebiasterm.Theconvolutional
+processcanalsobecompactlyexpressedas:
+Zm = ϕ(
+U
+∑
+u=1
+Au ∗Kum) , (m =1,2,..., M),( 2 0 )
+where ∗indicates the convolution operator. Once local features are extracted, a pooling layer reduces
+dimensionality and emphasizes dominant activations. In the case of max pooling, therth output from the
+mth featuremapiscomputedas:
+ρm,r =
+N
+max
+n=1
+(zm,(r−1)⋅δ+n),( 2 1 )
+where N i st h ep o o l i n gw i n d o ws i z ea n dδis the stride. Alternatively, in average pooling, the output is
+calculatedusing:
+ρm,r = η
+N
+∑
+n=1
+(zm,(r−1)⋅δ+n),( 2 2 )
+withηrepresentingthescalingfactor.Whilebothmethod sreducespatialdimensions,maxpoolingtypically
+capturesmoreprominentfeatures[ 38]andisthereforechosen.
+5.1.2 Attention Layer—Feature Selection by Design
+Following the CNN, an attention mechanism, specifically a custom single-headed, non self-attention
+layer, is applied. This layer is designed to assign importance scores to each extracted feature, thereby
+functioning as an explicit feature selector. This approach aligns with the core motivation for designing the
+model:toselectandprioritizethemostinformativefeaturesinahighlyinterpretableway.Importantly,unlike
+otherattentionmechanismssuchasself-attentionortransformerblocks,thisattentionlayerdoesnotassume
+anysequentialorspatialdependenciesinthedata.Inintrusiondetectiondatasetsliketheoneusedhere,each
+rowisindependent,andthefeaturestypicallydonotfollowatemporalorspatialstructure.Hence,complex
+attention models that calculate pairwise dependencies or rely on positional encodings would not only be
+computationally excessive but might also lead to overfitting by modeling noise instead of signal. Instead,
+this simple attention gate provides a targeted and computationally efficient way to weight each feature’s
+contribution,ensuringrelevance-drivenlearningwithoutarchitecturaloverkill.
+Thederivationbelowformalizestheoperationoftheattention-basedfeatureselectionlayerusedinour
+model,whichimplementsaper-featuregatingmechanism[ 39].Let x ∈R
+T denotetheinputfeaturevectorfor
+asingleinstance,where Tisthenumberoftimestepsorfeatures.Theattentionmechanismcomputesascalar
+importance score for each featurexi,w h e r ei ∈{1,2,..., T}, and uses it to reweight the input feature. This
+processbeginswiththeapplicationofatrainabledenselayer(withsharedweightsacrossallfeatures),which
+appliesalineartransformationtoeachfeaturevalue x
+i usingaweight W andbias b,assho wnin Eq.(16):
+si = Wxi +b (23)
+
+4410 ComputModelEngSci. 2025;145(3)
+Thisrawscore si ispassedthroughasigmoidactivationfunction σ(⋅)toproduceanattentioncoefficient
+αi ∈(0,1),asexp r essedinEq.(17):
+αi = σ(si)= 1
+1+e−si
+= 1
+1+e−(Wxi+b) (24)
+The sigmoid output acts as a gating value that determines the relevance of the corresponding input
+featurexi,where αi closeto1retainsthefeatureand αi closeto0suppressesit[ 40].Theoriginalinputfeature
+isthenreweightedin Eq.(18) usingthiscoefficienttoproducethegatedoutput yi asfollows:
+yi = αi ⋅xi = σ(Wxi +b)⋅xi (25)
+To represent this mechanism compactly over the entire feature vectorx =[ x1,x2,..., xT]T,w ed e fi n e
+α= σ(Wx+b)andexp r essthefinalo u tp u taselemen t-wisem ul ti plica tio nasEq.(19)
+y = α⊙x (26)
+Here, ⊙denotes the Hadamard (element-wise) product. The result is a refined feature vectory ∈RT
+where each input component has been scaled based on its learned importance. Importantly, since the
+attention coefficients are computed independently for each feature and the operation does not change
+the feature dimensionality, the output retains the same shape as the input. This allows the attention
+mechanism to act as a lightweight and interpretable feature selector that enhances important features while
+suppressing irrelevant or noisy inputs. Such a gating mechanism is widely used in neural architectures for
+both interpretability and improved performance, and aligns closely with attention-based modules found in
+computervisionandnaturallanguageprocessing.
+5.1.3 GRU Layer—Abstract Representation, Not Temporal Memory
+Although the data lacks temporal dependencies across rows, a GRU (Gated Recurrent Unit) layer is
+used after the attention mechanism to introduce a form of redundancy filtering. Rather than modeling
+sequences over time, the GRU in this context is utilized as a gating mechanism to suppress irrelevant or
+redundantfeatureactivationsthatmightpersistevenafterattention.Therecurrentunitactslikeasecondary
+filter, allowing the model to remember the most salient patterns selected by the attention layer and ignore
+fluctuations or noise that don’t consistently contribute to class discrimination. Even though there’s no
+real sequence, this use of GRU reflects an architectural choice for its gating capabilities, not its temporal
+modelingstrengths.
+Theupdategate,shownin Eq.(20),controlstheextenttowhichthemodelshouldpreserveinformation
+from the previous hidden state when processing the current input. It is calculated by applying a sigmoid
+activationtothelineartransformationoftheconcatenatedprevioushiddenstate h
+t−1 andthecurrentinput
+xt [41]:
+zt = σ(Wz[ht−1,xt]+ bz) (27)
+Inasimilarfashion,theresetgatein Eq.(21) governshowmuchofthepastmemoryshouldbeignored
+orresetbeforecomputingthenewmemorycandidate.Itusesthesamecombinationof ht−1andxt andpasses
+itthroughasigmoid-activatedlinearlayer:
+rt = σ(Wr[ht−1,xt]+ br) (28)
+
+ComputModelEngSci. 2025;145(3) 4411
+Thecandidatehiddenstate ˜ht isthencomputedusingtheelement-wiseproductoftheresetgateandthe
+previoushiddenstate.Thismodifiedhiddenstateisconcatenatedwiththecurrentinputandpassedthrough
+a tanh activation, as shown inEq.(22). This operation determines the new content to be potentially added
+tothememory:
+˜h
+t =tanh(Wh[rt ⋅ht−1,xt]) (29)
+Next,thenewhiddenstate ht isformedbyinterpolatingbetweentheprevioushiddenstate ht−1andthe
+newlycomputedcandidateactivation ˜ht.Themixingproportionisgovernedbytheupdategate zt,asshown
+inEq.(23):
+ht =(1−zt)ht−1 +zt˜ht (30)
+Optionally, an output gateot can be used to regulate how much of the hidden state should contribute
+t ot h ea c t u a lo u t p u ta tt h ec u r r e n tt i m es t e p .Th i si sd o n ei nEq.(24) by applying another sigmoid function
+totheaffinetransfo rma tio no fht:
+ot = σo(Woht +bo) (31)
+Here,Wo andbo represent the trainable weights and biases of the output transformation layer, respec-
+tively. Together, these equations form the backbone of the Gated Recurrent Unit (GRU), which balances
+informationretentionandupdatethroughlearnedgatingmechanisms.
+5.1.4 Dense Output Layer—Multiclass Classification
+After extracting and aggregating features through the CNN, attention, and GRU layers, the model
+outputsapredictionthroughafullyconnecteddenselayerwithasoftmaxactivationfunction.Thisstandard
+setup produces a probability distribution over the target classes (e.g., DDoS, Mirai, Web-based, etc.). The
+use of softmax ensures that predictions are interpretable and that the model’s confidence in each class can
+be quantified. This is especially useful for downstreamevaluation metrics like ROC-AUC, precision-recall,
+andforinterpretabilitytoolslikeSHAP.Sinceclassimbalanceisaknownchallengeincybersecuritydatasets,
+this final stage benefits from the refined and focused input features produced by the earlier layers, helping
+theclassifiermakemoreinformedpredictionswithreducedoverfittingrisk.
+5.2 ArchitecturalDetailsoftheProposedModel
+The overall design of the model is intentionally built around the concept of intelligent feature selection
+rather than complex sequential modeling. The dataset is tabular, 1D, and likely does not exhibit spatial or
+temporaldependencies,eachsampleisanindependentobservationofnetworkactivity.Therefore,applying
+sequence-heavyarchitectureslikeRNNsortransformerswouldbeinefficientandpronetooverfitting. Fig.2
+shows that the CNN layer provides a simple but effective form of feature preprocessing. The attention
+mechanismoffersinterpretabilityandfocusedlearningwithouttheoverheadofself-attention.TheGRUacts
+more as a content filter than a sequence model. Combined, these layers form a lightweight yet powerful
+pipeline for handling imbalanced, high-dimensional intrusion detection data while prioritizing clarity,
+performance,andresourceefficiency.
+
+4412 ComputModelEngSci. 2025;145(3)
+Figure2: Theproposedmodelarchitecture
+Theproposed deeplearningmodelisdesignedasastructuredfeaturerefinementpipeline,whereeach
+component contributes to progressive filtering, transformation, and selection of the most discriminative
+features for intrusion detection. Given a preprocessed input vectorx ∈R
+T,w h e r eT =30 features selected
+b yt h ee n s e m b l em e c h a n i s m ,t h em o d e lt r a n s f o r m sx through three core stages: convolutional embedding,
+attention-guidedfeatureselection,andgatedrefinement.
+5.2.1 Stage 1: 1D Convolutional Feature Transformation
+Theinputisreshapedas x ∈RT×1 andpassedthr oughLstacked1Dconvolutionallayers,eachapplying
+Mℓ kernelsofwidth wℓ.F o rla yerℓ,theconvolutionaltransformationisgivenby:
+Z(ℓ) =ReLU(W(ℓ) ∗Z(ℓ−1) +b(ℓ)), ℓ =1,2,..., L,( 3 2 )
+where ∗denotes 1D convolution,W(ℓ) are trainable filters,b(ℓ) biases, andZ(0) =x. This transformation
+captureslow-levellocalinteractionsbetweenadjacentfeatures,suchaspacketrateandpacketsize.
+5.2.2Stage2:Attention-BasedFeatureSelection
+Followingconvolution,theoutput Z ∈RT′×d isreweightedusingalearnedfeature-wiseattentionvector
+α∈[0,1]T′
+,whereeachelement αi iscomputedas:
+αi = σ(w⊺zi +b), i =1,..., T′,( 3 3 )
+
+ComputModelEngSci. 2025;145(3) 4413
+where zi ∈Rd is the i-th feature vector after CNN,σ(⋅)is the sigmoid function, and(w,b) are shared
+attentionparameters.Thereweightedrepresentationbecomes:
+˜zi = αi ⋅zi,a n d ˜Z =[ ˜z1,˜z2,..., ˜zT′].( 3 4 )
+Thisoperationactsasasoftfeatureselector,enhancinginformativefeaturemapsandsuppressingnoisy
+or redundant ones.
+5.2.3 Stage3:GatedRefinement viaGRU
+Although the data is non-sequential, we leverage the **gating mechanism** of GRUs to selectively
+p r o paga testablefea tur eactiva tio ns.TheGR Uo pera teso verthefea tur edimensio nra therthantime:
+zt = σ(Wzzt +Uzht−1 +bz),( 3 5 )
+rt = σ(Wrzt +Urht−1 +br),( 3 6 )
+˜ht =tanh(Whzt +Uh(rt ⊙ht−1)+ bh),( 3 7 )
+ht =(1−zt)⊙ ht−1 +zt ⊙˜ht,( 3 8 )
+where ⊙i st h ee l e m e n t - w i s ep r o d u c t .Th efi n a lG R Uh i d d e ns t a t ehT serves as the abstract, filtered feature
+embeddingforclassification.
+5.2.4 Training Dynamics: Optimization and Loss Function
+In the training phase, the model was initially optimized using the RMSprop optimizer in conjunction
+with focal loss. This pairing was specifically chosen to handle severe class imbalance and to give greater
+attentiontohard-to-classifyminoritysamples.RMSpropprovedeffectiveatstabilizinglearningintheearlier
+epochs. For fine-tuning, the optimizer was switched to Adam while retaining focal loss with greater alpha
+values for the minority classes. This change allowed for more adaptive learning rates across parameters,
+accelerating convergence and refining performance once the model had achieved a stable baseline. The
+consistent use of focal loss throughout both phases ensured that minority class recall and robustness
+remainedacentralfocusintheoptimizationstrategy.
+RMSprop
+RMSprop is a popular method for training deep learning models using adaptive learning rates [42].
+Let x
+t ∈Rd denotetheparametervectoratiteration t,a ndletgt =∇ f(xt)representthestochasticgradient
+computed at that step. The goal is to minimize a possibly non-convex stochastic objective function of the
+form ofEq.(25) [43]:
+f(x)= E
+ξ∼P[˜f(x,ξ)], (39)
+where ξis a random variable sampled from an unknown distributionP,a n d˜f(x,ξ)denotes the stochastic
+l o s sf o rag i v e ni n p u tξ. To address the instability that may arise from the varying magnitude of gradients
+across coordinates, RMSprop maintains an exponential moving average of the squared gradients, allowing
+the learning rate to adaptively scale for each parameter. Formally, for each coordinatek ∈{1,2,..., d},t h e
+update rules inEqs.(26) and(27)defineRMSprop:
+v
+t,k = θtvt−1,k +(1−θt)g2
+t,k,( 4 0 )
+xt+1,k = xt,k −αt
+gt,k
+√vt,k+ ϵ,( 4 1 )
+
+4414 ComputModelEngSci. 2025;145(3)
+whereθt ∈(0,1)isthedecayfactorcontrollingthememoryofpastsquaredgradients, αt isthebaselearning
+rate at timet,a n dϵ>0 is a small constant for numerical stability. To express RMSprop as a special case of
+an adaptive gradient method, we can interpret the denominator as a normalization term that adjusts the
+effectivelearningrateas Eq.(28) whichimpliesacoordinate-wisegradientdescentupdatein Eq.(29)
+η
+t,k = αt
+√vt,k+ ϵ, (42)
+xt+1,k = xt,k −ηt,kgt,k. (43)
+This mechanism allows RMSprop to take larger steps in directions where gradients have historically
+been small, and smaller steps in directions where gradients have been consistently large. In practice,θt is
+oftenheldconstant(e.g., θt =0.9or0.99),andthebaselearningrate αt istypicallysetasasmallfixedvalue.
+RMSpropiswidelyusedduetoitssimplicityandrobustnessinhandlingnon-stationaryobjectivesandsparse
+gradients. However, care must be taken in selecting the hyperparameters, particularlyθ
+t and αt, to ensure
+properconvergencebehavior[ 44].RMSpropprovidesearlystability,whileAdamimprovesconvergencevia
+momentumandadaptivelearningrates.
+F oca lLos sf o rClas sI m ba la nce
+Toaddressclassimbalance,weemployfocalloss,whichemphasizeshard-to-classifysamples:
+Lfocal =−
+C
+∑
+i=1
+αi(1−pi)γyi log(pi),( 4 4 )
+where C is the number of classes,yi i st h et r u el a b e l( o n e - h o t ) ,pi is the predicted probability,αi is the
+class-specific weight, andγcontrols focus on difficult examples. Given a classification task withC classes,
+lety =( y1,y2,..., yC)betheone-hotencodedgroundtruthlabeland p =( p1,p2,..., pC)bethepredicted
+probabilities(outputofsoftmax).Thecross-entropylossisgivenby Eq.(30) [45]
+LCE (y,p)=−
+C
+∑
+i=1
+yi log(pi) (45)
+Sinceyiso ne-ho tencoded,o nlythetrueclassindex t has yt =1,andallothersare0.Therefore,
+LCE =−log(pt) (46)
+Tohandleclassimbalance,aweightingfactor α∈(0,1]isin tr od ucedfo rthetrueclass:
+Lα=−αt log(pt) (47)
+Thefocallossintroducesamodulatingfactor (1−pt)γtofocuslearningonhardmisclassifiedexamples.
+Theparameter γ≥0co n tr olsthisfocus:
+Lfocal =−αt(1−pt)γlog(pt) (48)
+Th i sr e d u c e st h el o s sc o n t r i b u t i o nf r o me a s ye x a m p l e s( w h e r ept is close to 1) and emphasizes harder
+ones.Extendingthefocallosstothefullmulti-classcaseusingone-hotencoding:
+Lfocal (y,p)=−
+C
+∑
+i=1
+αi ⋅(1−pi)γ⋅yi log(pi) (49)
+
+ComputModelEngSci. 2025;145(3) 4415
+Here,yi is1onlyforthetrueclass,0otherwise, pi isthepredictedprobabilityforclass i,αi istheclass-
+specific weight (same for all classes if uniform). Since onlyyt =1f o rt h et r u ec l a s st,t h es u mr e d u c e st o :
+Lfocal =−αt(1−pt)γlog(pt) (50)
+5.2.5 Architectural Hyperparameters
+The design of the CNN-Attention-GRU model, as given inTable 5, was driven by a careful balance
+between performance, interpretability, and stability. The 1D Convolutional layers were chosen to effectively
+capture local patterns and interactions between adjacent features, which is ideal for tabular intrusion
+detection data where spatial proximity in features can reflect meaningful structure. Instead of deeper CNN
+stacks,weusedshallowbutwidefilterstominimizeoverfi ttingwhilestillextractingrobustpatterns.TheGRU
+layerwasselectedoverLSTMorTransformerlayersduetoitslowerparametercount,fasterconvergence,and
+reduced risk of overfitting on tabular data without temporal dependencies. GRUs performed consistently
+better in experiments, offering stable learning dynamics without the complexity of LSTMs’ memory cell
+gates or the training instability of Transformer-based models on small datasets. The attention mechanism
+wasintegratedtoenhancethemodel’sabilitytoselectandfocusonthemostimportantfeatures,actingasa
+softfeatureselectorthatimprovesbothperformanceandexplainability.Regularizationtechniqueslikebatch
+normalizationanddropoutwereintentionallyomittedafterextensivetesting,astheyintroducedinstability
+in training and degraded performance rather than enhancing generalization. This was likely been due to
+the feature space post preprocessing and SMOTE, making such regularizations unnecessary. Predictions
+were assigned to the class with the maximum softmax probability (argmax). No per-class probability
+thresholdswereoptimizedforthismodel.Thebatchsizeusedwas2048tomaximizetrainingspeed.Overall,
+each component in the architecture was purposefully selected to maximize accuracy while maintaining
+interpretability and stability, with all unnecessary complexity stripped away. Thy hyperparameters used for
+thep r o posedmodelar egiveninTable 6.
+Table 5:Proposedmodelarchitecturewithoutputshapesandlayer-wiseparameters
+Layer(type) Outputshape Param#
+input_layer(InputLayer) (None, 30,1) 0
+conv1d_1(Conv1D) (None,30,64) 256
+conv1d_2(Conv1D) (None,30,64) 12,352
+max_pooling1d_1(MaxPooling1D) (None,15,64) 0
+conv1d_3(Conv1D) (None,15,128) 24,704
+conv1d_4(Conv1D) (None,15,128) 49,280
+max_pooling1d_2(MaxPooling1D) (None,7,128) 0
+conv1d_5(Conv1D) (None,7,256) 98,560
+conv1d_6(Conv1D) (None,7,256) 196,864
+max_pooling1d_3(MaxPooling1D) (None,3,256) 0
+attention_feature_selection(AttentionFeatureSelection) (None,3,256) 0
+gru(GRU) (None,128) 186,224
+dense_1(Dense) (None,8) 1032
+
+4416 ComputModelEngSci. 2025;145(3)
+Table 6:Hyperparametersused
+Hyperparameter Value
+RMSproplearningrate 1 ×10−4
+Adamlearningrate(fine-tuning) 1 ×10−5
+Focal Lossγ 2
+Focal Lossα(DoS,DDoS,Mirai) 1
+Focal Lossα(Benign,Spoofing,Web-based,BruteForce,Recon) 4
+BatchSize 2048
+5.2.6ModelParameters
+The final model consisted of approximately 531,272 trainable parameters, as displayed inTable 7,
+occupying only 2034 KB of storage space. This compact architecture was deliberately designed to strike a
+balance between performance and efficiency. One of the guiding principles in building this model was to
+maintain a lightweight footprint while preserving the model’s ability to learn rich feature representations.
+Given the nature of the dataset, where each row represents an independent sample without temporal or
+spatial dependencies, it was unnecessary to use deeper or heavier models that might introduce overfitting
+or unnecessary complexity. The choice of using a compact CNN-GRU architecture with an attention
+mechanism ensured that only the most relevant features were selected and passed through, allowing the
+network to focus on meaningful patterns without redundancy. This resulted in a model that is resource-
+efficient, suitable for deployment in real-world or edge environments, and fast during both training and
+inference,withoutcompromisingclassificationperformance.
+Table 7:P arametersummaryandsizeo fthep r oposedmodel
+Totalparameters Trainableparameters Non-trainableparameters ModelsizeinKB
+531,272 531,272 0 2034
+6 SHAPforExplainability
+SHAP (SHapley Additive exPlanations) was used in this study as a post-training explainability tool
+to assess and interpret the contribution of each input feature to the model’s predictions. Unlike black-box
+models where interpretability is minimal, SHAP enables a detailed breakdown of how each feature pushes
+the prediction toward or away from a certain class. It offers consistent and theoretically grounded feature
+attributions, unlike LIME which relies on unstable local approximations, or Counterfactuals which focus
+only on individual “what-if” scenarios. SHAP not only explains single predictions but also provides global
+feature importance, making it especially suited for our dataset where flows are described by more than 40
+engineered features. This makes it particularly powerful in the context of feature selection, especially when
+interpretability, transparency, and generalization are just as important as predictive accuracy. In our case,
+afterapplyingalayeredfeatureselectionstrategyduringpreprocessing(BorutaandSHAP +LightGBM),the
+applicationofSHAPagainaftertrainingactedasafinalinterpretabilitypass,providingreassurancethatthe
+modelwasrelyingontrulyrelevantfeaturesduringinference.
+SHAPisbasedoncooperativegametheory,assigningeachfeatureanimportancevalueforaparticular
+prediction by estimating how the prediction changes when that feature is removed or added. It attributes
+
+ComputModelEngSci. 2025;145(3) 4417
+these changes fairly across all features by considering all possible combinations. This provides local expla-
+nations (per-sample) that can be aggregated into global explanations to understand the overall behavior
+of the model. In a domain like intrusion detection, where model decisions can affect system-level security
+responses, this level of insight is critical. SHAP helps validate not only that the model is accurate but also
+thatitismakingtherightdecisionsfortherightreasons.
+The SHAP approach used in this work is Kernel SHAP, a model-agnostic technique grounded in
+cooperative game theory. It estimates the contribution of each feature to a specific model prediction using
+Shapleyvalues.Givenamodel f,aninputsample x ∈R
+M,andaspecificfeature i ∈{1,2,..., M},theSH AP
+valueϕi representsthemarginalcontributionoffeature iaveragedoverallpossiblefeaturesubsets S ⊆F/{i},
+whereF isthefullfeatureset.TheShapleyvalueisformallydefinedas:
+ϕi(f,x)= ∑
+S⊆F/{i}
+∣S∣!(∣F∣−∣S∣−1)!
+∣F∣! [fS∪{i}(xS∪{i})− fS(xS)] (51)
+Since computing this exactly is computationally expensive for largeM,K ernelS H APa p p r o xima testhe
+Shapley values by solving a weighted linear regression problem over perturbed binary feature masks. The
+SHAP valuesϕ∈R
+M areobtainedbyminimizingthefollowingobjective:
+ϕ=arg min
+ϕ∈RM
+∑
+z′∈Z
+[f(hx(z′)) −ϕTz′]
+2
+πx(z′) (52)
+Here,z′∈{0,1}M is a binary mask indicating which features are included,hx(z′) is the function that
+constructsafullinputfromamaskedversionbyfillingmissingfeatureswithbackgroundvalues,and πx(z′)
+istheShapleykernelwhichassignsaweighttoeachsubset:
+πx(z′)= M −1
+(M
+∣z′∣) ⋅∣z′∣⋅(M −∣z′∣)
+(53)
+In our implementation, 500 randomly selected training samples serve as the background distribution,
+while50testsamplesareexplained.Sincethemodelincl udesacustomattentionlayerandfocallossfunction,
+we use a prediction wrapper to reshape the input into the required 3D form, enabling compatibility with
+KernelExplainer.ThisallowstheSHAPvaluestoreliablyattributefeaturecontributionseveninthepresence
+of a complex, non-linear neural architecture.
+In our analysis (Fig.3), we used several SHAP output formats to gain a comprehensive understanding
+of feature importance. First, per-class SHAP summary plots were generated, showing how each feature
+influenced predictions for a specific class. These are useful for observing class-specific feature behavior,
+such as which features trigger DDoS predictions vs. Brute Force attacks.Second, mean SHAP values across
+classeswerecomputed,providingdirectionalinsights,thatis,showingwhetherafeaturetendstoincreaseor
+decreasethelikelihoodofanyparticularclass.Whilethisoffersaninterestingperspectiveintohowfeatures
+interact across the decision boundary, it sometimes becomes noisy or overly class-specific when the goal is
+generalfeatureimportance.
+Forourprimarygoaloffinalizingareusable,concisesetofinputfeatures,themosteffectiveformatwas
+t h em e a na b s o l u t eS H A Pv a l u e sa c r o s sa l lc l a s s e s .Th i sa p p r o a c hm e a s u r e st h em a g n i t u d eo fe a c hf e a t u r e ’ s
+contribution, regardless of direction or class. It essentially tells us which features the model relied on most
+heavily,onaverage,acrossallpredictions.Sinceweare notusingSHAPtoexplainindividualclassificationsor
+class-specificbehavior,butrathertoidentifythemostuniversallyimpactfulfeatures,magnitude-onlySHAP
+values provide the cleanest and most reliable signal.This form of aggregation also reduces noise introduced
+
+4418 ComputModelEngSci. 2025;145(3)
+byconflictingdirectionalcontributionsinmulticlasssettingsandisbettersuitedforthefeatureselectionuse
+caseweintended.
+Figure3: SHAPworkflowusedinAutoSHARC:per-classsummaries,directionalandmagnitudeanalyses,top-features
+selection,andpost-hocretraining
+OncethemostinfluentialfeatureswereidentifiedusingSHAP,particularlythroughthemeanabsolute
+SHAP values across all classes, these features can be selectively reused to retrain the model for even better
+p e r f o r m a n c e .B yr e d u c i n gt h ei n p u ts p a c et oo n l yt h em o s tm e a n i n g f u lf e a t u r e s ,w ee ff e c t i v e l ye l i m i n a t e
+noiseandredundantinformation,whichnotonlyimprovesmodelgeneralizationbutalsospeedsuptraining
+and reduces memory requirements. This refined input set can help the model focus more efficiently on
+the patterns that truly differentiate attack types from benign traffic. Additionally, this entire process, from
+selectingthetopSHAP-rankedfeaturestoretrainingthemodel,canbeautomated.Forinstance,aftersaving
+theSHAPfeaturerankings,afeature-mappingstepcanfiltertheoriginaldatasetdowntothetopKfeatures.
+Thesamepreprocessingandmodeltrainingpipelinecanthenrunusingthiscompactfeatureset.Thisallows
+foranautomated,iterativeimprovementloop,wherefeatureselectionandmodeloptimizationfeedintoeach
+othertocreateacontinuouslyrefinedandefficientintrusiondetectionsystem.
+7 PerformanceEvaluationandResults
+7.1 TrainingResults
+Training was performed using Kaggle’s cloud-based Jupyter notebooks. The computational resources
+allocated for the experiments included an NVIDIA Tesla T4 GPU, an Intel(R) Xeon(R) CPU running at
+2.20GHz,and30GBofRAM.Toevaluatethemodel’s effectivenessduringtraining,standardclassification
+metricsweremonitoredovermultipleepochs.Theseincludedaccuracy,loss,precision,recall,andAUC(Area
+Under the ROC Curve) for both the training and validation sets. These metrics provide a comprehensive
+viewofthemodel’slearningbehavior,convergence,andgeneralization.Thefinalresultsofthevalidationset
+inTable 8showedexcellentperformance,withavalidationaccuracyof0.9898,AUCof0.9999,precisionof
+0.9934,recallof0.9867,andvalidationlossof0.0432.
+Table 8:Trainingandtestingresults
+Split Accuracy Loss AUC Precision Recall
+Validationsplit 0.9898 0.0432 0.9999 0.9934 0.9867
+Testingsplit 0.9898 0.0431 0.9999 0.9935 0.9868
+
+ComputModelEngSci. 2025;145(3) 4419
+Neartheendofthelossandaccuracyplotsin Fig.4a,b,y o uca no bserv eas p ik e-a n d-r eco v erypa t t ern.
+This spike, visible particularly around epoch 92, corresponds to the fine-tuning phase carried out during
+training.Inthisphase,themodel’sconfigurationwasmodified,suchasupdatingclassweights,orchanging
+the optimizer behavior, causing a temporary increase in both training and validation loss. This disruption
+is a typical effect when previously frozen layers are made trainable or when learning dynamics are altered
+mid-training. However, the model quickly readjusted and continued improving. Toward the final epochs,
+both the training and validation metrics converge smoothly, showing stable performance with validation
+accuracycloselytrackingtrainingaccuracy,evidenceofstronggeneralizationandminimaloverfitting.
+(a) (b)
+Figure4: Trainingandlosscurves:( a)Trainingaccuracyvs.validationaccuracy( b)Traininglossvs.validationloss
+7.2 Evaluation on the Testing Set
+After training, the model was evaluated on a separate testing split to assess its performance on unseen
+data.Theevaluationmetricsreportedbythemodelonthetestsetwerehighlyconsistentwiththevalidation
+results as shown inTable 8,demonstratingexcellentgeneralization.Thetestaccuracywas0.9898,AUCwas
+0.9999,andlosswas0.0431,nearlyidenticaltothefinalvalidationmetrics.Furthermore,theprecisiononthe
+testsetwas0.9935,whilerecallwas0.9868,suggestingthemodelmaintaineditsabilitytocorrectlyidentify
+mostclassesandreducefalsepositivesandfalsenegatives.
+7.3 Performance Metrics
+The core performance evaluation relied on the metrics of accuracy, precision, recall, and F1-score,
+each calculated for every class. These metrics are defined as follows; accuracy measures the proportion of
+total correct predictions, precision evaluates how many of the predicted positives were truly positive, recall
+measures how many actual positives were identified correctly, f1-score is the harmonic mean of precision
+andrecall.
+Accuracy = TP +TN
+TP +TN +FP +FN (54)
+Precision = TP
+TP +FP (55)
+Recall = TP
+TP +FN (56)
+F1 = 2⋅Precision⋅Recall
+Precision+Recall (57)
+
+4420 ComputModelEngSci. 2025;145(3)
+Additionally, both macro and weighted averages of these metrics were computed to capture class-wise
+performance. Macro averages compute the unweighted mean across all classes, treating each class equally,
+whileweightedaveragesaccountforclassimbalancebyweightingthemetricofeachclassbyitssupport.
+7.4 ReliabilityMetrics
+To further strengthen the reliability and robustness assessment of the model, two widely accepted
+agreement-based metrics were employed: Cohen’s Kappa Score and Matthews Correlation Coefficient
+(MCC). Cohen’s Kappa quantifies the agreement between predicted and actual labels while accounting for
+theagreementoccurringbychance[ 46].Itsformulacanbewrittenas Eq.(40)
+κ= p
+o −pe
+1−pe
+(58)
+where po is the observed agreement (i.e., accuracy), andpe is the expected agreement by chance. A value
+of 1.0 indicates perfect agreement, while a value close to 0 suggests no agreement beyond chance. For this
+model,Cohen’sKappawas0.9848,signifyingexcell entreliabilityinclassificationperformance.
+MatthewsCorrelationCoefficient(MCC)isanotherbalancedmetricthatevaluatesthequalityofbinary
+and multiclass classifications. It takes into account true and false positives and negatives and is especially
+informativeforimbalanceddatasets[ 47].Itcanbecalculatedusing Eq.(41)
+MCC = TP ⋅TN −FP ⋅FN
+√
+(TP +FP)(TP +FN)(TN +FP)(TN +FN)
+(59)
+Formulticlassproblems,MCCcanbegeneralizedtoamorecomplexformusingconfusionmatrices.In
+thisstudy,theMCCwascomputedtobe0.9848,onceagainaffirmingthemodel’sstrongconsistencyacross
+allclasses.ThefullresultsofKappaandMCCcanbeseenin Table 9.
+Table 9:Reliabilityparameterresults
+Class Kappa MCC Brierscore
+Benign 0.9499 0.9501 0.0050
+BruteForce 0.5492 0.5701 0.0005
+DDoS 0.9989 0.9989 0.0005
+DoS 0.9990 0.9990 0.0004
+Mirai 0.9997 0.9997 0.0001
+Recon 0.8612 0.8617 0.0039
+Spoofing 0.8725 0.8732 0.0050
+Web-based 0.5610 0.5852 0.0009
+Global 0.9848 0.9848 0.0020
+In addition to agreement-based metrics, we further analyzed the reliability of the model using
+calibration-focused measures: the Brier Score and the Expected Calibration Error (ECE). The Brier Score
+evaluates the accuracy of probabilistic predictions by measuring the mean squared difference between
+predictedprobabilitiesandthetrueoutcomes[ 48].Itcanbeexpressedas Eq.(45):
+
+ComputModelEngSci. 2025;145(3) 4421
+BrierScore = 1
+N
+N
+∑
+i=1
+(fi −oi)2 (60)
+where N i st h en u m b e ro fs a m p l e s ,fi is the predicted probability of the positive class, andoi ∈{0,1} is
+the ground-truth outcome. A smaller Brier Score indicates better calibrated and more reliable probability
+estimates. In this study, the macro-averaged Brier Score was computed as 0.0020, as inTable 9, suggesting
+thatthepredictedprobabilitiesarehighlyconsistentwiththeactualoutcomes.
+The Expected Calibration Error (ECE) provides a complementary measure by directly quantifying the
+discrepancybetweenpredictedconfidenceandempiricalaccuracy[ 49].Itisdefinedas Eq.(46) :
+ECE =
+M
+∑
+m=1
+∣Bm∣
+n ∣acc(Bm)−conf(Bm)∣ (61)
+where the predictions are partitioned intoM bins, ∣Bm∣is the number of samples in binm,a c c(Bm) is the
+empiricalaccuracy,andconf (Bm)istheaveragepredictedconfidenceinthatbin.AlowerECEimpliesthat
+themodel’sconfidenceiswellalignedwithitsactualaccuracy.Fortheproposedmodel,theECEwasobserved
+tobe0.0143,whichindicatesstrongprobabilisticcalibrationandreliabilityofpredictions.
+Tocomplementthesequantitativemetrics,calibrationcurves(reliabilitydiagrams)werealsoplottedfor
+each class, as shown inFig.5. These curves compare the predicted confidence scores against the observed
+empirical accuracy, where a perfectly calibrated model would follow the diagonal line (y = x). The results
+indicate that several classes such as DDoS, Mirai, and Spoofing exhibit strong alignment with the diagonal,
+confirming good calibration. In contrast, classes with fewer samples, such as Brute Force and Web-based
+attacks,showlargerdeviations,reflectingreducedreliabilityinprobabilityestimatesforminorityclasses.
+Figure5: Calibrationcurvesforeachclass
+7.5 ComputationalPerformance
+To assess the efficiency of the proposed model, we evaluated its computational performance at both
+the layer level and the overall inference stage.Table 10reports the inference times of each individual layer,
+
+4422 ComputModelEngSci. 2025;145(3)
+highlightingthattheGRUanddenselayersdominatetheruntimecost,whileearlierconvolutionandpooling
+layersincurprogressivelysmalleroverheads.Thisbrea kdownprovidesinsightintowheremostofthelatency
+arisesandhelpsidentifypotentialtargetsforoptimization.
+Table 10:Inferencetimeofeachlayer
+Layers Inferencetime(ms)
+Input_layer 0.5362
+Conv1d 4.9565
+Conv1d_1 5.7356
+Max_pooling1d 5.9533
+Conv1d_2 7.0915
+Conv1d_3 8.9748
+Max_pooling1d_1 9.7010
+Conv1d_4 11.5864
+Conv1d_5 13.5410
+Max_pooling1d_2 14.0231
+Attention_feature_selection 15.8169
+Gru 23.3493
+Dense 23.6473
+Averagetime 11.1471
+In addition, Table 11summarizes the overall inference benchmarks. The model achieves a single-
+sample latency of approximately 81 ms, which is consistent with the cumulative layer timings. Interestingly,
+when evaluated in batch mode (128 samples), the average per-sample latency drops to about 78 ms due to
+parallelization.Moreimportantly,givenameasuredthroughputof2785.43samplespersecond,theeffective
+per-sample processing time is theoretically reduced to around 0.36 ms (1/2785.43). This demonstrates that
+whilerawlatencyperinputremainsinthetensofmilliseconds,high-throughputexecutionallowsthemodel
+toscaleefficientlyinpractice.
+Table11: Modelcomputationbenchmarks
+Metric Value
+Singleinferencetime 81.04ms
+Batchinferencetime(128samples) 79.17ms
+Latencypersample 78.21ms
+Throughput 2785.43samples/s
+7.6 ClassificationReportandInterpretation
+Thedetailedclassificationreportoffersagranularviewofhowwellthemodelperformsoneachclassin
+termsofprecision,recall,andF1-score,alongwiththesupport(numberofsamples)foreachclass.Notably,
+the model achieved perfect or near-perfect scores for high-volume classes such as DDoS, DoS, and Mirai,
+with F1-scores of 1.00, as evident inFig.6. For minority classes like Brute Force and Web-based, which are
+oftenmoredifficulttoidentifyduetotheirextremelysm allsamplesizeandsimilarpatternstobenigntraffic,
+the model showed some struggle. Brute Force attacks were detected with a precision of 0.43 and recall of
+
+ComputModelEngSci. 2025;145(3) 4423
+0.75, leading to an F1-score of 0.55. Similarly, Web-based attacks had a precision of 0.44 and recall of 0.78,
+withanF1-scoreof0.56.
+Figure6: Class-wisecomparisonofaggregateclassificationparameters
+Asshownin Table 12,themacroaverageF1-scorewas0.85,whiletheweightedaverageF1-scorestoodat
+0.99, indicating that even though the model struggled with minority classes, its overall performance across
+the entire dataset was highly satisfactory. The 95% confidence interval further supports its reliability. This
+classificationreportunderlinesthemodel’spotentialt ogeneralizeacrossadiverseandimbalancedintrusion
+detectiondatasetwithremarkableeffectiveness.
+Table 12:Multi-classclassificationreportoftheproposedmodel
+Class Precision Recall F1-Score Samples
+Benign 0.94 0.97 0.95 219,639
+BruteForce 0.43 0.75 0.55 2613
+DDoS 1.00 1.00 1.00 1,800,000
+DoS 1.00 1.00 1.00 1,000,000
+Mirai 1.00 1.00 1.00 526,825
+Recon 0.89 0.84 0.86 70,913
+Spoofing 0.91 0.84 0.88 97,301
+Web-based 0.44 0.78 0.56 4966
+MacroAvg 0.83 0.90 0.85 3,722,257
+Weighted Avg 0.99 0.99 0.99 3,722,257
+Accuracy 0.9898
+95%CI [0.9900,0.9901]
+In addition, the per-class AUC-PR scores, summarized inTable 13, provide deeper insights into
+threshold-independent performance. While the biggest attack categories such as DDoS, DoS, and Mirai
+achieved perfect AUC-PR values of 1.0, Brute Force and Web-based attacks showed weaker performance,
+reflecting the class imbalance challenges highlighted earlier. The corresponding Precision–Recall curves
+in Fig.7 visualize these differences: classes with high AUC-PR exhibit stable precision across a wide recall
+range,whereaslower-scoringclassesshowsharperdeclinesinprecisionasrecallincreases.
+
+4424 ComputModelEngSci. 2025;145(3)
+Table 13:Per-classAUC-PRscores
+Class AUC-PR
+Benign 0.9916
+BruteForce 0.6812
+DDoS 1.0000
+DoS 1.0000
+Mirai 1.0000
+Recon 0.9471
+Spoofing 0.9547
+Web-based 0.7380
+Figure7: Precision–recallcurvesperclass
+From the confusion matrix (Fig.8), it is clear that the model achieved near-perfect classification
+performance for the major classes such as DDoS, DoS, and Mirai, with very few misclassifications. These
+a r ethela r g estclassesintheda taset,a ndtheirclea rtra fficpa t tern slik el ymadethemeasierf o rthemodelto
+learn and distinguish. However, for smaller classes such as Web-based, Brute Force and Recon, the matrix
+showsoccasionalconfusion,particularlywitheachotherorwithbenigntraffic.Thesemisclassificationsare
+expected given the limited number of training examples for these classes and their sometimes overlapping
+feature distributions. For example, recon and spoofing attacks are elusive by design. Recon doesn’t flood
+the network; it probes lightly (e.g., slow scans, banner grabs), which makes it hard to flag without tight
+thresholds. This resembles like a user browsing or pinging and is often indistinguishable from diagnostics
+or monitoring tools. Furthermore, it gathers information instead of causing disruptions and IDS systems
+tuned for anomalies or signatures may find nothing wrong. Similarly, spoofing attacks use false IP/MAC to
+impersonate trusted sources, due to which tools relying on headers or basic metadata get tricked. Another
+
+ComputModelEngSci. 2025;145(3) 4425
+thing is that spoofing doesn’t generate easily isolatable statistical features, making it hard for AI models
+without deep context. Web-based attacks are tricky because they exploit legitimate application layers where
+traffic looks normal, and that breaks many IDS assumptions. Attacks are spread across sessions, domains,
+URLs, hard to cluster or track unless context is preserved. Web-based intrusion traces are rare and less
+standardized than brute-force or flood data, and they can fake metadata, making it unreliable. Still, the
+false positives and false negatives are relatively low, suggesting that even for minority classes, the model
+maintains a level of precision and recall. The matrix supports the conclusion that the architecture, aided by
+classbalancingandfeatureselection,wasabletogenerali zewellacrosshighlyimbalancedclassdistributions.
+Figure8: Confusionmatrixofthetestingsplit
+The normalized confusion matrix (Fig.9) transforms raw counts into percentages, allowing for a
+clearer comparison of performance across classes with vastly different sample sizes. Each row sums to
+100%, indicatinghow each actualclass was distributed across predicted classes. In this matrix, the diagonal
+dominance,wherethehighestvaluesarelocatedalongthediagonalconfirmsthatthemodelishighlyaccurate
+in predicting the correct class. For instance, over 99% of DDoS and DoS samples are classified correctly,
+which is remarkable given their large volume. Smaller classes such as Web-based and Brute Force exhibit
+weaker diagonal values, typically above 70% but with more off-diagonal leakage, mostly toward classes like
+Benign or Spoofing. This suggests that while the model is highly confident, there’s still subtle overlap in
+featurebehaviorforedgecasesorstealthierattacks.
+
+4426 ComputModelEngSci. 2025;145(3)
+Figure9: Normalizedconfusionmatrixofthetestingsplit
+7.7 SHAP Feature Analysis
+UnderstandingSHAPsummaryplotsisessentialforinterpretinghoweachfeatureinfluencesamodel’s
+prediction decisions. These plots not only show which features are most important but also how they affect
+thepredictionoutcomes.EachpointinaSHAPsummaryplotrepresentsasingleinstance(i.e.,adatasample)
+and its corresponding SHAP value for a specific feature. The horizontal axis shows the SHAP value, this
+indicates the impact of the feature on the prediction. If the SHAP value is positive, it means the feature
+pushedthepredictiontowardsahigherprobabilityforthetargetclass(i.e.,morelikelytobeanattack);ifit
+isnegative,itpulledthepredictiontowardalowerprobability(i.e.,morelikelybenign).
+The color of each point conveys the actual value of the feature for that sample; red points represent
+high feature values, blue points represent low feature values. So, for example, if you see that high values
+of the feature IAT (Inter-Arrival Time), depicted by red points, are mostly associated with negative SHAP
+values, it means longer inter-arrival times reduce the likelihood of an attack prediction, which may imply
+benignbehavior.Conversely,ifredpointsforrst_countclusteraroundhighpositiveSHAPvalues,itmeans
+t h a tah i g hn u m b e ro fT C Pr e s e t si n c r e a s e st h em o d e l ’ sc o n fi d e n c et h a tas a m p l ei sa na t t a c k .Th i sd u a l -
+axis interpretation, SHAP value on thex-axis and feature value in color, gives deep insight into not just
+importance,butdirectionandbehavior.Ithelpstoanswerquestionslike“Isahighvalueofthisfeatureared
+flagorasignofnormalbehavior?”
+TogeneratetheSHAPexplanationsforourtrainedmodel,50randomlyselectedtestsampleswereused
+a st h ee x p l a n a t i o ns e t ,w h i l e5 0 0b a c k g r o u n ds a m p l e sw e r ec h o s e nt or e p r e s e n tt h eb a s e l i n ed i s t r i b u t i o n .
+Since the model architecture included a custom-built attention layer and was trained using a custom focal
+lossfunction,traditionalSHAPexplainerssuchasDeepExplainerorGradientExplainerwerenotsuitabledue
+to compatibility limitations with non-standard components. Instead, the more flexible and model-agnostic
+KernelExplainer was employed. Additionally, a wrapper function was created to adapt the input format to
+match the model’s expected 3D input shape, ensuring consistency with the time-step-based data structure.
+
+ComputModelEngSci. 2025;145(3) 4427
+This allowed for accurate SHAP value computation even with the non-standard architecture and training
+configuration. The feature analysis started with the per-class SHAP summary plots which can be seen
+in Figs.10 and 11, showing how each feature influenced predictions for each class one by one. The feature
+indexmaphasalsobeenprovidedin Table 14.
+(a) (b)
+(c) (d)
+Figure10: FeatureimpactforeachclassusingSHAPvalues( a)Benign( b)Bru teF o r ce(c)DDoS( d)DoS
+
+4428 ComputModelEngSci. 2025;145(3)
+(a) (b)
+(c) (d)
+Figure11: FeatureimpactforeachclassusingSHAPvalues( a)Mirai( b)Reco n(c)S poo fing(d)W eb-based
+Table 14:Featureindexmapping
+Index Feature Index Feature
+0 IAT 15 Totsize
+1 Number 16 fin_count
+2 ProtocolType 17 Totsum
+3 Header_Length 18 Max
+4 rst_count 19 HTTPS
+5 flow_duration 20 ack_count
+6M i n2 1S S H
+(Continued)
+
+ComputModelEngSci. 2025;145(3) 4429
+Table14(continued)
+Index Feature Index Feature
+7 Variance 22 syn_flag_number
+8 syn_count 23 Covariance
+9 AVG 24 Std
+10 urg_count 25 UDP
+11 Weight 26 HTTP
+12 Magnitude 27 Radius
+13 Rate 28 TCP
+14 Duration 29 ICMP
+Thereappeartobesomepatternsbetweenthemostimpactfulfeaturesofdifferentclasses.F0(IAT)and
+F1 (Number) seem to be the most defining features among most classes while F2 (Protocol Type) and F6
+(Min),F9(AVG),F12(Magnitude)andF15(Totsize)alsohaveagreatimpactamongthethreeeasiestclasses
+topredict.Theminorclassessuchasspoofingandreconalsoseemtohavemoreambiguityinsignifyingthe
+impact of different features. Reasons for these patternswillbefurtherdiscussedinthenextsub-section.
+Next is the mean SHAP (directional) summary plot inFig.12, which illustrates the average signed
+contribution of each feature to the model’s predictions. Each horizontal point represents the average SHAP
+valueforafeatureacrossallsamples,wherepositivevaluesindicateafeaturepushedpredictionstowardthe
+positive class (likely an attack), and negative values suggest it contributed to predicting the negative class.
+ThistypeofSHAPplothelpsrevealdirectionality,i.e.,howfeaturesinfluencethemodel,notjusthowmuch.
+Figure12: Mean (directional) SHAP plot
+
+4430 ComputModelEngSci. 2025;145(3)
+From the plot, we see that features like F16 (fin_count), F8 (syn_count), F23 (Covariance) and F7
+(Variance) lean slightly to the right of the center line, suggesting they generally increase the model’s
+confidence in identifying an attack. These features, related to the magnitude of traffic, are consistent with
+malicious behavior, high frequency of connection flags (like FIN or Variance) often correlates with scans,
+brute-force attempts, or denial-of-service activities. On the other hand, features such as F19 (HTTPS), F20
+(ack_count),F26(HTTP)andF27(Radius)leanmoretotheleft,meaningtheytypicallycontributenegatively
+towardattackclassification,suggestingthattheirpresenceismoreindicativeofbenigntrafficpatternsinthis
+dataset. For example, HTTPS is a standard protocol for secure communication. Attack traffic often avoids
+HTTPSduetoencryptionoverheadorusesmalformedHTTPSheaders.
+Thisplotisespeciallyvaluablebecauseitcapturesnotjustimportancebutinterpretabilitywithpolarity.
+Itanswersquestionslike“Isafeaturepositivelyornegativelycorrelatedwithattackbehavior?”Incontrastto
+absolute SHAP plots that only give magnitude, this directional SHAP view reveals how the model is using
+each feature. For example, a feature with a high absolute SHAP value but a neutral mean directional SHAP
+might be used equally in both directions, which could make it important, but less interpretable. Moreover,
+seeingmanyfeaturesclusteredaroundthecenter,suchasF27(Radius),F26(HTTP),andF25(UDP),implies
+that these features may have little to no consistent directional influence, and might only be useful in very
+specific attack types or are highly dependent on context. These observations can inform decisions about
+featurepruning,simplification,ortargetedmodelimprovements.
+7.8 SelectingTop-kFeatures
+Finally,theMeanAbsoluteSHAPvaluesprovidearobustandunbiasedwaytoevaluatehowmucheach
+feature contributes to the model’s predictions, regardless of whether the contribution pushes the prediction
+higheror lower. Unlike directional SHAP values, which tell us the signof the impact (positive or negative),
+themagnitude-onlySHAPvaluescapturetheoverallinfluenceofafeatureacrossallpredictionsandclasses,
+making them especially useful for tasks like feature selection and ranking. In the context of our intrusion
+detection task, where model interpretability and efficiency are crucial, mean absolute SHAP values offer
+the clearest insight into which features consistently carry the most predictive power. These values average
+t h ea b s o l u t eS H A Pc o n t r i b u t i o n so fe a c hf e a t u r ea c r o s sa l ls a m p l e sa n dc l a s s e s ,g i v i n gas i n g l es c o r et h a t
+representsoverallimportance.Thisapproachisparticularlyvaluablewhenworkingwithmulti-classtabular
+data, where directionality might vary across classes but importance remains high. All 30 selected features
+were first plotted out based on the evaluation of their overall contribution to the model’s predictions using
+mean absolute SHAP values, as illustrated inFig.13.
+Subsequently, the top-k most influential features were visualized using a SHAP summary bar plot
+(Fig.14).Inthisstudy,kwassetto20forpost-trainingexplanationofimportantfeatures,thoughthisvalueis
+flexible;dependingontimeorresourceconstraints,asmallersubsetsuchasthetop15oreventop10features
+canalsobereusedeffectively.Featurescanevenbeselectedbasedontheperclassimpactdependingonthe
+use-case.
+Finally, a bar chart (Fig.15) used for displaying these top features, this time labeled with their actual
+names, is presented to support interpretation. The visualization is followed by a detailed rationalization of
+whyeachfeatureplaysasignificantroleinthemodel’sdecision-makingprocess.
+
+ComputModelEngSci. 2025;145(3) 4431
+0.00
+0.01
+0.02
+0.03
+0.04
+0.05
+0.06
+0.07
+F0
+F2
+F15
+F12
+F8
+F6
+F1
+F11
+F8
+F18
+F3
+F17
+F22
+F4
+F7
+F10
+F28
+F5
+F24
+F14
+F25
+F16
+F20
+F19
+F27
+F26
+F23
+F13
+F29
+F21
+Feature Important (SHAP - Averaged Across All Classes)
+Figure13: Bargraphshowingthefeatureimportanceofall30features
+Figure14: Absolute mean (magnitude only) SHAP plot
+
+4432 ComputModelEngSci. 2025;145(3)
+0.00 0.01 0.02 0.03 0.04 0.05 0.06 0.07
+IAT
+Protocol Type
+Tot size
+Magnitue
+AVG
+Min
+Number
+Weight
+syn_count
+Max
+Header_Length
+Tot sum
+syn_ﬂag_number
+rst_count
+Variance
+urg_count
+TCP
+ﬂow_dura/g415on
+Std
+Dura/g415on
+Top 20 Most Important Features (SHAP)
+Figure15: Top20selectedfeatureindexmappingalongwiththeirimportance
+Rationalization of Important Features
+The mean absolute SHAP values reveal a highly uneven contribution of features, with only four
+surpassing the 0.01 threshold. Inter-Arrival Time (IAT) dominates with a SHAP value of 0.0724, reflecting
+its critical role in distinguishingbenign from malicioustraffic,astimingirregularities arestrongindicators
+of anomalies such as DDoS or scanning. Protocol type also ranks high, since specific attacks often exploit
+TCP, UDP, or ICMP. Features such as Total (flow size), Magnitude, and Average capture volumetric
+and behavioral differences between normal and automated traffic, while Min and Max values highlight
+extremecasestypicalofSYNfloodsorresourceexhaustionattempts.Packet-andflag-basedindicators(e.g.,
+syn_count, syn_flag_number, rst_count, urg_flag) further support detection of flooding and brute-force
+activity. Statistical descriptors like Variance, Standard Deviation, and Flow Duration provide insight into
+flow consistencyandpersistence,differentiatingsteadyhumanactivityfrom repetitive bottraffic.Together,
+SHAPhighlightsthatAutoSHARCreliesonacompactbutsemanticallymeaningfulsetoftiming,protocol,
+statistical, and flag-based features for robust intrusion detection.
+This absolute SHAP ranking is instrumental in creating a reusable and optimized feature subset,
+whichnotonlyreducesmodelcomplexityandtrainingtimebutalsoenhancesgeneralizationperformance.
+It helps eliminate redundant or noisy features, ensures better resource efficiency, and makes the model
+more interpretable, a critical factor in security-related applications where explainability is just as important
+asaccuracy.
+
+ComputModelEngSci. 2025;145(3) 4433
+8 ComparativeAnalysisoftheProposedModel
+The purpose of this comparative analysis is to contextualize the performance of the proposed CNN-
+A t t e n t i o n - G R Um o d e la g a i n s taw i d er a n g eo fm o d e l sp r e v i o u s l ya p p l i e dt ot h eC I CI o T2 0 2 3d a t a s e t .A s
+seenin Table 15,themodelsspanacrossvariousdeeplearningandmachinelearningarchitectures,including
+LSTM, CNNs, RNNs, transformers, random forests, and boosting-based classifiers. Many of these studies
+didnotincorporateanyformalfeatureselectiontechniques,relyingsolelyontheraworpreprocessedinput
+features. In contrast, a few leveraged specific selection strategies such as Recursive Feature Elimination
+or correlation-based methods to improve learning efficiency. Our approach stands out not only for its
+architectural design tailored for intelligent feature selection but also for integrating an ensemble of feature
+selectors, Boruta, LightGBM, and SHAP, to optimize the input space before training. Despite not using the
+transformer-based or ensemble learning models with the highest reported accuracy, our model achieves a
+competitive accuracy of 98.98%, validating the effectiveness of using targeted feature selection to strike a
+balance between performance, and interpretability. In addition, as shown inTable 16, the proposed CNN-
+Attention-GRUmodeldemonstratessuperiorresourceefficiency,achievingsignificantlysmallermodelsize
+andfasteredgeinferencetimecomparedtoexistinglightweightIDSmodels.
+Table 15:AccuracycomparisonwithothermodelstrainedontheCICIoT2023dataset
+Model Architecture Featureselectionused Accuracy(%)
+Jony et al. [50]L S T M N o n e 9 8 . 7 5
+Abbas et al. [51] DNN,CNN,RNN None 96.56
+Arnobetal.[ 52] FNN None 98.07
+Ta¸scıetal.[53] CNN-SelfAttention-GeLU None 98.36
+Sharmaetal.[ 54] LogisticRegression None 86.00
+Torre et al. [55] CNN None 93.96
+Tseng et al. [56] Transformer None 99.40
+Phanetal.[ 12]R a n d o m F o r e s t R F E 9 9 . 5 7
+Modi et al. [14]X G B o o s t C o r r e l a t i o n +Information Gain 97.64
+Ji et al. [25]R F +AdaBoost RF +AdaBoost 98.27
+Proposedmodel CNN-Attention-GRU Boruta +LightGBM/SHAP 98.98
+Table16: Resource-efficiencycomparisonwithlightweightIDSmodels
+Model Architecture Modelsize
+(MB)
+Edgeinference
+time(persample) Notes/Dataset
+Yao et al. [57]
+One-Class
+BiGRU-AE+
+Ensemble
+21.5–76 Notreported
+WSN-
+DS/UNSW-
+NB15/KDD99
+Mallidi & Ramisetty [58] Two-tierLR@edge
++1D-CNN@cloud
+∼15(LR)/
+50+(CNN)
+LR:38–52ms;
+CNN:18.28–27.86s RaspberryPi4B
+Theproposedmodel CNN-Attention-
+GRU ∼2 ∼81ms CICIoT2023
+
+4434 ComputModelEngSci. 2025;145(3)
+It is important to emphasize that the accuracy figures reported in most, if not all, existing papers
+on the CIC IoT 2023 dataset often reflect weighted accuracy, which, while useful in some cases, does not
+presentacompleteorfairpictureofamodel’strueperformanceacrossallclasses.Weightedmetrics,asthose
+mentioned inTable 12are heavily influenced by class distribution, and in highly imbalanced datasets like
+CICIoT2023,theycangiveanillusionofsuperiorperformanceevenifminorityclassesarepoorlypredicted.
+Incontrast,macrometrics,includingmacroaccuracy,precision,recall,andF1-score,treateachclassequally
+regardless of size, and therefore provide a much clearer assessment of per-class effectiveness.
+Inthiswork,onlyaround40%ofthetotaldatasetwasusedduringtraining,whichslightlyhelpedreduce
+classimbalance.However,manypapersneitherbalancetheirdatasetsnorreportmacroscoresorconfusion
+matricesincaseofanimbalance.Forinstance,Tsengetal.[ 56],whoreportanimpressive99.40%accuracy
+usingatransformer-basedmodel,onlyincludeweightedscoresintheirevaluation.Whenthemacroscores
+are extracted from their published confusion matrix, a different story emerges: the macro precision drops
+t o0 . 9 1 8 9 ,t h er e c a l lf a l l st o0 . 7 4 4 7 ,a n dt h em a c r oF 1 - s c o r ep l u m m e t st oj u s t0 . 7 8 1 8 .Th e s efi g u r e sr e v e a l
+significantunderperformanceonminorityattackclasse s.Whatfurtherunderminesthevalidityofsuchhigh
+reportedaccuraciesisthatthefulldatasetusedinsuchstudiescontainedover95millionsamplesfromjust
+the major classes. In such a skewed scenario, achieving high accuracy or weighted metrics becomes trivial,
+oftenlimitedmorebyRAMcapacitythanalgorithmicstrength.Thishighlightstheurgentneedforpapersto
+includemacro-basedmetricsandconfusionmatricesass tandardpracticetoensurefairness,reproducibility,
+andatruereflectionofamodel’sutilityindetectingrarebutcriticalthreats.
+Ablation Study
+To further validate the effectiveness of the proposed framework, an ablation study was conducted
+by comparing the performance of different feature selection strategies and architectural variations. As
+shown inTable 17, XGBoost, one of the strongest machine learning algorithms and a simple MLP with
+two dense layers were chosen as baseline models and trained with the same features selected as for our
+model. They demonstrated strong accuracies (98.90% and 98.63%, respectively), but their macro F1-scores
+lagged behind the proposed model. Similarly, removing the attention and GRU mechanisms from the
+CNNs reduced the balance across classes, as evidenced by the drop in macro F1. In contrast, the proposed
+model achieved the best overall performance with a validation accuracy of 98.98% and a macro F1-score
+of 84.78, underscoring the importance of both the hybrid feature selection approach and the architectural
+enhancementsinimprovinggeneralizationandrobustnessacrossimbalancedclasses.
+Table 17:Ablationstudyresultscomparingdifferentmodelvariantsandfeatureselectionstrategies
+Methods Validationaccuracy(%) MacroF1(%)
+XGBoost 98.90 82.16
+MLP 98.63 77.87
+No feature selection 98.41 78.35
+Borutafeaturesonly 98.54 79.31
+LightGBM/SHAPfeatures only 98.83 80.02
+CNNswithnoattention/GRU 98.78 79.68
+Proposedmodel 98.98 84.78
+
+ComputModelEngSci. 2025;145(3) 4435
+9 Conclusion
+ThispaperpresentedAutoSHARC,afeedback-drivenexplainablefeatureselectionframeworkdesigned
+for intrusion detection in IoT and programmable networks. By addressing the dual challenges of high-
+dimensional network traffic and the need for real-time interpretability, AutoSHARC enhanced detection
+accuracy while contributing to the preservation of Quality of Service (QoS). By combining Boruta and
+LightGBM/SHAP for robust feature preselection, and employing post-hoc SHAP refinement for iterative
+retraining, AutoSHARC reduced input dimensionality while preserving interpretability and detection per-
+formance. This feedback loop enabled the model to self-optimize by focusing only on the most impactful
+features, improving scalability and reducing computational cost. Extensive evaluations on the CIC IoT
+2023 dataset showed that AutoSHARC achieved a testing accuracy of 98.98%, an F1-score of 99.02%,
+recall of 98.68%, and precision of 99.35%. Robustness was further confirmed with a Matthews Correlation
+Coefficient (MCC) of 0.9848 as well as a Cohen’s Kappa of 0.9848. In addition, the final model maintained
+a compact footprint of approximately 2 MB with 531,272 trainable parameters, making it resource-efficient
+and suitable for real-time QoS-sensitive environments. Despite these strong results, AutoSHARC shares
+common limitations with many supervised learning approaches. Its performance is tightly linked to the
+training distribution, meaning that unseen or rapidly evolving attack types may reduce effectiveness until
+retraining is performed. Similarly, while the frameworkis model-agnostic in feature selection, its current
+design is tailored to tabular intrusion detection data and may require adaptation for domains with strong
+temporalorspatialdependencies.FutureworkwillextendAutoSHARCforintegrationwithSDNcontrollers
+and 5G network slicing platforms, enabling real-time deployment at the network edge. Such integration
+wouldallowprogrammablenetworkstodynamicallyadapttoevolvingthreatswhilepreservingQoSacross
+diverse services and applications, thereby advancing the broader vision of AI- and ML-driven intelligent
+networkmanagement.
+Acknowledgement: This research was supported by Princess Nourah bint Abdulrahman University Researchers
+SupportingProjectnumber(PNURSP2025R333),PrincessNourahbintAbdulrahmanUniversity,Riyadh,SaudiArabia.
+Funding Statement: Princess Nourah bint Abdulrahman University Researchers Supporting Project number
+(PNURSP2025R333),PrincessNourahbintAbdulrahmanUniversity,Riyadh,SaudiArabia.
+Author Contributions:The authors confirm contribution to the paper as follows: Conceptualization, Muhammad
+Shahbaz Khan and Muhammad Saad Farooqui; methodology, Muhammad Saad Farooqui and Muhammad Shahbaz
+Khan; software, Muhammad Saad Farooqui and Aizaz Ahmad Khattak; validation, Bakri Hossain Awaji and Nazik
+Alturki; investigation, Nazik Alturki and Noha Alnazzawi; data curation, Noha Alnazzawi and Muhammad Hanif;
+writing—originaldraftpreparation,MuhammadSaadFarooquiandMuhammadShahbazKhan;writing—reviewand
+editing,AizazAhmadKhattakandMuhammadHanif;supervision,MuhammadShahbazKhan.Allauthorsreviewed
+theresultsandapprovedthefinalversionofthemanuscript.
+AvailabilityofDataandMaterials: ThedatathatsupportthefindingsofthisstudyareopenlyavailableinUniversity
+ofNewBrunswickRepositoryat https://www.unb.ca/cic/datasets/iotdataset-2023.html,accessedon10May2025.
+EthicsApproval: Not applicable.
+ConflictsofInterest: The authors declare no conflicts of interest to report regarding the present study.
+Abbreviations
+AI ArtificialIntelligence
+AUC-PR AreaUnderthePrecision–RecallCurve
+
+4436 ComputModelEngSci. 2025;145(3)
+BGWO BinaryGreyWolfOptimization
+CNN ConvolutionalNeuralNetwork
+CICIoT2023 CanadianInstituteforCybersecurityInternetofThings2023Dataset
+DDoS DistributedDenialofService
+DNN DeepNeuralNetwork
+DoS DenialofService
+ECE ExpectedCalibrationError
+ELM ExtremeLearningMachine
+FN FalseNegative
+FP FalsePositive
+FRF FederatedRandomForest
+FS Feature Selection
+GA GeneticAlgorithm
+GOA GrasshopperOptimizationAlgorithm
+GRU GatedRecurrentUnit
+IDS IntrusionDetectionSystem
+IGRF-RFE ImprovedGradient-basedRandomForestRecursiveFeatureElimination
+IoT Internet of Things
+KB Kilobytes
+KD-TCNN KnowledgeDistilledTemporalConvolutionalNeuralNetwork
+KDE KernelDensityEstimation
+KPCA KernelPrincipalComponentAnalysis
+LIME LocalInterpretableModel-agnosticExplanations
+LR LogisticRegression
+LSTM LongShort-TermMemory
+MCC MatthewsCorrelationCoefficient
+MI MutualInformation
+ML MachineLearning
+MLP Multi-LayerPerceptron
+OCFSDA OptimizedCommonFeatureSelection +DeepAutoencoder
+OOB Out-of-Bag
+PCA PrincipalComponentAnalysis
+PSO ParticleSwarmOptimization
+QoS QualityofService
+RAM RandomAccessMemory
+RF RandomForest
+RFE RecursiveFeatureElimination
+RMSprop RootMean SquarePropagation
+SDN Software-DefinedNetworking
+SHAP SHapleyAdditiveexPlanations
+SMOTE SyntheticMinorityOver-samplingTechnique
+SVM SupportVectorMachine
+SYN Synchronize(TCPflag)
+TN TrueNegative
+TP TruePositive
+XAI ExplainableArtificialIntelligence
+XGBoost ExtremeGradientBoosting
+
+ComputModelEngSci. 2025;145(3) 4437
+References
+1. AlnaimAK.Securing5Gvirtualnetworks:acriticalanalysisofSDN,NFV,andnetworkslicingsecurity.IntJInf
+Secur.2024;23(6):3569–89.doi:10.1007/s10207-024-00900-5.
+2. LeA,LooJ,LasebaeA,AiashM,LuoY.6LoWPAN:astudyonQoSsecuritythreatsandcountermeasuresusing
+intrusiondetectionsystemapproach.IntJCommunicatSyst.2012;25(9):1189–212.doi:10.1002/dac.2356.
+3. Venkatesh B, Anuradha J. A review of feature selection and its methods. Cybern Inf Technol. 2019;19(1):3–26.
+doi:10.2478/cait-2019-0001.
+4. GuyonI,ElisseeffA.Anintroductiontovariableandfeatureselection.JMachLearnRes.2003;3(7–8):1157–82.
+5. TorabiM,UdzirNI,AbdullahMT,YaakobR.Areviewonfeatureselectionandensembletechniquesforintrusion
+detectionsystem.IntJAdvComputSciAppl.2021;12(5):538–53.doi:10.14569/ijacsa.2021.0120566.
+6. Nimbalkar P, Kshirsagar D. Feature selection for intrusion detection system in Internet-of-Things (IoT). ICT
+Express.2021;7(2):177–81.doi:10.1016/j.icte.2021.04.012.
+7. Yin Y, Jang-Jaccard J, Xu W, Singh A, Zhu J, Sabrina F, et al. IGRF-RFE: a hybrid feature selection method for
+MLP-basednetworkintrusiondetectiononUNSW-NB15dataset.JBigData.2023;10(1):1–26.doi:10.1186/s40537-
+023-00694-8.
+8. Tsimenidis S, Lagkas T, Rantos K. Deep learning in IoT intrusion detection. J Netw Syst Manag. 2022;30(1):8.
+doi:10.1007/s10922-021-09621-9.
+9. Chen X, Liu M, Wang Z, Wang Y. Explainable deep learning-based feature selection and intrusion detection
+methodon the internetof things.Sensors. 2024;24(16):5223. doi:10.3390/s24165223.
+10. Iftikhar N, Rehman MU, Shah MA, Alenazi MJF, Ali J. Intrusion detection in NSL-KDD dataset using hybrid
+self-organizingmapmodel.ComputModelEngSci.2025;143(1):639–71.doi:10.32604/cmes.2025.062788.
+11. Wardana AA, Sukarno P, Basuki S, Utomo SB. Federated random forest with feature selection for collaborative
+intrusiondetectionininternetofthings.ProcediaComputSci.2024;246:20–9.doi:10.1016/j.procs.2024.09.193.
+12. Phan VA, Jerabek J, Malina L. Comparison of multiple feature selection techniques for machine learning-based
+detection of IoT attacks. In: Proceedings of the 19th International Conference on Availability, Reliability and
+Securi ty;20 2 4J ul30–A ug2;V ienna,A ustria.p .1–10.
+13. Chikkalwar SR, Garapati Y. An effective intrusion detection system based on feature selection and regular-
+ized long short-term memory classifier. Multimed Tools Appl. 2025;84(35):43959–82. doi:10.1007/s11042-025-2
+0889-w.
+14. ModiP.TowardsefficientmachinelearningmethodforIoTDDoSattackdetection.arXiv:2408.10267.2024.
+15. WangZ,LiZ,HeD,ChanS.Alightweightapproachfornetworkintrusiondetectioninindustrialcyber-physical
+systems based on knowledge distillation and deep metric learning. Expert Syst Appl. 2022;206(4):117671. doi:10.
+1016/j.eswa.2022.117671.
+16. Wahab F, Ma S, Liu X, Zhao Y, Shah A, Ali B. A ranked filter-based three-way clustering strategy for intrusion
+detection in highly secure IoT networks. Comput Elect Eng. 2025;127(3):110514. doi:10.1016/j.compeleceng.2025.
+110514.
+17. Westphal C, Hailes S, Musolesi M. Feature selection for network intrusion detection. In: Proceedings of the 31st
+ACMSIGKDDConferenceonKnowledgeDiscoveryandDataMiningV.1;2025Aug3–7;Toronto,ON,Canada.
+p. 1599–610.
+18. Shoukat S, Gao T, Javeed D, Saeed MS, Adil M. Trust my IDS: an explainable AI integrated deep learning-based
+transparentthreatdetectionsystemforindustrialnetworks.ComputSecur.2025;149(2):104191.doi:10.1016/j.cose.
+2024.104191.
+19. YounisseR,AhmadA,AbuAl-HaijaQ.Explainingintrusiondetection-basedconvolutionalneuralnetworksusing
+shapleyadditiveexplanations(shap).BigDataCognComput.2022;6(4):126.doi:10.3390/bdcc6040126.
+20. PandeS,KhampariaA.Explainabledeepneuralnetworkbasedanalysisonintrusiondetectionsystems.Comput
+Sci.2023;24(1):97–111.doi:10.7494/csci.2023.24.1.4551.
+21. GasparD,SilvaP,SilvaC.ExplainableAIforintrusiondetectionsystems:lIMEandSHAPapplicabilityonmulti-
+layerperceptron.IEEEAccess.2024;12(11):30164–75.doi:10.1109/access.2024.3368377.
+
+4438 ComputModelEngSci. 2025;145(3)
+22. RaviV,ChagantiR,AlazabM.Recurrentdeeplearning-basedfeaturefusionensemblemeta-classifierapproachfor
+intelligentnetworkintrusiondetectionsystem.ComputElectEng.2022;102(3):108156.doi:10.1016/j.compeleceng.
+2022.108156.
+23. WahabF,MaS,ZhaoY,ShahA.Anexplainablethree-wayneuralnetworkapproachforintrusiondetectioninIoT
+ecosystem.InterThings.2025;33(1):101722.doi:10.1016/j.iot.2025.101722.
+24. Cerasuolo F, Bovenzi G, Ciuonzo D, Pescapè A. Adaptable, incremental, and explainable network intrusion
+detection systems for internet of things. Eng Appl Artif Intell. 2025;144(2):110143. doi:10.1016/j.engappai.2025.
+110143.
+25. JiR,SelwalA,KumarN,PadhaD.Cascadingbaggingandboostingensemblemethodsforintrusiondetectionin
+cyber-physicalsystems.SecurPriv.2025;8(1):e497.doi:10.1002/spy2.497.
+26. Chohra A, Shirani P, Karbab EB, Debbabi M. Chameleon: optimized feature selection using particle swarm
+optimizationandensemblemethodsfornetworkanomalydetection.ComputSecur.2022;117:102684.doi:10.1016/
+j.cose.2022.102684.
+27. ZadaI,OmranE,JanS,AlfraihiH,AlsalamahS,AlshahraniA,etal.EnhancingIoTcybersecuritythroughlean-
+based hybrid feature selection and ensemble learning: a visual analytics approach to intrusion detection. PLoS
+One.2025;20(7):e0328050.doi:10.1371/journal.pone.0328050.
+28. OtokwalaU,PetrovskiA,KalutarageH.Optimizedcommonfeaturesselectionanddeep-autoencoder(OCFSDA)
+for lightweight intrusion detection in Internet of things. Int J Inform Secur. 2024;23(4):2559–81. doi:10.1007/
+s10207-024-00855-7.
+29. JiR,KumarN,PadhaD.Hybridenhancedintrusiondetectionframeworksforcyber-physicalsystemsviaoptimal
+featuresselection.IndianJSciTechnol.2024;17(30):3069–79.doi:10.17485/ijst/v17i30.1794.
+30. Bakro M, Kumar RR, Husain M, Ashraf Z, Ali A, Yaqoob SI, et al. Building a cloud-IDS by hybrid bio-inspired
+feature selection algorithms along with random forest model. IEEE Access. 2024;12:8846–74. doi:10.1109/access.
+2024.3353055.
+31. Dasari AK, Biswas SK, Baruah B, Purkayastha B, Das S. Intrusion detection system using stacked ensemble
+learning with light gradient boosting machine and decisiontree. In: Proceedingsof InternationalConference on
+NetworkSecurityandBlockchainTechnology(ICNSBT2024).Singapore:Springer;2024.p.291–303.
+32. Neto ECP, Dadkhah S, Ferreira R, Zohourian A, Lu R, Ghorbani AA. CICIoT2023: a real-time dataset and
+benchmarkforlarge-scaleattacksinIoTenvironment.Sensors.2023;23(13):5941.doi:10.3390/s23135941.
+33. JayasingheWLP,DeoRC,GhahramaniA,GhimireS,RajN.Deepmulti-stagereferenceevapotranspirationfore-
+casting model: multivariateempirical mode decompositionintegrated with the boruta-randomforest algorithm.
+IEEEAccess.2021;9:166695–708.doi:10.1109/access.2021.3135362.
+34. HurJH,IhmSY,ParkYH.Avariableimpactsmeasurementinrandomforestformobilecloudcomputing.Wirel
+CommunMobComput.2017;2017(1):6817627.doi:10.1155/2017/6817627.
+35. Duan S, Huang S, Bu W, Ge X, Chen H, Liu J, et al. LightGBM low-temperature prediction model based on
+LassoCVfeatureselection.MathProblEng.2021;2021(1):1776805.doi:10.1155/2021/1776805.
+36. ChenW,YangH,YinL,LuoX.Large-scaleIoTattackdetectionschemebasedonLightGBMandfeatureselection
+usinganimprovedsalpswarmalgorithm.SciRep.2024;14(1):19165.doi:10.1038/s41598-024-69968-2.
+37. Alshehri MS, Ahmad J, Almakdi S, Al Qathrady M, Ghadi YY, Buchanan WJ. Skipgatenet: a lightweight CNN-
+lstm hybrid model with learnable skip connections for efficient botnet attack detection in IoT. IEEE Access.
+2024;12(1):35521–38.doi:10.1109/access.2024.3371992.
+38. Suárez-Paniagua V, Segura-Bedmar I. Evaluation of pooling operations in convolutional architectures for drug-
+druginteractionextraction.BMCBioinformatics.2018;19(Suppl8):209.doi:10.1186/s12859-018-2195-1.
+39. Woo S, Park J, Lee JY, Kweon IS. CBAM: convolutional block attention module. In: European Conference on
+ComputerVision.Cham,Switzerland:Springer;2018.p.3–19.
+40. HassaninM,AnwarS,RadwanI,KhanFS,MianA.Visualattentionmethodsindeeplearning:anin-depthsurvey.
+arXiv:2204.07756.2022.
+41. Shiri FM, Perumal T, Mustapha N, Mohamed R. A comprehensive overview and comparative analysis on deep
+learningmodels:CNN,RNN,LSTM,GRU.arXiv:2305.17473.2023.
+
+ComputModelEngSci. 2025;145(3) 4439
+42. Hinton G, Srivastava N, Swersky K. Neural networks for machine learning lecture 6a overview of mini-batch
+gradientdescent.LectureNotesDistributedinCSC321ofUniversityofToronto;2012.[cited2025Oct12].Available
+from:https://www.cs.toronto.edu/~hinton/coursera/lecture6/lec6.pdf.
+43. Zou F, Shen L, Jie Z, Zhang W, Liu W. A sufficient condition for convergences of adam and RMSProp. In: 2019
+IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR); 2019 Jun 15–20; Long Beach, CA,
+USA.p.11119–27.
+44. ReddiSJ,KaleS,KumarS.Ontheconvergenceofadamandbeyond.arXiv:1904.09237.2019.
+45. LinTY,GoyalP,GirshickR,HeK,DollárP.Focallossfordenseobjectdetection.In:Proceedingsofthe2017IEEE
+InternationalConferenceonComputerVision;2017Oct22–29;Venice,Italy.p.2980–8.
+46. Yilmaz AE, Demirhan H. Weighted kappa measures for ordinal multi-class classification performance. Appl Soft
+Comput. 2023;134(1):110020. doi:10.1016/j.asoc.2023.110020.
+47. Catillo M, Pecchia A, Villano U. A deep learning method for lightweight and cross-device IoT botnet detection.
+ApplSci.2023;13(2):837.doi:10.3390/app13020837.
+48. BrierGW.Verificationofforecastsexpressedintermsofprobability.MonthlyWeatherReview.1950;78(1):1–3.
+49. NaeiniMP,CooperG,HauskrechtM.Obtainingwellcalibratedprobabilitiesusingbayesianbinning.ProcAAAI
+ConfArtifIntell.2015;29(1):2901–7.doi:10.1609/aaai.v29i1.9602.
+50. Jony AI, Arnob AKB. A long short-term memory based approach for detecting cyber attacks in IoT using CIC-
+IoT2023dataset.JEdgeComput.2024;3(1):28–42.doi:10.55056/jec.648.
+51. Abbas S, Bouazzi I, Ojo S, Al Hejaili A, Sampedro GA, Almadhor A, et al. Evaluating deep learning variants for
+cyber-attacksdetectionandmulti-classclassificationinIoTnetworks.PeerJComputSci.2024;10(12):e1793.doi:10.
+7717/peerj-cs.1793.
+52. Arnob AKB, Jony AI. Enhancing IoT security: a deep learning approach with feedforward neural network for
+detectingcyberattacksinIoT.MalaysianJSciAdvTechnol.2024;4(4):413–20.doi:10.56532/mjsat.v4i4.299.
+53. Ta¸scı B. Deep-learning-based approach for IoT attack and malware detection. Appl Sci. 2024;14(18):8505. doi:10.
+3390/app14188505.
+54. Sharma A, Babbar H. Machine learning-based threat detection for DDOS prevention in SDN-controlled iot
+networks. In: 2024 5th InternationalConferencefor Emerging Technology(INCET); 2024 May 24–26; Belgaum,
+India. p. 1–6.
+55. Torre D, Chennamaneni A, Jo J, Vyas G, Sabrsula B. Toward enhancing privacy preservation of a federated
+learningCNNintrusiondetectionsysteminIoT:methodandempiricalstudy.ACMTransactSoftwEngMethodol.
+2025;34(2):1–48.doi:10.1145/3695998.
+56. Tseng SM, Wang YQ, Wang YC. Multi-class intrusion detection based on transformer for IoT networks using
+CIC-IoT-2023dataset.FutureInternet.2024;16(8):284.doi:10.3390/fi16080284.
+57. Yao W, Hu L, Hou Y, Li X. A lightweight intelligent network intrusion detection system using one-class
+autoencoderandensemblelearningforIoT.Sensors.2023;23(8):4141.doi:10.3390/s23084141.
+58. MallidiSKR,RamisettyRR.Amulti-levelintrusiondetectionsystemforindustrialIoTusingbowerbirdcourtship-
+inspired feature selection and hybrid data balancing. Disc Comput. 2025;28(1):109. doi:10.1007/s10791-025-0
+9632-z.

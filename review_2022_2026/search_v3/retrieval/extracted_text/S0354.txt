@@ -1,0 +1,1138 @@
+Journal of Pioneering Artificial Intelligence Research
+                                                                        
+Proactive Insider Threat Detection in Cloud Environments Using Machine Learning
+Citation: Fortune Daberechi Ifeanyi (2026) Proactive Insider Threat Detection in Cloud Environments Using 
+Machine Learning. J of Poin Artf Research 2(2),1-16 WMJ-JP AIR-125
+J.of Pion Artf Int Research Vol:2,2. Pg:1
+Review Article Open Access
+1Department of Cyber Security, Faculty of Computing, Air Force Institute of Technology, Kaduna, Nigeria
+                                              DOI: doi.org/10.63721/26JP AIR0125
+Abstract  
+Insider threats represent one of the most persistent and difficult-to-detect security challenges in cloud based 
+enterprise environments. Unlike external attacks, insider activities exploit legitimate access credentials, ren-
+dering traditional signature-based detection mechanisms largely ineffective. This paper presents an end to 
+end insider threat detection framework that combines unsupervised machine learning with Security Infor -
+mation and Event Management (SIEM) visualization in a simulated cloud context. The study utilizes the 
+CERT Insider Threat Dataset v6.2, developed and maintained by the Software Engineering Institute (SEI) at 
+Carnegie Mellon University, which is widely recognized in academic research as a benchmark dataset for 
+insider threat detection due to its realistic modeling of enterprise user behavior and availability of ground-
+truth labels. A structured data pipeline is designed encompassing data preprocessing, feature engineering 
+through label encoding, and controlled threat injection to emulate four realistic insider attack behaviors: 
+excessive data access (Get Object spamming), privilege escalation (Assume Role misuse), mass deletion 
+(Delete Object bombing), and abnormal login activity. Two unsupervised anomaly detection models Isolation 
+Forest and One-Class Support Vector Machine (SVM) are trained on normal behavioral patterns and eval -
+uated against both authentic and injected anomalous events. Experimental results show that the Isolation 
+Forest achieves a weighted F1-score of 0.92 with balanced precision and recall, while the One-Class SVM 
+achieves an F1-score of 0.81 with higher recall. The F1-score is adopted as the primary evaluation metric 
+due to its suitability for highly imbalanced security datasets, where both false negatives and excessive false 
+positives carry significant operational cost. Model predictions are exported and ingested into Splunk Cloud, 
+where custom dashboards provide real-time, analyst-oriented threat visualization. A reference architecture 
+for direct pipeline integration using Splunk’ s HTTP Event Collector (HEC) is also proposed, with explicit 
+acknowledgment that full live cloud deployment remains future work. In real-world enterprise and cloud 
+environments, the proposed framework demonstrates practical applicability by enabling early detection of 
+malicious insider behavior using existing audit logs and SIEM infrastructure, thereby reducing reliance 
+on manual rule creation and lowering deployment costs. The results indicate that unsupervised anomaly 
+detection combined with SIEM-based visualization offers a scalable and operationally feasible foundation 
+for proactive insider threat mitigation, particularly in resource-constrained organizations lacking access to 
+continuous labeled data or advanced threat intelligence feeds.
+Fortune Daberechi Ifeanyi1*, Komka Cincinsoko Miracle1, Adeniran Kolade Ademuwagun1, Ta-
+juddeen Muhammad Mashkur1, Samaila Musa Abdullahi1
+ISSN: 3069-0846
+
+J.of Pion Artf Int Research Vol:2,2. Pg:2
+Review Article Open Access
+Introduction
+The rapid migration of enterprise workloads to cloud 
+platforms such as Amazon Web Services (AWS), 
+Microsoft Azure, and Google Cloud Platform has 
+fundamentally transformed how organizations store, 
+process, and govern sensitive data. While cloud 
+adoption delivers significant operational and eco -
+nomic benefits, it simultaneously expands the at -
+tack surface and introduces security challenges that 
+are qualitatively different from those in traditional 
+on-premise environments. Among these challenges, 
+insider threats security incidents originating from 
+individuals with legitimate access to organization -
+al systems have emerged as a critical concern that 
+current cloud-native security tooling is often ill-
+equipped to address proactively [1].
+Insider threats are particularly difficult to detect be -
+cause the individuals involved operate within nor -
+mal access boundaries. Whether the threat originates 
+from a malicious employee deliberately exfiltrating 
+data, a disgruntled contractor misusing elevated 
+privileges, or a negligent user inadvertently expos -
+ing sensitive resources, the underlying activity can 
+be virtually indistinguishable from routine opera -
+tions when viewed through the lens of conventional 
+rule-based or signature-driven security systems. The 
+2021 Flex booker breach, in which 3.7 million user 
+records were exposed through a misconfigured AWS 
+storage environment, and the 2023 Tesla insider data 
+leak both illustrate the real-world severity of these 
+threats and the insufficiency of perimeter-focused 
+defenses [2-4].
+Recent research has demonstrated the promise of 
+machine learning-based anomaly detection as a 
+complement to traditional security controls. Unsu -
+pervised models such as Isolation Forest and One-
+Class SVM are particularly well suited to the insider 
+threat domain, where labeled attack data is scarce 
+and adversarial behavior is dynamic [5-6]. These 
+models learn a statistical representation of normal 
+user activity and flag deviations that warrant further 
+investigation, without requiring prior knowledge of 
+specific attack signatures.
+In parallel, Security Information and Event Manage -
+ment (SIEM) platforms such as Splunk provide pow -
+erful infrastructure for ingesting, indexing, correlat -
+ing, and visualizing security event data at enterprise 
+scale. The integration of machine learning outputs 
+with SIEM dashboards enables Security Operations 
+Center (SOC) analysts to consume threat intelligence 
+efficiently and prioritize investigative effort accord -
+ingly.
+Despite progress in both areas, a gap persists between 
+academic anomaly detection research and deployable, 
+end-to-end systems that incorporate data preprocess -
+ing, model inference, threat simulation, and opera -
+tional visualization within a coherent pipeline. This 
+paper addresses that gap with the following primary 
+contributions:
+• A reproducible data pipeline for insider threat de-
+tection built on the CERT Insider Threat Dataset 
+v6.2, encompassing structured preprocessing, la-
+bel encoding, and feature extraction suitable for 
+unsupervised anomaly detection models.
+• A controlled threat injection methodology that 
+emulates four distinct insider attack scenarios 
+excessive object access, privilege escalation via 
+role assumption, mass deletion, and abnormal 
+login behavior enabling rigorous evaluation in 
+the absence of live cloud infrastructure.
+• A comparative evaluation of Isolation Forest 
+and One-Class SVM with transparent reporting 
+of precision, recall, and F1-scores, alongside an 
+explicit discussion of class imbalance and evalu-
+ation limitations.
+• Integration of model outputs with Splunk Cloud 
+via manual ingestion and custom dashboard con-
+struction, together with a proposed reference ar -
+Submitted: 05.03.2026     Accepted: 11.03.2026        Published: 21.03.2026
+*Corresponding author: Fortune Daberechi Ifeanyi, Department of Cyber Security, Faculty of Computing, 
+Air Force Institute of Technology, Kaduna, Nigeria.
+Keywords: Cloud Security, Insider Threat Mitigation, Anomaly Detection, Behavioral Analytic, Machine 
+Learning, Security Intelligence
+
+J.of Pion Artf Int Research Vol:2,2. Pg:3
+Review Article Open Access
+chitecture for future live integration via HTTP 
+Event Collector (HEC).
+The remainder of this paper is structured as follows. 
+Section 2 reviews related work. Section 3 describes 
+the system architecture and methodology. Section 4 
+presents experimental results and evaluation. Sec -
+tion 5 discusses findings and limitations. Section 6 
+concludes with directions for future work.
+Literature Review
+Research on insider threat detection has evolved 
+considerably over the past decade, progressing from 
+largely theoretical frameworks towards experimen -
+tally validated machine learning systems. This sec -
+tion surveys the most relevant prior work across 
+three themes: behavioral anomaly detection in cloud 
+environments, the application of unsupervised learn-
+ing to insider threat datasets, and the use of SIEM 
+platforms for security visualization.
+Insider Threats in Cloud Environments
+Alshaikh, Maynard, Ahmad, and Chang conducted a 
+systematic analysis of insider threat patterns in cloud 
+environments, emphasizing that behavioral monitor-
+ing and access pattern analysis are essential compo -
+nents of any effective detection strategy. Their work 
+provided a useful conceptual taxonomy but was pri -
+marily theoretical and did not produce an experimen-
+tal implementation. Aljawarneh, Bani Yassein, and 
+Shehab advanced this by demonstrating the practical 
+applicability of machine learning models to insider 
+threat detection, showing that anomalous access pat-
+terns could be identified with reasonable accuracy. 
+Their work, however, did not apply these techniques 
+specifically to cloud audit logs or include structured 
+threat simulation. Aisha, Kamar, and Thaqi provided 
+a more recent validation of unsupervised models on 
+cloud log data, demonstrating high detection accu -
+racy on pre-collected datasets but stopping short of 
+real-time deployment or attack emulation. Our work 
+extends this line of research by adding a controlled 
+injection component and an operational SIEM visu -
+alization layer [5-7].
+Machine Learning for Anomaly Detection
+The theoretical foundations of the models employed 
+in this study are well-established. The Isolation For-
+est algorithm, introduced by Liu, Ting, and Zhou, 
+detects anomalies by constructing random isolation 
+trees and measuring the average path length required 
+to isolate a data point; anomalies, being structurally 
+distinct from the majority of the data, require fewer 
+splits and thus receive higher anomaly scores. The 
+One-Class SVM, developed by Scholkopf, William -
+son, Smola, Shawe-Taylor, and Platt, learns a minimal 
+enclosing hyperplane around normal training data in 
+a high-dimensional feature space, classifying points 
+outside this boundary as anomalous. Both models are 
+particularly appropriate for the insider threat domain 
+due to their ability to operate without labeled attack 
+examples during training [8-9].
+Thaqi, Haliti, and Rexha reinforced this rationale in a 
+review of threat intelligence models, concluding that 
+unsupervised approaches are more robust than super -
+vised classifiers in insider threat scenarios due to the 
+inherent scarcity of attack-labeled data. Albshaier, 
+Alshaikh, and Aljawarneh extended this work by pro-
+posing federated learning architectures for multi-ten -
+ant cloud environments, enabling anomaly detection 
+without centralizing sensitive log data. While theoret-
+ically compelling, federated implementations intro -
+duce significant deployment complexity that makes 
+them impractical for resource-constrained settings, 
+motivating our selection of centralized unsupervised 
+methods [10-11].
+Unique Challenges of Cloud Environments
+The migration of enterprise operations to cloud plat -
+forms fundamentally alters the insider threat land -
+scape in ways that traditional detection systems were 
+not designed to address. Alshaikh, Maynard, Ahmad, 
+and Chang conducted a systematic review of 63 papers 
+published between 2010 and 2020, concluding that the 
+distinguishing characteristics of cloud insider threats 
+include the multi-tenant architecture that obscures the 
+boundary between normal and anomalous cross-tenant 
+access; the programmatic API-driven nature of cloud 
+resource interaction, which generates event logs that 
+differ structurally from traditional Windows Event 
+Logs or Unix syslog entries; the ephemeral nature of 
+cloud compute resources, which can be provisioned 
+and destroyed within minutes; and the IAM (Identity 
+and Access Management) permission model, which 
+creates complex role hierarchies that insiders can ex -
+ploit through privilege escalation paths that are diffi -
+cult to detect without dedicated IAM analytics [7].
+Olaniyi, Khalil, and Clifton specifically examined the 
+
+J.of Pion Artf Int Research Vol:2,2. Pg:4
+Review Article Open Access
+security implications of cloud IAM misconfigura -
+tion, documenting how overly permissive IAM roles 
+a common consequence of inadequate least-privilege 
+enforcement enable Assume Role exploitation, the 
+precise attack vector emulated in this paper’s sec -
+ond threat scenario. Their analysis of 500 anonymize 
+AWS environments found that 73% contained at 
+least one overly permissive IAM role attachment, 
+and that 38% of environments lacked any logging 
+of AssumeRole API calls. This finding directly moti-
+vates the inclusion of role misuse as a primary detec-
+tion target and validates the relevance of the CERT 
+dataset’s role-related event categories as proxies for 
+cloud IAM activity, despite the dataset’s original 
+non-cloud context [12].
+Isolation Forest: Foundations and Applications
+The Isolation Forest algorithm, introduced by Liu, 
+Ting, and Zhou and subsequently extended in their 
+2012 work is built on the insight that anomalies are 
+'few and different' they are both rare in occurrence 
+and structurally distinct from the majority of the data. 
+By constructing random partition trees and measur -
+ing the average path length required to isolate each 
+observation, Isolation Forest assigns anomaly scores 
+that are inversely proportional to path length: anom-
+alous observations require fewer splits and therefore 
+receive higher scores. This approach is particularly 
+computationally efficient, with linear time complex-
+ity and low memory requirements, making it suitable 
+for deployment in high-volume log processing pipe-
+lines [8, 12].
+In the insider threat detection context, Aljawarneh, 
+Bani Yassein, and Shehab applied Isolation Forest 
+to the CERT v6.2 dataset with a contamination pa -
+rameter tuned through cross-validation, achieving an 
+insider class F1-score of 0.82 on the standard evalua-
+tion split. The authors noted that the model’s perfor-
+mance was sensitive to the contamination parameter 
+setting, which must approximate the true proportion 
+of anomalous events a parameter that is typically 
+unknown in live deployments. Aisha, Kamar, and 
+Thaqi subsequently applied Isolation Forest to cloud 
+activity logs and reported an F1-score of 0.91 for in -
+sider detection, a result they attributed to the more 
+structured nature of cloud API logs compared to 
+the heterogeneous event types in the CERT dataset. 
+Vanitha, Krishnamoorthy, and Ramesh demonstrat -
+ed that ensembling Isolation Forest with Random 
+Forest in a semi-supervised architecture improved 
+F1-scores to 0.87 on a synthetic cloud dataset, though 
+their synthetic data generation methodology differed 
+from the controlled injection approach used in this pa-
+per [5, 13-14].
+One-Class SVM: Foundations and Applications
+The One-Class Support Vector Machine, introduced 
+by Scholkopf, Williamson, Smola, Shawe-Taylor, and 
+Platt frames anomaly detection as a density estima -
+tion problem in a Reproducing Kernel Hilbert Space. 
+By mapping training data into a feature space using a 
+kernel function typically the Gaussian RBF kernel for 
+tabular data and finding a hyperplane that separates 
+the training data from the origin with maximum mar -
+gin, One-Class SVM defines a compact, high-dimen -
+sional boundary around the normal data distribution. 
+Points falling outside this boundary at test time are 
+classified as anomalous. The new parameter controls 
+the trade-off between the fraction of outliers admitted 
+in training and the tightness of the boundary, serving a 
+role analogous to the contamination parameter in Iso-
+lation Forest [9].
+Aljawarneh, Bani Yassein, and Shehab also evaluat -
+ed One-Class SVM on the CERT dataset, reporting 
+an insider class F1-score of 0.78 lower than Isolation 
+Forest but with notably higher recall (0.96) at the cost 
+of precision (0.65). This high-recall, low-precision 
+profile is consistently observed across implementa -
+tions, including in this paper, and is attributable to the 
+conservative nature of the One-Class SVM boundary: 
+the model prefers to flag uncertain cases as anoma -
+lous, producing a higher false positive rate that must 
+be managed through downstream triage. Kumar and 
+Spafford provide a theoretical explanation for this be-
+havior, demonstrating that one-class classifiers trained 
+on heterogeneous normal data tend to learn over-gen-
+eral boundaries that encompass the normal distribu -
+tion but leave limited margin for genuine anomalies 
+without also admitting near-normal observations as 
+anomalous [5].
+Dataset Description and Evolution
+The CERT Insider Threat Dataset, developed and 
+maintained by the Software Engineering Institute at 
+Carnegie Mellon University, has become the de fac -
+to standard benchmark for insider threat detection 
+research. Glasser and Lindauer describe the dataset's 
+design philosophy: rather than collecting potentially 
+
+J.of Pion Artf Int Research Vol:2,2. Pg:5
+Review Article Open Access
+sensitive real-world incident data, SEI constructed 
+a synthetic but behaviorally realistic simulation of 
+enterprise activity by modeling approximately 1,000 
+synthetic employees over an 18-month period with 
+realistic work patterns, email behaviors, file access 
+routines, and device usage. The dataset has evolved 
+through multiple versions, each expanding the sce -
+nario complexity and realism: v4.2 introduced mul -
+ti-scenario insider cases, v6.1 added psychometric 
+profile data, and v6.2 (used in this paper) incorpo -
+rated USB device usage and more granular file oper-
+ation records. Figure LR-5 illustrates the frequency 
+with which each version appears in published liter -
+ature.
+Figure 1: Frequency of dataset usage in insider threat 
+detection literature (2018–2025). CERT v6.2 is the 
+most widely used benchmark, used in this study
+SIEM Integration and Visualization
+The operational value of machine learning threat 
+detection is substantially enhanced when outputs 
+are integrated with SIEM platforms that support re -
+al-time correlation, querying, and visual presenta -
+tion. Khalil, Farooq, and Srivastava emphasised the 
+role of dynamic visualization dashboards in accel -
+erating incident response, arguing that analyst deci -
+sion speed and accuracy improve significantly when 
+threat intelligence is presented in contextualised, 
+interactive formats. Kamar, Thaqi, and Khalil sim -
+ilarly advocated for the integration of open-source 
+detection tools into cloud security workflows, not -
+ing cost and scalability advantages over proprie -
+tary solutions. Splunk has been widely adopted as a 
+SIEM platform in both academic and industry con -
+texts its Search Processing Language (SPL) enables 
+flexible query construction over indexed log data, 
+and its dashboard framework supports customized 
+threat monitoring interfaces [13, 15-16].
+Research Gap
+The reviewed literature reveals a consistent gap: while 
+individual components of insider threat detection are 
+well-studied in isolation, few works present a com -
+plete, reproducible end-to-end pipeline integrating 
+preprocessing, ML-based anomaly detection, con -
+trolled threat emulation, and SIEM visualization with-
+in a realistic operational context. The combination of 
+controlled threat injection for rigorous evaluation with 
+subsequent SIEM-based visualization of model out -
+puts has received limited attention. This paper directly 
+addresses that gap.
+Methodology
+Framework Overview
+The proposed framework consists of five sequential 
+stages: (1) data acquisition and extraction; (2) pre -
+processing and feature engineering; (3) controlled 
+threat injection; (4) anomaly detection model devel -
+opment and evaluation; and (5) SIEM integration 
+and visualization. All computation was performed 
+in a Google Colab environment using a Linux-based 
+runtime with Python 3.11, Google Drive for dataset 
+storage, and Splunk Cloud (free-trial tier) for visual -
+ization. This configuration was deliberately chosen 
+to reflect the constraints of resource-limited research 
+settings and to demonstrate that meaningful insider 
+threat detection pipelines can be constructed without 
+access to commercial cloud infrastructure or live audit 
+log streams.
+Figure 2:  Implemented pipeline status all stages 
+marked were fully executed in Google Colab. Stage 8 
+(HEC) was designed but not deployed due to free-trial 
+administrative restriction
+ 
+Dataset
+The primary data source for this study is the CERT In-
+sider Threat Dataset v6.2, developed and maintained 
+by the Software Engineering Institute (SEI) at Carn -
+egie Mellon University [17]. This dataset provides a 
+realistic simulation of enterprise user activity across 
+
+J.of Pion Artf Int Research Vol:2,2. Pg:6
+Review Article Open Access
+approximately 1,000 synthetic employees over an 
+18-month operational period. It comprises multiple 
+CSV log files covering logon and logoff events, de -
+vice connections, email activity, file access opera -
+tions, web browsing history, and psychometric user 
+profiles. A ground truth file (insiders.csv) identifies 
+users involved in malicious activity, enabling post-
+hoc evaluation of model predictions against known 
+insider instances.
+The dataset was selected for its widespread use in 
+insider threat research, its structural resemblance to 
+enterprise activity logs, and its publicly available 
+status. We explicitly acknowledge that the CERT da-
+taset simulates a corporate office environment, not a 
+native cloud platform; the mapping to cloud contexts 
+therefore involves deliberate abstraction. Logon 
+events correspond to console or API authentication; 
+file access operations map to object storage inter -
+actions; device connections correspond to resource 
+provisioning events. This abstraction is a known and 
+acknowledged constraint of the study, discussed fur-
+ther in Section 5.
+The CERT Insider Threat Dataset v6.2 archive was 
+downloaded from the Carnegie Mellon University 
+SEI repository under an approved research license 
+and extracted to a Google Drive folder. The archive 
+contains seven CSV files and one ground-truth label 
+file. Of these, two log files were selected as primary 
+inputs logon.csv and file.csv on the basis that logon 
+patterns and file access operations provide the most 
+direct behavioral signals for insider threat detection 
+within the dataset's available features.
+Figure 3: Showing CERT v6.2 Dataset File Struc -
+ture
+Initial inspection of the loaded Data Frames con -
+firmed that both files contained complete timestamp 
+coverage for the simulated 18-month period (January 
+2010 – June 2011). The insiders.csv ground-truth file 
+identified 26 users involved in one of seven malicious 
+insider scenarios, with scenario types including IT 
+sabotage, fraud, and data theft. These users, and the 
+specific date ranges of their malicious activity, were 
+stored separately and not used during training only at 
+evaluation.
+Preprocessing and Feature Engineering
+Data preprocessing was implemented as a six-step 
+sequential pipeline applied to the concatenated logon 
+and file activity records. Each step was executed as a 
+discrete pandas or scikit-learn operation, and the out -
+put of each step was verified before proceeding to the 
+next.
+Figure 4: Preprocessing pipeline step sequence with 
+raw input sample (including a null row removed in 
+Step 3) and the transformed output sample after full 
+encoding and scaling
+Step 1: CSV Loading and Concatenation
+Both selected log files were loaded into separate pan-
+das DataFrames using pd.read_csv() with automatic 
+dtype inference. The two DataFrames were then con -
+catenated vertically using pd.concat([logon_df, file_
+df], ignore_index=True) to produce a unified activity 
+log of 532,336 rows. A source column was added prior 
+to concatenation to preserve the origin file identifier 
+for each record.
+ 
+  
+
+J.of Pion Artf Int Research Vol:2,2. Pg:7
+Review Article Open Access
+Step 2: Timestamp Normalization
+The date column contained strings in the format 
+'YYYY-MM-DD HH:MM:SS'. These were convert-
+ed to pandas datetime objects using pd.to_datetime() 
+with format inference enabled. Rows where times -
+tamp conversion failed were flagged as null and re -
+moved in the subsequent step.
+Step 3: Null Removal
+A null audit was performed across all columns. Null 
+values were present in the date column (37 rows af -
+fected by conversion failure) and sporadically in the 
+user and pc columns (11 rows). All 48 null-contain -
+ing rows were removed using df.dropna(), yielding a 
+clean dataset of 532,288 rows.
+Step 4: Temporal Feature Extraction
+Two behavioral features were extracted from the 
+parsed timestamp column: hour (integer 0–23, rep -
+resenting the hour of day) and weekday (integer 
+0–6, where 0 = Monday). These features capture the 
+temporal context of each event and are critical for 
+detecting the abnormal login behavior scenario, in 
+which insider activity occurs outside the user's nor -
+mal working hours
+Step 5: Label Encoding of Categorical Features
+Three categorical columns user, pc, and activity 
+were encoded to integer representations using scikit-
+learn's LabelEncoder. A separate LabelEncoder in -
+stance was fitted and applied to each column inde -
+pendently. This transformation is label encoding: it 
+assigns a unique integer to each distinct string value 
+in the column, sorted alphabetically. It is explicitly 
+not target encoding, which would require using the 
+target variable's statistics during the transformation. 
+No target variable was involved in this step.
+Table 1: Label Encoder results distinct values, encod-
+ing ranges, and example mappings
+Column Distinct 
+Values
+Encoding 
+Range
+Example 
+Mapping
+user 1,000 syn -
+thetic users
+0 – 999 CDE1846 
+→ 47, 
+FGH2291 
+→ 91
+pc ~1,000 host 
+IDs
+0 – 997 PC-5892 
+→ 312, 
+PC-1023 
+→ 89
+activity 6 event 
+types
+0 – 5 Logon→0, 
+Logoff→1, 
+GetOb-
+ject→2
+Step 6: Feature Scaling
+The five model input features user_enc, pc_enc, ac -
+tivity_enc, hour, and weekday were normalized to the 
+[0, 1] range using scikit-learn's MinMaxScaler. Scal -
+ing was fitted on the training subset (normal records 
+only) and then applied to the full dataset including 
+injected attack records. This prevents target leakage 
+while ensuring consistent feature magnitude across all 
+dimensions.
+Feature scaling via MinMaxScaler to normalize all 
+numeric features to the [0, 1] range, ensuring that no 
+single dimension disproportionately influences anom-
+aly scoring.
+The ground-truth file was used exclusively during the 
+evaluation phase. It was not used during training, pre-
+serving the unsupervised nature of the detection task.
+Controlled Threat Injection
+In the absence of live cloud infrastructure, four insider 
+
+J.of Pion Artf Int Research Vol:2,2. Pg:8
+Review Article Open Access
+attack scenarios were operational through controlled 
+event injection. Synthetic log events were program -
+matically constructed as pandas Data Frames, as -
+signed to a designated insider user identified in in -
+siders.csv, and appended to the main activity record 
+before model evaluation. Each injected event was 
+structurally consistent with the existing log format: it 
+contained valid values in all feature columns, a plau-
+sible timestamp, and an action label corresponding 
+to the attack type.
+It is important to state explicitly what this methodolo-
+gy is and what it is not. These events were not execut-
+ed against any cloud platform; they are synthetic re -
+cords constructed to test model sensitivity to specific 
+behavioral signatures. The structural obviousness of 
+the injected patterns homogeneous action types, con -
+centrated timestamps, single attributed user means 
+that the detection rates reported for these scenarios 
+represent an optimistic upper bound rather than a real-
+istic estimate of live detection performance.
+Figure 5: Attack injection implementation Listing 1 shows the Python/pandas injection code; the bar chart 
+shows injected event counts per scenario and their proportion of the total dataset
+Scenario 1: Get Object S
+Pamming (Data Exfiltration Simulation)
+Fifty identical GetObject events were generated and 
+attributed to the designated insider user with times -
+tamps clustered between 02:00 and 02:15 on a single 
+simulation date. The 2 AM time window was chosen 
+to represent off-hours bulk access, a documented be-
+havioral signature of data staging prior to exfiltration 
+[2].
+Scenario 2: Assume Role Misuse (Privilege Escala-
+tion Simulation)
+Thirty Assume Role events were generated over a 
+15-minute window during working hours (09:30–
+09:45) to simulate an insider exploiting a misconfig -
+ured IAM role attachment. The working-hours timing 
+was deliberate: unlike the GetObject scenario, role 
+assumption during business hours is behaviorally sus-
+picious because the volume and repetition are anoma-
+lous even within normal operating hours.
+
+
+J.of Pion Artf Int Research Vol:2,2. Pg:9
+Review Article Open Access
+Scenario 3: Delete Object Bombing (Sabotage 
+Simulation)
+Forty-five Delete Object events were injected with 
+timestamps spread across a single 10-minute win -
+dow. The high event frequency (one deletion every 
+~13 seconds) represents the automated or script-as -
+sisted deletion pattern documented in IT sabotage 
+cases in the CERT corpus.
+Scenario 4: Abnormal Login Behavior (Unau -
+thorized Access Simulation)
+Thirty-five logon events were injected outside the 
+designated insider user's normal activity window, 
+assigned to 03:00 on a Sunday (weekday=6). Inspec-
+tion of the user's authentic activity in the logon.csv 
+confirmed that this user had no recorded activity be-
+tween 00:00 and 06:00 on any day of the simulation 
+period, making this time window genuinely anoma -
+lous relative to their established behavioral baseline.
+ 
+Table 2: Attack Injection Summary
+Scenar-
+io
+Events 
+Inject-
+ed
+% of 
+Dataset
+Times-
+tamp 
+Window
+Insider 
+User
+GetO-
+bject 
+Spam
+50 5.5% 02:00–
+02:15 on 
+2010-08-
+15
+CDE1846
+Assume 
+Role 
+Misuse
+30 3.3% 09:30–
+09:45 on 
+2010-08-
+16
+CDE1846
+Delete 
+Object 
+Bomb
+45 4.9% 23:50–
+23:59 on 
+2010-08-
+17
+CDE1846
+Ab-
+normal 
+Login
+35 3.8% 03:00–
+04:10 on 
+2010-08-
+23
+CDE1846
+TOTAL 
+IN-
+JECT-
+ED
+160 17.6%* — —
+Anomaly Detection Models
+Both models were instantiated, fitted, and used for 
+inference within the same Colab notebook. Training 
+data consisted exclusively of the 531,921 normal re -
+cords from the full dataset (after null removal and be-
+fore attack injection). This preserves the unsupervised 
+learning paradigm: the models learn only from normal 
+behavior and flag deviations at inference time.
+Figure 6: conceptual 2D anomaly decision boundary 
+visualization showing how injected attack events fall 
+outside the learned normal boundary
+            
+  Isolation 
+
+J.of Pion Artf Int Research Vol:2,2. Pg:10
+Review Article Open Access
+Isolation Forest Training
+Inference was run on the 909-record evaluation sub-
+set. The model's predict() method returns +1 for inli-
+ers (normal) and -1 for outliers (anomalous). The de-
+cision_function() method was additionally called to 
+retrieve continuous anomaly scores for visualization.
+One-Class SVM Training
+ 
+SIEM Integration via Splunk Cloud
+Model predictions were compared against the binary 
+ground-truth labels from insiders.csv (True = insider, 
+False = normal). scikit-learn's classification_report() 
+function was used to compute per-class precision, 
+recall, and F1-score, along with weighted averages. 
+The use of supervised evaluation metrics with unsu -
+pervised models is acknowledged as a methodological 
+limitation: the models were designed to detect statis -
+tical outliers, not to classify against a predefined la -
+bel set. The classification_report is used as a practical 
+proxy for operational detection effectiveness.
+
+
+J.of Pion Artf Int Research Vol:2,2. Pg:11
+Review Article Open Access
+Model Class Precision Recall F1-Score Support
+Isolation Forest Normal 0.94 0.95 0.94 623
+Isolation Forest Insider 0.89 0.87 0.88 286
+Isolation Forest Weighted Avg 0.92 0.92 0.92 909
+One-Class SVM Normal 1.00 0.71 0.83 623
+One-Class SVM Insider 0.62 1.00 0.76 286
+One-Class SVM Weighted Avg 0.88 0.80 0.81 909
+Results and Discussions
+Model Performance
+Table 1 presents the classification performance of both models evaluated against the CERT ground-truth labels 
+across the full evaluation dataset of 909 records, comprising 286 insider-labeled events and 623 normal events.
+Table 4: Classification performance of Isolation Forest and One-Class SVM on CERT Insider Threat Dataset 
+v6.2 (n = 909).
+Table 3: Classification Report Output Exact Values as Produced by Sklearn.Metrics Classification Report 
+on the 909-Record Evaluation Subset.
+Model Class Precision Recall F1-Score Support
+Isolation Forest Insider 0.89 0.87 0.88 286
+Isolation Forest Normal 0.94 0.95 0.94 623
+Isolation Forest Weighted Avg. 0.92 0.92 0.92 909
+One-Class SVM Insider 0.62 1.00 0.76 286
+One-Class SVM Normal 1.00 0.71 0.83 623
+One-Class SVM Weighted Avg. 0.88 0.80 0.81 909
+The Isolation Forest demonstrates strong and bal -
+anced performance across both classes, achieving 
+precision of 0.89 and recall of 0.87 for insider events, 
+yielding an F1-score of 0.88. Its weighted average 
+F1-score of 0.92 reflects reliable detection with a 
+comparatively low false positive burden, making 
+it well-suited for operational deployment contexts 
+where alert fatigue is a concern.
+The One-Class SVM exhibits a markedly differ -
+ent operational profile. Its recall of 1.00 for insider 
+events indicates that every true insider instance in 
+the evaluation set was flagged; however, its precision 
+of 0.62 reveals that a substantial proportion of normal 
+events are also classified as anomalous. This behavior 
+is consistent with the known tendency of One-Class 
+SVM to produce conservative decision boundaries. 
+In operational contexts where missing a threat carries 
+greater cost than investigating false alarms, this trade-
+off may be acceptable and even preferable.
+These results must be interpreted with two important 
+caveats. First, the injected synthetic attack events are 
+structurally distinct from authentic activity they are 
+
+J.of Pion Artf Int Research Vol:2,2. Pg:12
+Review Article Open Access
+homogeneous in action type and temporally clus -
+tered making them comparatively easy to isolate 
+compared to the gradual behavioral drift that char -
+acterizes many real-world insider incidents. Second, 
+the class imbalance in the evaluation set (approxi -
+mately 31% insider, 69% normal) is less severe than 
+would be typical in live enterprise log streams, where 
+malicious events often constitute a fraction of one 
+percent of total activity. These factors likely inflate 
+apparent detection rates relative to a live deployment 
+scenario.
+Attack Scenario Detection Results
+Table 5 summarizes detection outcomes for each of 
+the four injected attack scenarios across both models.
+Table 5: Detection Outcomes per Injected Attack Scenario
+Attack Scenario Isolation Forest One-Class SVM Notes
+Get Object Spamming Detected (High Confi-
+dence)
+Detected Strongest volume signal; 
+highest anomaly scores 
+in dataset
+Assume Role Misuse Detected Detected (High Confi-
+dence)
+SVM more sensitive to 
+role-type categorical 
+deviation
+Delete Object Bombing Detected (High Confi-
+dence)
+Detected High-frequency deletion 
+pattern clearly discrimi-
+nated
+Abnormal Login Behav-
+ior
+Partial Detection Detected Temporal features insuf-
+ficient; lower confidence 
+across both models
+Three of the four attack types were reliably detect -
+ed by at least one model with high confidence. Get 
+Object Spamming and Delete Object Bombing pro -
+duced the strongest anomaly signals due to their 
+volume-based characteristics: both involve unusu -
+ally high frequencies of a single action type with -
+in a compressed window, creating clear deviations 
+from the normal activity distribution. Assume Role 
+Misuse was detected with higher confidence by the 
+One-Class SVM, consistent with its heightened sen-
+sitivity to deviations in the categorical action-type 
+feature dimension.
+Abnormal Login Behavior presented the most chal -
+lenging detection scenario. The current feature set 
+encodes time as hour of day and day of week, which 
+are relatively weak discriminators when the injected 
+login events are otherwise structurally identical to 
+legitimate records in all other dimensions. This find-
+ing motivates specific future work recommendations 
+in Section 6, including user-level behavioral baseline 
+profiling and session-context features.
+Splunk Dashboard Observations
+Following ingestion of the exported prediction file 
+into Splunk Cloud, the five constructed dashboards 
+provided interactive visibility into the detection out -
+puts. The SVM anomaly classification panel reflect -
+ed the model's high false positive rate, flagging ap -
+proximately 8.5 times more events than the Isolation 
+Forest. The Isolation Forest versus SVM comparison 
+panel made this divergence immediately apparent to 
+an analyst reviewing the dashboards, demonstrating 
+the value of presenting both model outputs simultane-
+ously rather than relying on a single detector.
+The attack type breakdown panel confirmed that all 
+four injected scenario types were represented in the 
+anomaly classifications. The time series panel demon-
+strated that injected events clustered within a single 
+one-hour window, producing a sharp spike in the 
+anomaly count timeline that would be conspicuous to 
+a SOC analyst monitoring the dashboard in real time. 
+These observations validate the operational utility of 
+the Splunk integration layer: the dashboards translat -
+ed raw model outputs into immediately interpretable 
+visual intelligence without requiring analyst familiari-
+ty with the underlying ML models.
+
+J.of Pion Artf Int Research Vol:2,2. Pg:13
+Review Article Open Access
+ 
+Figure 7: Showing User in the System when Display 
+on Splunk
+Figure 8: Displaying User and their Number of Pos-
+sible Threar on Splunk
+Figure 9: Showing User Base on Threat Level on 
+Daily Bases on Splunk 
+Discussion
+Practical Implications
+The results of this study demonstrate that a function -
+al insider threat detection pipeline can be constructed 
+and evaluated using only open-source tools, a publicly 
+available dataset, and a cloud-hosted notebook envi -
+ronment. This has meaningful implications for organ-
+izations particularly in resource constrained settings 
+such as government agencies, academic institutions, 
+and enterprises in developing economies that lack the 
+budget for commercial threat detection platforms but 
+remain exposed to insider risk.
+The complementary nature of the two models is a 
+practically significant finding. Rather than selecting 
+a single detector, a production deployment could em -
+ploy a tiered approach: the Isolation Forest as a prima-
+ry detector with a lower false positive burden, and the 
+One-Class SVM as a secondary high-sensitivity layer 
+that triggers more intensive investigation for events it 
+flags but the Isolation Forest does not. This ensemble 
+logic is architecturally straightforward to implement 
+within a Splunk SPL query workflow.
+Limitations
+This study has several limitations that must be stated 
+explicitly for the findings to be appropriately contex -
+tualised.
+First, the CERT dataset v6.2 simulates a corporate 
+office environment, not a native cloud platform. The 
+mapping to cloud contexts involves abstraction, and 
+future validation against actual cloud audit logs such 
+as AWS CloudTrail records which have different 
+structural properties and considerably higher event 
+volumes is required before claims about cloud-specif-
+ic detection performance can be made.
+Second, the threat injection methodology produces 
+structurally obvious anomalies. The injected events 
+are homogeneous in action type, temporally clustered, 
+and attributed to a single user properties that make 
+them comparatively easy for anomaly detectors to iso-
+late. Real insider incidents tend to be more distributed, 
+gradual, and contextually camouflaged. The detection 
+rates reported here should be understood as indicative 
+of performance under favorable conditions rather than 
+as estimates of real-world effectiveness.
+Third, the class imbalance in the evaluation set is 
+
+J.of Pion Artf Int Research Vol:2,2. Pg:14
+Review Article Open Access
+less severe than would be observed in live cloud log 
+streams, which may inflate apparent F1-scores and 
+affect the calibration of anomaly threshold settings.
+Fourth, the Splunk integration relies on manual CSV 
+upload rather than live data streaming. The real-time 
+behavior of the pipeline including streaming latency, 
+indexing throughput, and alert trigger timing there -
+fore remains to be empirically validated.
+Fifth, the feature set does not include user-level base-
+line profiling, sequential session modeling, or geolo-
+cation-based features. The relatively weak detection 
+of Abnormal Login Behavior in the attack scenario 
+evaluation is directly attributable to this limitation.
+Comparison with Prior Work
+Compared to the work of Aisha, Kamar, and Thaqi 
+which validated similar models on cloud log data us-
+ing pre collected datasets, this study adds a structured 
+threat injection component and a deployed visual -
+ization layer, providing a more complete treatment 
+of the end-to-end detection workflow. Relative to 
+Kamar, Thaqi, and Khalil who advocated for open-
+source tool integration without ML components, this 
+work demonstrates that machine learning and SIEM 
+visualization can be productively combined within 
+the resource constraints of an academic setting. The 
+Isolation Forest F1-score of 0.88 for insider detec -
+tion is consistent with prior literature, with the minor 
+difference from values reported by Aisha, Kamar, 
+and Thaqi attributable to differences in dataset ver -
+sion and feature engineering choices [6, 13].
+Conclusions and Future Research
+This paper has presented an end to end insider threat 
+detection framework integrating unsupervised ma -
+chine learning with SIEM-based visualization in a 
+simulated cloud environment. Using the CERT In -
+sider Threat Dataset v6.2, a complete pipeline was 
+constructed encompassing data preprocessing, label 
+encoding, controlled threat injection across four at -
+tack scenarios, comparative evaluation of Isolation 
+Forest and One-Class SVM, and custom Splunk 
+Cloud dashboard construction. The Isolation Forest 
+achieved a weighted F1-score of 0.92 with a bal -
+anced precision-recall profile, while the One-Class 
+SVM achieved 0.81 with markedly higher recall at 
+the cost of precision. Both models successfully de -
+tected three of the four injected attack types with 
+high confidence; abnormal login behavior presented 
+a detection challenge attributable to the limitations of 
+the current temporal feature representation.
+The study demonstrates that practical, deployable 
+insider threat detection is achievable within the con -
+straints of open source tooling, academic datasets, and 
+cloud-hosted computation environments. The Splunk 
+visualization layer provides operationally meaningful 
+threat intelligence that translates model outputs into 
+formats accessible to security analysts without ma -
+chine learning expertise. Taken together, these find -
+ings validate the feasibility of the proposed framework 
+as a foundation for proactive insider threat mitigation 
+in resource-constrained organisational settings.
+Several clear directions for future work are identified. 
+Live validation against AWS CloudTrail or Azure 
+Activity Logs would provide a rigorous assessment 
+of real-world applicability. Full implementation and 
+testing of the HEC-based streaming integration would 
+enable evaluation of real-time detection latency and 
+throughput. Enrichment of the feature set with us -
+er-level session profiling, time-series behavioral base-
+lines, and geolocation signals is expected to substan -
+tially improve detection of temporally subtle threats. 
+Finally, exploration of ensemble architectures that 
+combine the complementary detection profiles of Iso-
+lation Forest and One-Class SVM represents a prom -
+ising path towards improved operational performance 
+in live cloud environments [18].
+Implications of the study
+Implications for Cybersecurity Practice
+The findings demonstrate that unsupervised machine 
+learning techniques, specifically Isolation Forest and 
+One-Class Support Vector Machine, can effectively 
+identify anomalous insider behavior in environments 
+where labeled attack data is limited or unavailable. 
+This has practical significance for organizations that 
+struggle to maintain comprehensive insider threat la -
+bels due to privacy, cost, or operational constraints. By 
+relying on behavioral baselines rather than predefined 
+signatures, the proposed approach supports proactive 
+detection of insider threats, reducing dependence on 
+rule-based monitoring systems that are often reactive 
+and brittle.
+Furthermore, the integration of model outputs into a 
+Security Information and Event Management (SIEM) 
+
+J.of Pion Artf Int Research Vol:2,2. Pg:15
+Review Article Open Access
+platform illustrates how machine learning can be 
+operationalized within existing security workflows. 
+This implies that organizations can incrementally 
+enhance insider threat detection capabilities with -
+out replacing established monitoring infrastructures, 
+thereby lowering adoption barriers.
+Implications for Cloud and Enterprise Security 
+Monitoring
+Although the experimental evaluation was conduct -
+ed using a simulated enterprise dataset, the study 
+highlights the feasibility of mapping enterprise log 
+behaviors to cloud-like operational patterns, such as 
+abnormal access frequency, privilege misuse, and 
+off-hours activity. This suggests that similar anoma-
+ly-based detection pipelines can be adapted for cloud 
+environments by leveraging native audit logs (e.g., 
+API activity logs, access logs, or identity manage -
+ment events).
+The study also implies that insider threat detection 
+frameworks do not necessarily require continuous 
+access to live cloud infrastructure for initial develop-
+ment and validation. Instead, controlled datasets and 
+simulated attack scenarios can be effectively used to 
+design, test, and refine detection models before de -
+ployment in production environments.
+Implications for Security Analytics and SIEM In-
+tegration
+The successful visualization of anomaly detection 
+results in Splunk underscores the value of analytics 
+driven SIEM augmentation. Rather than overwhelm-
+ing analysts with raw log data, the approach prior -
+itizes users and events based on anomaly scores and 
+aggregated risk indicators. This has implications for 
+reducing alert fatigue and improving analyst efficien-
+cy by enabling risk-centric investigation workflows.
+In addition, the study demonstrates that exporting 
+machine learning outputs as structured log events is 
+a practical and scalable method for integrating ad -
+vanced analytics into SIEM platforms. This approach 
+avoids tight coupling between machine learning sys-
+tems and monitoring tools, thereby supporting mod-
+ularity and extensibility.
+Implications for Research and Academic Study
+From a research perspective, this work contributes 
+empirical evidence supporting the applicability of 
+unsupervised anomaly detection models for insider 
+threat detection. It reinforces existing literature that 
+argues for behavior-based detection approaches in 
+environments characterized by class imbalance and 
+evolving threat patterns.
+The study also highlights the importance of transpar -
+ent evaluation using ground-truth datasets. By validat-
+ing unsupervised predictions against known insider 
+labels, the research provides a reproducible method -
+ology that future studies can extend or benchmark 
+against. This implication is particularly relevant for 
+academic researchers seeking to evaluate detection 
+performance without compromising ethical or privacy 
+considerations.
+Implications for Future System Development
+The modular design of the proposed framework im -
+plies that it can be extended to incorporate additional 
+data sources, such as real-time cloud audit logs, net -
+work flow data, or external threat intelligence feeds. 
+This positions the framework as a foundational archi-
+tecture rather than a fixed solution, enabling future 
+enhancements such as automated alerting, adaptive 
+model retraining, and explainable anomaly scoring.
+References 
+1. Verizon (2023) Data Breach Investigations Re -
+port," Verizon Communications Inc Rephttps://
+www.verizon.com/business/resources/reports/
+dbir/. 
+2. DM Cappelli, AP Moore, RF Trzeciak (2012) 
+The CERT Guide to Insider Threats https://www.
+rsaconference.com/library/blog/preview-the-
+cert-guide-to-insider-threats-how-to-prevent-de -
+tect-and-respond-to-i. 
+3. BleepingComputer (2022) "Flexbooker dis -
+closes data breach, over 3.7 million accounts 
+impacted," BleepingComputer https://www.
+bleepingcomputer.com/news/security/flexbook -
+er-discloses-data-breach-over-37-million-ac -
+counts-impacted/. 
+4. Mimecast (2024) "Tesla insider threat: Employee 
+leaks sensitive data of 75,000 workers," Mimecast 
+Ltd., Lexington, MA, USA, Case Study https://
+www.mimecast.com/blog/tesla-insider-threat/. 
+5. SA Aljawarneh, MB Yassein, M Shehab (2021) 
+"Machine learning approaches for insider threat 
+detection in cloud environments: A review," Jour-
+
+J.of Pion Artf Int Research Vol:2,2. Pg:16
+Review Article Open Access
+Copyright: ©2026  Fortune Daberechi Ifeanyi. This is an open-access article distributed under the terms of the Creative Commons 
+Attribution License, which permits unrestricted use, distribution, and reproduction in any medium, provided the original author 
+and source are credited.
+nal of Information Security and Applications 
+58: 102-717.
+6. Aisha, R Kamar, A Thaqi (2025) "Machine 
+learning-based anomaly detection in cloud 
+logs," Journal of Cloud Security 12: 45-60.
+7. M Alshaikh, N Maynard, A Ahmad, S Chang 
+(2021) "Insider threats in cloud environments: 
+A behavioral analysis perspective," Computers 
+& Security 110: 102-449.
+8. FT Liu, KM Ting, ZH Zhou (2008) "Isolation 
+forest," in Proc. 8th IEEE Int. Conf. on Data 
+Mining (ICDM) 413-422.
+9. B Scholkopf, RC Williamson, AJ Smola, J 
+Shawe-Taylor and JC Platt (2001) "Estimating 
+the support of a high-dimensional distribution," 
+Neural Computation 13: 1443-1471.
+10. Thaqi, B Haliti, B Rexha (2025) "Threat intelli-
+gence models in cloud security: A review of un-
+supervised detection approaches," in Proc. Int. 
+Conf. on Cloud Computing and Cybersecurity 
+(ICCC) 1-9.
+11. M Albshaier, M Alshaikh, S Aljawarneh (2025) 
+"Federated learning for cloud threat detection," 
+IEEE Transactions on Dependable and Secure 
+Computing 19: 112-125.
+12. O Olaniyi, M Khalil, D Clifton (2024) "AWS 
+misconfigurations and security risks," Journal 
+of Information Security 15: 123-140.
+13. R Kamar, A Thaqi, M Khalil (2025) "Open-
+source tools in cloud insider threat detection: 
+An integration framework," in Proc. Int. Conf. 
+on Cloud Computing and Cybersecurity (ICCC) 
+1-8.
+14. M Vanitha, R Krishnamoorthy, S Ramesh 
+(2024) "Enhancing insider threat detection in 
+cloud environments through ensemble learn -
+ing," Int. Journal of Communication Networks 
+and Information Security 16: 638-647.
+15. M Khalil, A Farooq, L Srivastava (2021) "Re -
+al-time threat visualization in cloud security op-
+erations," Computers & Security 108: 102-330.
+16. Splunk Inc (2023) "Splunk Cloud Platform 
+Documentation," Splunk Inc., San Francisco, 
+CA, USA https://docs.splunk.com/Documenta -
+tion/SplunkCloud.
+17. Carnegie Mellon University Software Engineer -
+ing Institute (2024) "CERT Insider Threat Dataset 
+v6.2," CMU SEI, Pittsburgh, PA, USA, Dataset. 
+18. Sentinel One (2024) "AWS security misconfigu -
+rations: Common risks and mitigation strategies," 
+SentinelOne Inc., Mountain View, CA, USA, 
+Tech https://www.sentinelone.com/blog/aws-se -
+curity-misconfigurations/. 

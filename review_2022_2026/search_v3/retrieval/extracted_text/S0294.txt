@@ -1,0 +1,766 @@
+Jurnal Teknik Informatika (JUTIF)  Vol. 7, No. 5, October 2026, Page. 4148-4163 
+P-ISSN: 2723-3863  https://jutif.if.unsoed.ac.id                                       
+E-ISSN: 2723-3871  DOI: https://doi.org/10.52436/1.jutif.2026.7.5.5711 
+ 
+ 
+4148 
+Operational Diagnostics for Intrusion Detection: SHAP-Guided Failure 
+Casebook and SOC Triage Rationale with XGBoost and RandomForest  
+Fathoni Mahardika*1, Ema Utami2, Kusrini3, Ferry Wahyu Wibowo4 
+1Department of Informatics, Universitas Sebelas April, Indonesia 
+2,3,4Doctoral of Informatics, Universitas Amikom, Indonesia 
+ 
+Email: 1fathoni@unsap.ac.id 
+Received : Feb 3, 2026; Revised : Feb 18, 2026; Accepted : Feb 24, 2026; Published : Oct 10, 2026 
+Abstract 
+Operational deployment of machine -learning (ML) intrusion detection systems (IDS) in security operations centers 
+(SOC) often generates large volumes of alerts that are difficult to justify, prioritize, and audit. Although explainable 
+AI (XAI) techniques ar e increasingly used to interpret IDS predictions, most studies remain limited to post -hoc 
+explanations and do not translate insights into analyst -facing operational diagnostics. This paper proposes 
+Explainability as Operational Diagnostics , a SHAP -guided workflow that operationalizes explanations into two 
+reusable artifacts: (1) a Failure Casebook  that captures recurring false -positive and false -negative patterns using 
+explanation signatures and confidence cues, and (2) a Triage Rationale that maps attribution evidence and prediction 
+confidence into transparent investigation priorities for SOC analysts. The workflow is evaluated using flow -based 
+IDS data with 78 features and two supervised classifiers, XGBoost and Random Forest, applied to  an explainability 
+subset of 1,000 instances per model. In the analyzed baseline run, both models achieve perfect separation (TN = 639, 
+TP = 361, FP = 0, FN = 0), resulting in an empty failure casebook under this controlled condition. Rather than 
+presenting this outcome as a final operational claim, we  frame it as baseline diagnostic validation and explain how 
+the workflow would populate the casebook under realistic conditions, including class imbalance, noise, and 
+distribution shift. Even without misclassifications, SHAP analyses reveal consistent domin ant flow -level drivers 
+across models, providing a reproducible foundation for SOC justification and model auditing. Overall, this work 
+advances XAI for cybersecurity from prediction-centric interpretation toward actionable operational diagnostics that 
+support trustworthy ML deployment in high-risk SOC environments. 
+ 
+Keywords : Explainable AI, Failure Analysis, Intrusion detection, Operational diagnostic, SHAP, SOC triage. 
+ 
+ 
+This work is an open access article licensed under a Creative Commons Attribution 4.0 International License.  
+  
+ 
+1. INTRODUCTION 
+Machine learning (ML) -based Intrusion Detection Systems (IDS) are increasingly commonly 
+used to help Security Operations Centers (SOC) process high volumes of logs/flows and detect 
+anomalous activities as well as attacks. However, improvements in model accuracy do not automatically 
+translate to improvements in operational decision quality. In practice, incident analysis is influenced by 
+alert load, triage time limitations, and the risk of misclassification, which directly impact incident 
+response (for example, false positives trigger wasted investigations, while false negatives risk leaving 
+attacks unaddressed). Therefore, the need for explainability in IDS is not merely about 'knowing 
+important features,' but also about providing rationale that can be used for failure diagnostics and quick, 
+targeted triage  [1], [2]. 
+The XAI literature has developed rapidly, including the clustering of concepts, taxonomy, 
+opportunities, and challenges of XAI to support model accountability [1], design frameworks and cross-
+disciplinary evaluation of XAI systems [2], as well as comprehensive reviews of XAI methods across 
+various domains [3]. In the realm of cybersecurity, surveys confirm that the need for interpretability 
+arises from the dynamic nature of the problem, the presence of adversarial actors, and the demands for 
+
+
+Jurnal Teknik Informatika (JUTIF)  Vol. 7, No. 5, October 2026, Page. 4148-4163 
+P-ISSN: 2723-3863  https://jutif.if.unsoed.ac.id                                       
+E-ISSN: 2723-3871  DOI: https://doi.org/10.52436/1.jutif.2026.7.5.5711 
+ 
+ 
+4149 
+trustworthiness in high -risk decision -making [4], [5], [6], [7], [8], [9] . Nevertheless, most XAI 
+implementations in cybersecurity still often stop at the level of descriptive “post-hoc explanations” (for 
+example, global feature importance) and have not yet become operational mechanisms to guide the 
+investigation of misclassification cases and facilitate evidence-based triage [4], [5], [10]. Recent open-
+access studies also argue that explainability in intrusion detection should support forensic/operational 
+defensibility, not merely model transparency, and they empirically compare SHAP and LIME to assess 
+explanation reliability for investigator -facing use. Such findings reinforce the need to package 
+explanations as operational diagnostic artifacts rather than isolated interpretability plots [11]. 
+In IDS, the challenge of XAI is "two-sided": on one hand, it enhances transparency and user trust, 
+but on the other hand, it can lead to overconfidence or expose new attack surfaces if explanations are 
+not properly managed [10]. In addition, the nature of IDS, which often faces class imbalance, changing 
+traffic patterns, as well as concept drift/shift, means that explanations need to be positioned as adaptive 
+diagnostic tools rather than static artifacts [10], [12] . This reinforces the need for an operationally 
+oriented explainability framework  namely, explainability that is directly connected to: (i) identifying 
+model failure patterns, (ii) creating a replicable failure casebook, and (iii) justifying triage priorities 
+based on confidence levels and risk [12], [13], [14]. 
+Although explainable AI has been widely applied to intrusion detection, most implementations 
+still stop at producing explanatory visualizations or feature rankings. In practice, SOC analysts need 
+more than interpretability: they need explanations that can be operationalized into systematic failure 
+diagnostics (to understand recurring false alarms and missed attacks) and triage decision support  (to 
+justify priorities under time pressure). The lack of structured, reusable artifacts that connect explanation 
+evidence to operational actions leaves a gap between XAI research outcomes and SOC workflows. 
+Existing SHAP-based explainable IDS studies commonly focus on interpreting model predictions 
+through feature importance rankings or local explanations for selected samples. In contrast, our work 
+operationalizes explanations into reusable diagnostic artifacts namely the Failure Casebook and Triage 
+Rationale that are explicitly designed for SOC workflows (failure forensics, prioritization, and audit -
+friendly justification). This distinction is methodological (artifact formalization and confidence -aware 
+routing) and operational (supporting repeatable analyst decision -making rather than one -off 
+interpretability) [15], [16] . 
+Based on this gap, this paper proposes the approach of Explainability as Operational Diagnostics, 
+which utilizes SHAP to: (1) create a Failure Casebook containing archetypes of failure cases (FP/FN) 
+and patterns of feature drivers of predictions, and (2) build a Triage Rationale that maps explainability 
+outputs into operational reasons for prioritising investigations. The focus of this paper is to make 
+explainability not just an interpretation, but a diagnostic tool and triage rationale that can be used by 
+SOC analysts and IDS model management teams [17], [18]. The main contributions of this paper are as 
+follows: 
+1) Conceptual contribution (reframing XAI): We reframe explainability in intrusion detection as 
+an operational diagnostic capability that targets analyst needs justification, failure forensics, 
+and SOC triage decision support [10], [18]. 
+2) Methodological contribution (reusable artifacts): We formalize two analyst-facing artifacts: a 
+Failure Casebook that structures recurring misclassification archetypes (false positives/false 
+negatives) using SHAP attribution signatures and confidence cues, and a Triage Rationale that 
+links attribution evidence and confidence to transparent prioritization rules [17], [18] 
+3) Empirical contribution (baseline validation): We provide an initial validation on flow-based IDS 
+artifacts (78 features) using XGBoost and RandomForest, reporting predictive metrics and 
+showing that SHAP summaries yield consistent dominant drivers across models, while 
+
+Jurnal Teknik Informatika (JUTIF)  Vol. 7, No. 5, October 2026, Page. 4148-4163 
+P-ISSN: 2723-3863  https://jutif.if.unsoed.ac.id                                       
+E-ISSN: 2723-3871  DOI: https://doi.org/10.52436/1.jutif.2026.7.5.5711 
+ 
+ 
+4150 
+clarifying the “empty casebook” outcome as a baseline condition that motivates stress -testing 
+under realistic error scenarios [15], [16], [19]. 
+Accordingly, this study aims to design and validate a SHAP -guided operational diagnostic 
+workflow for ML-based intrusion detection, and to demonstrate how the workflow produces reusable 
+diagnostic artifacts namely a Failure Casebook and a Triage Rationale using XGBoost and 
+RandomForest on flow-based IDS features. 
+2. METHOD 
+2.1. General Design and Operational Objective 
+The method is designed to address SOC operational needs: when an IDS generates predictions, 
+analysts require two things: (i) why an instance is predicted as an attack/normal, and (ii) if a 
+misclassification occurs, what the failure pattern is and how to pr ioritize handling it. This framework 
+follows the XAI design principles that require a connection between the form of the explanation and the 
+user's goal [2], [9]. 
+2.2. Data, Experimental Settings, and Models 
+This work is an explainability -focused extension of our prior IDS experimentation, with the 
+primary objective of operationalizing explainability into reusable diagnostic artifacts (Failure Casebook 
+and Triage Rationale). To ensure reproducibility, we build  upon a preserved experimental artifact that 
+records the end -to-end workflow, including preprocessing routines, model training configuration, 
+inference logs, and SHAP outputs. In this study, the underlying data are drawn from the publicly 
+available CICIDS2018 benchmark, specifically the 02-14-2018 capture (02-14-2018.csv). After 
+removing non-predictive identifiers (e.g., Timestamp) and the label column, we obtain 78 tabular 
+network-flow features  commonly used in IDS research (e.g., dst_port, flow_duration, and 
+packet-rate statistics such as flow_pkts/s and bwd_pkts/s). This representation is consistent with 
+recent explainable NIDS work that uses SHAP not only to interpret predictions but also to support 
+feature reasoning and computationally feasible deployment pipelines [20]. 
+For detection baselines, we analyze explanations for two supervised classifiers XGBoost and 
+RandomForest because both are operationally relevant for structured flow telemetry and are widely 
+reported as competitive baselines in explainable IDS studies [15], [16]. The dataset is converted into a 
+binary classification task (Benign = 0, Attack = 1). Dataset size and class distribution are reported in the 
+Dataset Description and Provenance subsection, preprocessing and leakage prevention are described in 
+the Preprocessing and Data Splitting subsection, and model configuration and software versions are 
+detailed in the Model Configuration subsection. 
+2.2.1 Dataset Description and Provenance 
+This study uses a publicly available intrusion detection benchmark from the CICIDS2018 
+collection. CICIDS2018 is a public benchmark released by the Canadian Institute for Cybersecurity 
+(University of New Brunswick) and provides ground-truth labels for benign traffic and multiple attack 
+scenarios. We focus on the 02 -14-2018 traffic capture (exported as 02 -14-2018.csv), which represents 
+network-flow records generated from benign activities and multiple attack scenarios. Each record 
+corresponds to a single agg regated flow described by tabular flow statistics, such as port information, 
+duration, packet-rate variables, and window/segment indicators. 
+The original dataset provides a categorical label per flow that distinguishes benign traffic from 
+specific attack types. Following common practice in explainable IDS studies that evaluate binary 
+detection pipelines, we convert the multi -class labels into a  binary target: Benign → 0 (normal) and 
+
+Jurnal Teknik Informatika (JUTIF)  Vol. 7, No. 5, October 2026, Page. 4148-4163 
+P-ISSN: 2723-3863  https://jutif.if.unsoed.ac.id                                       
+E-ISSN: 2723-3871  DOI: https://doi.org/10.52436/1.jutif.2026.7.5.5711 
+ 
+ 
+4151 
+Attack → 1 (intrusion). The resulting feature matrix excludes non -predictive identifiers (Timestamp) 
+and the label column (Label), yielding 78 flow-based features used for model training and explainability 
+analysis. To support transparent reporting, we summarize the dataset size and class distribution used in 
+this study. The processed dataset contains 2,349,751 flow records with 1,501,056 benign flows 
+(≈63.88%) and 848,695 attack flows (≈36.12%), consistent with the class ratio reported in the preserved 
+experimental artifact. This acquisition-and-labeling procedure is fully reproducible using the provided 
+CSV artifact and the preprocessing protocol described in Sections 2.2.2–2.2.3.  
+Because CICIDS2018 is a standardized public benchmark, our study does not involve private data 
+collection; instead, we emphasize reproducible preprocessing, evaluation, and explainability artifact 
+construction. 
+2.2.2 Preprocessing and Data Splitting 
+We apply a consistent preprocessing pipeline prior to model training and evaluation to ensure data 
+quality and reproducibility. First, we perform basic validity checks on flow features (e.g., verifying that 
+duration- and rate-related attributes are well -defined). We then replace invalid numeric values with 
+missing values and handle missing entries using median imputation , which is robust for skewed 
+network-flow distributions and preserves the scale of continuous attributes. 
+Because both XGBoost and RandomForest are tree -based models and are generally robust to 
+feature scaling, normalization is not strictly required for predictive performance. However, to keep the 
+preprocessing pipeline uniform across experiments and to stabilize probability outputs for downstream 
+diagnostics, we apply min–max scaling to map features into a comparable numeric range. Importantly, 
+to prevent data leakage, all preprocessing steps that learn statistics from data (imputation and scaling) 
+are fitted on the training partition only and then applied to the held -out test partition using the learned 
+parameters. 
+We split the dataset into training and test partitions using a stratified hold-out split (80/20)  to 
+preserve the attack/benign class ratio in both subsets, and we fix the random seed (random_state = 
+42) for reproducibility. Model evaluation is conducted exclusively on the held -out test set defined by 
+this split, while the explainability subset used for SHAP analysis is sampled from the held-out evaluation 
+data as described in Section 2.3. 
+All reported results are produced from this fixed preprocessing -and-splitting protocol, ensuring 
+that performance metrics and explanation artifacts are derived from data that are not used during model 
+fitting. 
+2.2.3 Model Configuration (XGBoost and RandomForest) 
+We train two supervised classifiers  XGBoost and RandomForest  as representative tree -based 
+models that are widely adopted for tabular network -flow telemetry. XGBoost is implemented using 
+XGBClassifier from the xgboost library (v3.1.3) and RandomForest is implemented using 
+RandomForestClassifier from scikit -learn (v1. 6.1). To ensure reproducibility and consistent 
+comparisons, we fix the random seed (random_state = 42) and enable parallel execution (n_jobs = −1) 
+for both models. For XGBoost, we explicitly set eval_metric = 'logloss' and disable label encoding 
+(use_label_encoder = False) to ensure stable binary classification behavior. Unless stated otherwise, all 
+remaining hyperparameters follow the library default settings. This choice is intentional because the 
+goal of this paper is to evaluate the diagnostic workflow (SHAP-guided explainability, triage rationale, 
+and failure casebook construction) under a standard baseline configuration; hyperparameter tuning can 
+be treated as an orthogonal optimization step in future work. 
+ 
+
+Jurnal Teknik Informatika (JUTIF)  Vol. 7, No. 5, October 2026, Page. 4148-4163 
+P-ISSN: 2723-3863  https://jutif.if.unsoed.ac.id                                       
+E-ISSN: 2723-3871  DOI: https://doi.org/10.52436/1.jutif.2026.7.5.5711 
+ 
+ 
+4152 
+Table 1. Model configuration used for reproducible training and evaluation 
+Component XGBoost (XGBClassifier, xgboost 
+v3.1.3) 
+RandomForest 
+(RandomForestClassifier, scikit-
+learn v1.6.1) 
+Random seed random_state = 42 random_state = 42 
+Parallelism n_jobs = −1 n_jobs = −1 
+Core objective / 
+criterion 
+Binary classification (default objective 
+for classifier) criterion = 'gini' (default) 
+# trees n_estimators = 100 (default) n_estimators = 100 (default) 
+Tree depth max_depth = 6 (default) max_depth = None (default) 
+Learning rate learning_rate = 0.3 (default) – 
+Row subsampling subsample = 1.0 (default) bootstrap = True (default) 
+Column 
+subsampling colsample_bytree = 1.0 (default) max_features = 'sqrt' (default) 
+Regularization reg_lambda = 1.0, reg_alpha = 
+0.0 (default) class_weight = None (default) 
+Training metric eval_metric = 'logloss' – 
+Label encoder use_label_encoder = False – 
+ 
+2.3. Subset for Explainability Analysis  
+To keep the explainability workflow operationally feasible, SHAP computations are performed 
+on a bounded subset of the held -out evaluation data. Specifically, we sample 1,000 instances for 
+XGBoost and 1,000 instances for RandomForest. This design reflects realistic SOC constraints where 
+explanation latency and analyst time are limited, making it impractical to generate local attributions for 
+the entire test set in near real-time. 
+Beyond computational efficiency, using a fixed-size subset improves reproducibility of diagnostic 
+artifacts: the same subset size can be re -used across repeated runs, model variants, and operational 
+environments, enabling consistent comparison of attributi on signatures and stability patterns. 
+Importantly, this subset is used only for explanation and diagnostic artifact construction (Failure 
+Casebook and Triage Rationale), not as a replacement for standard detection evaluation on the full test 
+partition, which is reported separately. In the reported diagnostic run, the explainability subset contains 
+639 benign and 361 attack instances (n = 1,000), reflecting the class composition of the held -out 
+evaluation data from which it is sampled. 
+This positioning is aligned with deployment -oriented IDS studies emphasizing that explanation 
+components should remain tractable under real constraints (compute budget, time -to-decision, and 
+analyst workload) while still supporting consistent diagnostics [12], [17], [21].  
+2.4. Explainability engine: SHAP for local attribution 
+SHAP is used as a post-hoc explanation to calculate the contribution of features to predictions at 
+the instance level. This local explanation is important for diagnostic purposes because model errors are 
+almost always case -specific and cannot be sufficient ly explained by global feature importance alone 
+[17], [18]. In this paper: 
+a) Global summaries are obtained by averaging the absolute SHAP values (mean |SHAP|) to map 
+dominant features. 
+
+Jurnal Teknik Informatika (JUTIF)  Vol. 7, No. 5, October 2026, Page. 4148-4163 
+P-ISSN: 2723-3863  https://jutif.if.unsoed.ac.id                                       
+E-ISSN: 2723-3871  DOI: https://doi.org/10.52436/1.jutif.2026.7.5.5711 
+ 
+ 
+4153 
+b) Local summaries (per instance) are used to trace the reasons for predictions in critical cases (if 
+any). 
+Formal Definition of SHAP Values 
+To quantify feature contributions, we use SHapley Additive exPlanations (SHAP), which is 
+grounded in Shapley values from cooperative game theory. For a model 𝑓, the SHAP value for feature 
+𝑖is defined as: 
+𝜙𝑖 = ∑ ∣ 𝑆 ∣ !  (∣ 𝐹 ∣ −∣ 𝑆 ∣ −1)!
+∣ 𝐹 ∣ !
+𝑆⊆𝐹∖{𝑖}
+ (𝑓(𝑆 ∪ {𝑖}) − 𝑓(𝑆)) 
+(1) 
+ 
+where 𝐹 denotes the set of all input features and 𝑆 is a subset of features. Intuitively, 𝜙𝑖 represents the 
+average marginal contribution of feature 𝑖across all feature coalitions. In this study, we use SHAP to 
+obtain both global feature importance summaries and local explanations that support failure diagnostics 
+and triage justification. 
+2.5. Evaluation Metrics and Confidence Definition 
+We evaluate predictive performance using metrics derived from the confusion matrix. Let TP, 
+TN, FP, and FN denote true positives, true negatives, false positives, and false negatives, respectively. 
+Accuracy, Precision, Recall, and F1-score are defined as: 
+Accuracy = 𝑇𝑃 + 𝑇𝑁
+𝑇𝑃 + 𝑇𝑁 + 𝐹𝑃 + 𝐹𝑁 (2) 
+ 
+Precision = 𝑇𝑃
+𝑇𝑃 + 𝐹𝑃 (3) 
+ 
+Recall = 𝑇𝑃
+𝑇𝑃 + 𝐹𝑁 (4) 
+ 
+𝐹1 = 2 ⋅ Precision ⋅ Recall
+Precision + Recall  (5) 
+ 
+We also report the area under the ROC curve (AUC), computed from predicted probabilities by varying 
+the decision threshold and measuring the trade-off between the true positive rate (TPR) and false positive 
+rate (FPR), where: 
+ 
+𝑇𝑃𝑅 = 𝑇𝑃
+𝑇𝑃 + 𝐹𝑁 , 𝐹𝑃𝑅 = 𝐹𝑃
+𝐹𝑃 + 𝑇𝑁 (6) 
+ 
+If the classifier outputs the probability estimate 𝑝(𝑦 = 1 ∣ 𝑥)for the attack class, we define prediction 
+confidence as: 
+ 
+conf(𝑥) = max(𝑝(𝑦 = 1 ∣ 𝑥), 1 − 𝑝(𝑦 = 1 ∣ 𝑥)) (7) 
+2.6. Failure Casebook: definition and construction 
+The Failure Casebook documents recurring misclassification archetypes so that they can be reused 
+for (i) robustness evaluation, (ii) feature or data improvement, and (iii) SOC triage procedures. We 
+construct the casebook as follows.  
+
+Jurnal Teknik Informatika (JUTIF)  Vol. 7, No. 5, October 2026, Page. 4148-4163 
+P-ISSN: 2723-3863  https://jutif.if.unsoed.ac.id                                       
+E-ISSN: 2723-3871  DOI: https://doi.org/10.52436/1.jutif.2026.7.5.5711 
+ 
+ 
+4154 
+1) Misclassification labeling: we label a prediction as a false positive (FP)  when 𝑦true = 0 and 
+𝑦pred = 1, and as a false negative (FN) when 𝑦true = 1and 𝑦pred = 0.  
+2) Confidence extraction: for each instance 𝑥, we use the predicted attack probability 𝑦prob =
+𝑝(𝑦 = 1 ∣ 𝑥).  
+3) Case prioritization : a case is marked as critical when it is a high -confidence error (e.g., 
+𝑦probclose to 1 for FP or close to 0 for FN), since confidently wrong predictions are operationally 
+damaging in SOC workflows.  
+4) Failure archetype grouping (when FP/FN exist): we group misclassified cases by clustering their 
+SHAP attribution vectors.  
+Concretely, we specify agglomerative clustering with cosine distance (average linkage), where 
+each SHAP vector is formed by concatenating per-feature SHAP values for the instance. In the analyzed 
+subset for this paper, FP and FN are absent; therefore, clustering is not instantiated in this run. 
+Nevertheless, the configurat ion is stated to ensure reproducibility when misclassifications occur in 
+extended evaluations (e.g., under class imbalance, noise, or distribution shift). 
+2.7. Triage Rationale: explainability mapping → operational decisions 
+The Triage Rationale translates model outputs and SHAP evidence into a transparent investigation 
+priority that can be applied consistently in SOC workflows. For each instance 𝑥, we use: (i) the predicted 
+attack probability 𝑝(𝑦 = 1 ∣ 𝑥), (ii) the confidence score conf(𝑥) = max(𝑝(𝑦 = 1 ∣ 𝑥), 1 − 𝑝(𝑦 = 1 ∣
+𝑥))(Section 2.5), and (iii) the local SHAP attribution signature (top contributing features and their 
+directions). We define an alert as high-confidence when conf(𝑥) ≥ 𝜏, where 𝜏 is a configurable 
+threshold (we use 𝜏 = 0.95 in this study as a conservative SOC -oriented setting). Based on the 
+prediction outcome and confidence, we apply the following prioritization rules: 
+1. High priority (critical FN): 𝑦true = 1, 𝑦pred = 0, and conf(𝑥) ≥ 𝜏. These are confidently missed 
+attacks and represent the most operationally damaging cases. 
+2. Medium priority (critical FP): 𝑦true = 0, 𝑦pred = 1, and conf(𝑥) ≥ 𝜏. These cases can drive alert 
+fatigue and consume analyst time, especially when they occur repeatedly with similar attribution 
+signatures. 
+3. Low priority (borderline cases): conf(𝑥) < 𝜏. These represent uncertain predictions and are 
+routed to lower-priority review or deferred investigation depending on SOC capacity. 
+For each prioritized case, the top-𝑘 SHAP features provide an explanation “evidence bundle” that 
+supports analyst justification (e.g., dominant port-level or flow-rate drivers) and can be re-used to guide 
+mitigation actions such as threshold tuning, targeted retraining, or feature sanity checks. This scheme is 
+consistent with the idea of integrating XAI for risk -oriented decision -making and cyber -risk 
+management [13], [22] . In the SOC context, the ultimate goal is to reduce investigation workload 
+without compromising the detection of critical incidents [12], [13]. 
+The workflow begins with network -flow data represented by 78 flow -derived features and 
+supervised IDS models (XGBoost and RandomForest) producing predicted labels and attack 
+probabilities. A cost-aware explainability subset (1,000 instances per model) is u sed to compute post-
+hoc SHAP attributions (global mean ∣ 𝑆𝐻𝐴𝑃 ∣and local per -instance explanations). Misclassifications 
+are labeled as FP/FN and scored for criticality (“confidently wrong” errors). When FP/FN exist, 
+attribution vectors can be clustered into stable archetypes to populate a Failure Casebook, which then 
+supports a triage rationale mapping (high priority: high -confidence FN; medium: high-confidence FP; 
+low: borderline cases) and operational outputs for analyst decision-making and model/data refinement. 
+ 
+
+Jurnal Teknik Informatika (JUTIF)  Vol. 7, No. 5, October 2026, Page. 4148-4163 
+P-ISSN: 2723-3863  https://jutif.if.unsoed.ac.id                                       
+E-ISSN: 2723-3871  DOI: https://doi.org/10.52436/1.jutif.2026.7.5.5711 
+ 
+ 
+4155 
+ 
+Figure 1. Research Method 
+3. RESULTS  
+3.1. Full Test-Set Predictive Performance 
+We first report predictive performance on the held-out test partition defined in the Preprocessing 
+and Data Splitting subsection. Table 2 summarizes the results for XGBoost and RandomForest on the 
+full test set. Reporting full test -set performance is essential to avoid over -interpreting results obtained 
+from a bounded explainability subset. In addition, because IDS data are commonly imbalan ced, we 
+report PR -AUC and operational alerting indicators false alarm rate (FAR) and alert rate to reflect 
+practical SOC impact. 
+In imbalanced IDS settings, PR-AUC is often more informative than ROC -AUC because it 
+reflects performance on the positive (attack) class under skewed prevalence.  We therefore report PR -
+AUC together with SOC-relevant alerting indicators (FAR and alert rate) as shown in Table 2. 
+ 
+Table 2. Full test-set performance on CICIDS2018 
+Model Precision Recall (TPR) F1-score PR-AUC False Alarm Rate (FPR) Alert Rate 
+XGBoost 0.999972 1.000000 0.999986 1.000000 0.000016 0.36288 
+RandomForest 1.000000 1.000000 1.000000 1.000000 0.000000 0.36287 
+ 
+3.2. Explainability subset diagnostic run 
+The perfect scores reported in this evaluation should be interpreted with care. They were obtained 
+on an explainability subset (1,000 instances per model) constructed to support detailed diagnostic 
+analysis, and therefore represent a baseline diagnostic validation rather than a final claim about real -
+world IDS deployment. We explicitly prevent data leakage by ensuring the explainability subset is held 
+out from model fitting and by applying the same preprocessing pipeline consistently across train/test 
+partitions. Under this baseline condition (FP = 0, FN = 0), the Failure Casebook remains empty because 
+no misclassification archetypes are available to catalog. Importantly, the diagnostic workflow remains 
+
+
+Jurnal Teknik Informatika (JUTIF)  Vol. 7, No. 5, October 2026, Page. 4148-4163 
+P-ISSN: 2723-3863  https://jutif.if.unsoed.ac.id                                       
+E-ISSN: 2723-3871  DOI: https://doi.org/10.52436/1.jutif.2026.7.5.5711 
+ 
+ 
+4156 
+meaningful: SHAP attributions still provide reproducible evidence of which flow -level features 
+dominate model decisions, serving as an audit -friendly justification layer and a starting point for 
+subsequent stress-testing under class imbalance, noise, or di stribution shift where misclassifications 
+naturally arise. On the SHAP subset (1,000 instances per model), both models achieved perfect 
+performance:  
+1) XGBoost (n = 1,000): TN = 639, TP = 361, FP = 0, FN = 0; Accuracy = 1.00; Precision = 1.00; 
+Recall = 1.00; F1 = 1.00; AUC = 1.00. 
+2) RandomForest (n = 1,000): TN = 639, TP = 361, FP = 0, FN = 0; Accuracy = 1.00; Precision = 
+1.00; Recall = 1.00; F1 = 1.00; AUC = 1.00. 
+Probability score behavior reflects high confidence: 
+1) RandomForest outputs probabilities concentrated at 0 or 1 on this subset. 
+2) XGBoost outputs very small probabilities for normal instances (median ≈ 6.75 × 10−7) and 
+near-1 probabilities for attack instances (upper quartiles near 0.99999). 
+Table 3 reports the predictive performance of XGBoost and RandomForest on the SHAP explainability 
+subset (n = 1,000 per model). Consistent with the confusion matrices in Figure 2, both models produced 
+zero false positives and zero false negatives on this subset. 
+ 
+Table 3. Performance summary on the explainability subset (n = 1,000 per model) 
+Model n TN FP FN TP Accuracy Precision Recall F1 AUC 
+XGBoost 1000 639 0 0 361 1.000 1.000 1.000 1.000 1.000 
+RandomForest 1000 639 0 0 361 1.000 1.000 1.000 1.000 1.000 
+ 
+ 
+Figure 2. Confusion matrices for XGBoost and RandomForest on the SHAP subset (n = 1,000 per 
+model) 
+ 
+Both models yield zero false positives and zero false negatives on this subset (TN = 639, TP = 361), 
+explaining why no failure archetypes are generated in the failure casebook for the current run. 
+3.3. Explainability outcomes: Global Summary, Cross -Model Consistency, and Local Case 
+Evidence 
+Although no misclassifications were observed on the explainability subset, SHAP still provides a 
+diagnostic profile of what drives model decisions. Table 4 and Figure 3 summarize the global attribution 
+importance (mean absolute SHAP), while Figure 4 visualizes the instance -level distribution and 
+directionality of feature attributions across samples.  
+
+
+Jurnal Teknik Informatika (JUTIF)  Vol. 7, No. 5, October 2026, Page. 4148-4163 
+P-ISSN: 2723-3863  https://jutif.if.unsoed.ac.id                                       
+E-ISSN: 2723-3871  DOI: https://doi.org/10.52436/1.jutif.2026.7.5.5711 
+ 
+ 
+4157 
+3.3.1 Global SHAP summary and cross-model consistency  
+Despite differences in model families, the SHAP global summaries show notable overlap in 
+dominant drivers. The intersection of the top influential features (by mean |SHAP|) across both models 
+includes: fwd_seg_size_min, dst_port, bwd_pkts/s, init_fwd_win_b yts, init_bwd_win_byts, 
+fwd_pkts/s, flow_pkts/s. This alignment indicates that both models rely on a coherent set of flow-level 
+signals (port and packet-rate dynamics, and window/segment features) for separating benign and attack 
+traffic consistent with how IDS research often emphasizes flow statistics and transport/session behaviors 
+as strong predictors in tabular IDS settings [10], [15], [18], [23]. 
+ 
+Table 4. Global SHAP diagnostic summary: dominant features (mean absolute SHAP) 
+Rank XGBoost Top Features (mean |SHAP|) RandomForest Top Features (mean |SHAP|) 
+1 fwd_seg_size_min dst_port 
+2 dst_port fwd_seg_size_min 
+3 bwd_pkts/s bwd_pkts/s 
+4 init_fwd_win_byts init_fwd_win_byts 
+5 init_bwd_win_byts init_bwd_win_byts 
+6 fwd_pkts/s fwd_pkts/s 
+7 flow_pkts/s flow_pkts/s 
+8 (model-specific) (model-specific) 
+9 (model-specific) (model-specific) 
+10 (model-specific) (model-specific) 
+ 
+ 
+ 
+Figure 3. Global SHAP feature importance (mean absolute SHAP) for XGBoost and RandomForest 
+ 
+Both models share a consistent set of dominant flow -level features (e.g., fwd_seg_size_min, 
+dst_port, packet -rate variables, and window/segment byte indicators), supporting cross -model 
+interpretability consistency. 
+
+
+Jurnal Teknik Informatika (JUTIF)  Vol. 7, No. 5, October 2026, Page. 4148-4163 
+P-ISSN: 2723-3863  https://jutif.if.unsoed.ac.id                                       
+E-ISSN: 2723-3871  DOI: https://doi.org/10.52436/1.jutif.2026.7.5.5711 
+ 
+ 
+4158 
+  
+Figure 4. SHAP beeswarm plots for XGBoost and RandomForest on the explainability subset 
+ 
+This alignment indicates that both models rely on a coherent set of flow -level signals (port and 
+packet-rate dynamics, and window/segment features) for separating benign and attack traffic consistent 
+with how IDS research often emphasizes flow statistics a nd transport/session behaviors as strong 
+predictors in tabular IDS settings [15], [19], [23].  
+The plots visualize the distribution and directionality of feature attributions across instances, 
+providing a diagnostic baseline for subsequent evaluations under more challenging operational scenarios 
+where FP/FN archetypes may emerge. 
+In summary, even when no misclassifications are observed on the explainability subset, SHAP 
+provides a reproducible diagnostic profile of the dominant decision drivers. Table 4 and Figures 3 –4 
+report these global and distributional attribution patterns, forming a baseline for subsequent stress testing 
+where FP/FN archetypes may emerge. 
+3.3.2 Local Case Evidence  
+ 
+ 
+Figure 5. Local FP Waterfall Plot 
+
+
+Jurnal Teknik Informatika (JUTIF)  Vol. 7, No. 5, October 2026, Page. 4148-4163 
+P-ISSN: 2723-3863  https://jutif.if.unsoed.ac.id                                       
+E-ISSN: 2723-3871  DOI: https://doi.org/10.52436/1.jutif.2026.7.5.5711 
+ 
+ 
+4159 
+To illustrate how explanations support case-level reasoning when errors occur, Figure 5 presents 
+a representative local explanation for a high-confidence false positive from the extended artifact run.  
+The waterfall plot shows which features push the prediction toward the attack class and which features 
+counteract it, forming an auditable evidence bundle that can be used for analyst notes, feature sanity 
+checks, and targeted mitigation actions (e.g., threshold adjustment or retraining on recurring patterns). 
+3.4. Failure Casebook Outcome & Triage Output 
+Because no FP/FN occurred on the subset, failure_casebook.csv is empty and triage_rationale.txt 
+reports no critical misclassification instances. Operationally, this means the “failure-driven” component 
+of the diagnostics pipeline cannot be instantiated on this particular subset run; however, the 
+explainability summary remains informative for documenting model behavior and for establishing a 
+baseline prior to stress-testing (e.g., drift/shift, imbalance), which is repeatedly highlighted as necessary 
+in IDS-XAI discussions [10], [15], [18], [23].  
+To characterize confidence behavior under the analyzed configuration, Table 5 summarizes the 
+distribution of predicted attack probabilities 𝒑(𝒚 = 𝟏 ∣ 𝒙) by true class, and Figure 6 visualizes the 
+separation between normal and attack instances. RandomForest produces degenerate probability outputs 
+(0 for normal and 1 for attack), whereas XGBoost shows near -zero probabilities for normal traffic and 
+near-one probabilities for attack tra ffic with slight dispersion, indicating high confidence with non -
+degenerate scoring. 
+ 
+Table 5. Distribution of predicted attack probability 
+Model Class (true) n Min Q1 Median Q3 Max 
+XGBoost Normal (0) 639 ~0 ~0 ~6.75e-7 ~0 ~0 
+XGBoost Attack (1) 361 ~1 ~1 ~1 ~0.999986 ~1 
+RandomForest Normal (0) 639 0 0 0 0 0 
+RandomForest Attack (1) 361 1 1 1 1 1 
+ 
+To evaluate how prediction confidence behaves under the analyzed configuration, Table 5 
+summarizes the distribution of attack probabilities 𝒑(𝒚 = 𝟏) by true class. Figure 6 visualizes the 
+separation between normal and attack instances, showing extreme confidence for RandomForest and 
+near-extreme but slightly dispersed scores for XGBoost. 
+ 
+ 
+Figure 6. Distribution of predicted attack probabilities 
+ 
+RandomForest produces degenerate probability outputs (0 for normal and 1 for attack), whereas 
+XGBoost shows near-zero probabilities for normal traffic and near -one probabilities for attack traffic 
+with slight dispersion, indicating high confidence with non-degenerate scoring.  
+
+
+Jurnal Teknik Informatika (JUTIF)  Vol. 7, No. 5, October 2026, Page. 4148-4163 
+P-ISSN: 2723-3863  https://jutif.if.unsoed.ac.id                                       
+E-ISSN: 2723-3871  DOI: https://doi.org/10.52436/1.jutif.2026.7.5.5711 
+ 
+ 
+4160 
+Consistent with the absence of false positives and false negatives reported in Table 3 and Figure 
+2, the generated failure casebook for this run contains no entries. 
+4. DISCUSSIONS 
+This study positions explainability not merely as an interpretability add-on, but as an operational 
+diagnostic layer that helps SOC analysts justify and triage IDS outputs. The central contribution is the 
+transformation of SHAP explanations into two reusab le artifacts: a Failure Casebook and a Triage 
+Rationale. Conceptually, this bridges a recurring gap in explainable intrusion detection research, where 
+explanations are often produced but rarely operationalized into structured decision-support tools. 
+From an empirical perspective, the perfect separation observed on the analyzed explainability 
+subset indicates that, under the evaluated condition, both XGBoost and RandomForest can distinguish 
+the two classes without error. While such performance is uncom mon in realistic IDS deployments, it 
+does not invalidate the diagnostic framework; rather, it establishes a baseline scenario where the 
+casebook is empty by definition (no FP/FN to catalog) and where the diagnostic value shifts toward 
+explanation-based aud iting and justification. In practical SOC settings, misclassifications typically 
+emerge under class imbalance, evolving traffic patterns, noisy labels, or distribution shift. Under those 
+conditions, the proposed workflow would populate the Failure Casebook by grouping FP/FN cases that 
+share similar attribution signatures and confidence profiles, producing actionable “failure archetypes” 
+that can guide mitigation (e.g., threshold adjustment, feature review, targeted retraining, or rule -based 
+safeguards). 
+Compared with prior SHAP-based explainable IDS studies that primarily report feature rankings 
+or local explanations, this work emphasizes operational reuse: explanations are organized into artifacts 
+that support triage transparency and repeated analyst use. This reframing aligns with broader Informatics 
+and Computer Science directions in trustworthy AI, where explainability is expected to support human 
+decision-making, auditability, and system -level reliability in high -risk domains. Future work should 
+extend the evaluation to larger and more diverse datasets, include stress tests under drift/imbalance, and 
+report populated failure archetypes to quantify how the casebook improves troubleshooting efficiency 
+and analyst trust. 
+4.1. What the current results do and do not validate 
+The perfect subset performance validates that, under the specific configuration represented in the 
+uploaded artifacts, both models behave deterministically and with very high confidence, leaving no 
+misclassification to triage. This outcome is valuable but limited: in operational IDS, error -driven 
+diagnostics are most useful precisely when the model encounters difficult boundary regions, 
+distributional shifts, or novel attack variants [10], [18]. Consequently, the present results mainly validate 
+the baseline explainability layer (stable drivers, consistent feature signals), rather than the full failure -
+casebook mechanism. 
+4.2. Why a “no-error subset” matters for an operational diagnostics framing 
+A common pitfall in XAI -for-IDS deployments is to present explanations even when the 
+underlying evaluation regime does not reflect operational complexity. Surveys caution that XAI can 
+create illusory assurance if analysts interpret stable explanations as proof of robustness or generalization 
+[10], [18]. From an operational diagnostics perspective, a no-error subset should be treated as: 
+a) sanity-check phase (are dominant features plausible and consistent?), and 
+b) a baseline reference for later comparisons under stress conditions (imbalance, drift/shift, noisy 
+labels, adversarial perturbations), which cybersecurity XAI work emphasizes as crucial for 
+trustworthy SOC integration [12], [15], [23], [24]. 
+
+Jurnal Teknik Informatika (JUTIF)  Vol. 7, No. 5, October 2026, Page. 4148-4163 
+P-ISSN: 2723-3863  https://jutif.if.unsoed.ac.id                                       
+E-ISSN: 2723-3871  DOI: https://doi.org/10.52436/1.jutif.2026.7.5.5711 
+ 
+ 
+4161 
+4.3. Interpreting cross-model SHAP agreement 
+Cross-model agreement on dominant features strengthens interpretability claims: it suggests that 
+explanations are not merely artifacts of a single modeling choice. This is useful for governance and 
+auditability, themes repeatedly emphasized in trustworthy and ethical XAI discussions [9], [25] . 
+However, agreement is not equivalent to correctness under change; IDS-XAI surveys specifically argue 
+that explanation stability should be evaluated under realistic operational shifts [10], [15], [18], [23] . 
+Therefore, the next methodological step is not “more plots,” but targeted scenario testing designed to 
+produce meaningful failure archetypes (FP/FN), enabling the casebook and triage rationale to 
+demonstrate operational value. 
+4.4. Limitations and recommended next experiments 
+Although the proposed workflow is designed to operationalize explainability into reusable 
+diagnostics (Failure Casebook) and analyst -facing decision support (Triage Rationale), the current 
+evaluation is bounded by the artifacts available in this study and the diagnostic subset used for SHAP 
+computation. As a result, the findings should be interpreted as a baseline diagnostic validation  
+demonstrating how explanations can be structured into operational outputs, rather than as a complete 
+operational validation across diverse real -world SOC conditions. The following limitations therefore 
+clarify what is and is not evidenced by the present r un, and motivate the next experiments required for 
+stronger external validity. 
+In particular, two limitations are explicit given the available materials and the observed prediction 
+outcomes. First, failure -driven diagnostics cannot be instantiated because false positives and false 
+negatives are absent in the analyzed subset, which prevents the Failure Casebook from being populated 
+with misclassification archetypes. Second, robustness across operational scenarios  such as class 
+imbalance, distribution drift/shift, or adversarial effects is not quantified in the provided results, despite 
+being a prominent concern in IDS-XAI surveys and recent XAI-for-IDS studies [10], [14], [15], [18]. 
+To move from baseline validation to operational validation, a coherent follow -on design would 
+introduce controlled shift and imbalance regimes and then evaluate: (1) the emergence of “confidently 
+wrong” errors, (2) the stability of attribution signatures a cross scenarios, and (3) whether the triage 
+rationale meaningfully reduces investigative load while preserving detection of high-risk events, aligned 
+with cyber-risk-oriented XAI frameworks [13], [22]. 
+5. CONCLUSION 
+This paper reframes explainability for ML-based intrusion detection as an operational diagnostic 
+mechanism, rather than a purely descriptive interpretability add -on. By integrating SHAP attributions 
+with confidence-aware error labeling, the proposed workflow produces two analyst-oriented artifacts: a 
+Failure Casebook for organizing recurring misclassification archetypes and a Triage Rationale that links 
+explanation evidence to actionable prioritization in SOC workflows. Using flow -based features (78 
+attributes) and two tabular classifiers (XGBoost and RandomForest), the evaluated explainability subset 
+(1,000 instances per model) yields perfect performance on the provided run (FP=0, FN=0), which 
+explains why the failure casebook is not populated in this instance. Importantly, SHAP global 
+summaries still provide a reproducible diagnostic baseline showing consistent dominant drivers across 
+models, supporting transparency and operational monitoring.  
+The current evidence is bounded by the absence of misclassifications on the analyzed subset; 
+therefore, the full diagnostic value of the failure casebook is expected to emerge under more challenging 
+operational scenarios (e.g., class imbalance, distribution shift/concept drift, and adversarially influenced 
+traffic). Future work should prioritize scenario -driven stress testing to intentionally surface FP/FN 
+
+Jurnal Teknik Informatika (JUTIF)  Vol. 7, No. 5, October 2026, Page. 4148-4163 
+P-ISSN: 2723-3863  https://jutif.if.unsoed.ac.id                                       
+E-ISSN: 2723-3871  DOI: https://doi.org/10.52436/1.jutif.2026.7.5.5711 
+ 
+ 
+4162 
+patterns, validate the stability of explanation signatures, and assess whether triage rationale reduces 
+investigative workload without compromising detection of high-risk events. 
+Beyond predictive performance, this work contributes to Informatics and Computer Science by 
+proposing an operational XAI design pattern for high -risk decision-support systems: explanations are 
+treated as diagnostic evidence that can be reused, audited, and  acted upon. By formalizing the Failure 
+Casebook and Triage Rationale, the study provides a practical bridge between ML intrusion detection 
+research and SOC workflows, supporting more transparent, trustworthy, and maintainable IDS 
+deployment. 
+CONFLICT OF INTEREST 
+The authors declare that there is no conflict of interest regarding the publication of this paper. 
+The authors have no financial or personal relationships that could have inappropriately influenced the 
+work reported in this study. 
+ACKNOWLEDGEMENT 
+The authors would like to express their gratitude to all individuals and institutions who supported 
+the completion of this research, including colleagues who provided constructive feedback during the 
+preparation of the manuscript. If applicable, this work was carried out using research artifacts and 
+experimental results developed as part of the authors’ ongoing doctoral research. No external funding 
+was received for this study.  
+REFERENCES 
+[1] A. Barredo Arrieta et al. , “Explainable Artificial Intelligence (XAI): Concepts, taxonomies, 
+opportunities and challenges toward responsible AI,” Information Fusion, vol. 58, pp. 82 –115, 
+2020, doi: 10.1016/j.inffus.2019.12.012. 
+[2] S. Mohseni, N. Zarei, and E. D. Ragan, “A Multidisciplinary Survey and Framework for Design 
+and Evaluation of Explainable AI Systems,” ACM Trans. Interact. Intell. Syst., vol. 11, no. 3–4, 
+2021, doi: 10.1145/3387166. 
+[3] D. Minh, H. X. Wang, Y. F. Li, and T. N. Nguyen, “Explainable artificial intelligence: a 
+comprehensive review,” Artif. Intell. Rev. , vol. 55, no. 5, pp. 3503 –3568, 2022, doi: 
+10.1007/s10462-021-10088-y. 
+[4] N. Capuano, G. Fenza, V. Loia, and C. Stanzione, “Explainable Artificial Intelligence in 
+CyberSecurity: A Survey,” IEEE Access , vol. 10, pp. 93575 –93600, 2022, doi: 
+10.1109/ACCESS.2022.3204171. 
+[5] F. Charmet et al. , “Explainable artificial intelligence for cybersecurity: a literature survey,” 
+Annales des Telecommunications/Annals of Telecommunications , vol. 77, no. 11 –12, pp. 789–
+812, Dec. 2022, doi: 10.1007/s12243-022-00926-7. 
+[6] Z. Zhang, H. Al Hamadi, E. Damiani, C. Y. Yeun, and F. Taher, “Explainable Artificial 
+Intelligence Applications in Cyber Security: State-of-the-Art in Research,” IEEE Access, vol. 10, 
+pp. 93104–93139, 2022, doi: 10.1109/ACCESS.2022.3204051. 
+[7] G. Srivastava et al., “XAI for Cybersecurity: State of the Art, Challenges, Open Issues and Future 
+Directions,” Jun. 2022, Accessed: Dec. 26, 2025. [Online]. Available: 
+http://arxiv.org/abs/2206.03585 
+[8] G. Rjoub et al. , “A Survey on Explainable Artificial Intelligence for Cybersecurity,” IEEE 
+Transactions on Network and Service Management , vol. 20, no. 4, pp. 5115 –5140, 2023, doi: 
+10.1109/TNSM.2023.3282740. 
+[9] V. Chamola, V. Hassija, A. R. Sulthana, D. Ghosh, D. Dhingra, and B. Sikdar, “A Review of 
+Trustworthy and Explainable Artificial Intelligence (XAI),” IEEE Access, vol. 11, pp. 78994 –
+79015, 2023, doi: 10.1109/ACCESS.2023.3294569. 
+
+Jurnal Teknik Informatika (JUTIF)  Vol. 7, No. 5, October 2026, Page. 4148-4163 
+P-ISSN: 2723-3863  https://jutif.if.unsoed.ac.id                                       
+E-ISSN: 2723-3871  DOI: https://doi.org/10.52436/1.jutif.2026.7.5.5711 
+ 
+ 
+4163 
+[10] M. Pawlicki, A. Pawlicka, R. Kozik, and M. Choraś, “The survey on the dual nature of xAI 
+challenges in intrusion detection and their potential for AI innovation,” Artif. Intell. Rev., vol. 
+57, no. 12, Dec. 2024, doi: 10.1007/s10462-024-10972-3. 
+[11] P. Hermosilla, S. Berríos, and H. Allende -Cid, “Explainable AI for Forensic Analysis: A 
+Comparative Study of SHAP and LIME in Intrusion Detection Models,” Applied Sciences 
+(Switzerland), vol. 15, no. 13, Jul. 2025, doi: 10.3390/app15137329. 
+[12] I. H. Sarker, H. Janicke, A. Mohsin, A. Gill, and L. Maglaras, “Explainable AI for cybersecurity 
+automation, intelligence and trustworthiness in digital twin: Methods, taxonomy, challenges and 
+prospects,” Aug. 01, 2024, Korean Institute of Communications and Information Sciences. doi: 
+10.1016/j.icte.2024.05.007. 
+[13] B. Biswas, A. Mukhopadhyay, A. Kumar, and D. Delen, “A hybrid framework using explainable 
+AI (XAI) in cyber-risk management for defence and recovery against phishing attacks,” Decis. 
+Support Syst., vol. 177, 2024, doi: 10.1016/j.dss.2023.114102. 
+[14] I. Kok, F. Y. Okay, O. Muyanli, and S. Ozdemir, “Explainable Artificial Intelligence (XAI) for 
+Internet of Things: A Survey,” IEEE Internet Things J., vol. 10, no. 16, pp. 14764–14779, 2023, 
+doi: 10.1109/JIOT.2023.3287678. 
+[15] V. Z. Mohale and I. C. Obagbuwa, “Evaluating machine learning -based intrusion detection 
+systems with explainable AI: enhancing transparency and interpretability,” Front. Comput. Sci., 
+vol. 7, 2025, doi: 10.3389/fcomp.2025.1520741. 
+[16] F. Ebrahimi, R. Javidan, R. Akbari, and Y. Hosseini, “Intrusion detection in the internet of things 
+using convolutional neural networks: an explainable AI approach,” Cybersecurity, vol. 8, no. 1, 
+Dec. 2025, doi: 10.1186/s42400-025-00369-2. 
+[17] A. M. Salih et al., “A Perspective on Explainable Artificial Intelligence Methods: SHAP and 
+LIME,” Advanced Intelligent Systems , vol. n/a, no. n/a, p. 2400304, Jun. 2024, doi: 
+https://doi.org/10.1002/aisy.202400304. 
+[18] M. Mia, M. M. A. Pritom, T. Islam, and K. Hasan, “Visually Analyze SHAP Plots to Diagnose 
+Misclassifications in ML -based Intrusion Detection,” Nov. 2024, [Online]. Available: 
+http://arxiv.org/abs/2411.02670 
+[19] Y. Wang, M. A. Azad, M. Zafar, and A. Gul, “Enhancing AI transparency in IoT intrusion 
+detection using explainable AI techniques,” Internet of Things (The Netherlands), vol. 33, Sep. 
+2025, doi: 10.1016/j.iot.2025.101714. 
+[20] X. Chen, M. Liu, Z. Wang, and Y. Wang, “Explainable Deep Learning-Based Feature Selection 
+and Intrusion Detection Method on the Internet of Things,” Sensors, vol. 24, no. 16, Aug. 2024, 
+doi: 10.3390/s24165223. 
+[21] A. Awajan, “A Novel Deep Learning -Based Intrusion Detection System for IoT Networks,” 
+Computers, vol. 12, no. 2, Feb. 2023, doi: 10.3390/computers12020034. 
+[22] G. Chakkappan, A. Morshed, and M. M. Rashid, “Explainable AI and Big Data Analytics for 
+Data Security Risk and Privacy Issues in the Financial Industry,” in 2024 IEEE Conference on 
+Engineering Informatics (ICEI), 2024, pp. 1–9. doi: 10.1109/ICEI64305.2024.10912422. 
+[23] V. Z. Mohale and I. C. Obagbuwa, “A systematic review on the integration of explainable 
+artificial intelligence in intrusion detection systems to enhancing transparency and 
+interpretability in cybersecurity,” 2025, Frontiers Media SA. doi: 10.3389/frai.2025.1526221. 
+[24] Y. Li, Y. Xiao, Y. Gong, R. Zhang, Y. Huo, and Y. Wu, “Explainable AI: A Way to Achieve 
+Trustworthy AI,” in Proceedings - 2024 IEEE 10th Conference on Big Data Security on Cloud, 
+BigDataSecurity 2024, Institute of Electrical and Electronics Engineers Inc., 2024, pp. 150–155. 
+doi: 10.1109/BigDataSecurity62737.2024.00034. 
+[25] H. Vainio-Pekka et al., “The Role of Explainable AI in the Research Field of AI Ethics,” ACM 
+Trans. Interact. Intell. Syst., vol. 13, no. 4, 2023, doi: 10.1145/3599974. 
+  
+ 

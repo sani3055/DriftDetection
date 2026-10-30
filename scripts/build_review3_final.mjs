@@ -4,7 +4,7 @@ import {pathToFileURL} from 'node:url';
 import {createHash} from 'node:crypto';
 
 const root='D:/Projects/DriftDetection';
-const tmp=path.join(root,'tmp/review3_ppt');
+const tmp=path.join(root,'tmp/review3_capstone_final');
 const source='D:/Downloads/Review 3- 28-10- 2026.pptx';
 const skill='C:/Users/Lenovo/.codex/plugins/cache/openai-primary-runtime/presentations/26.1025.11240/skills/presentations';
 const dependencies='C:/Users/Lenovo/.cache/codex-runtimes/codex-primary-runtime/dependencies';
@@ -38,7 +38,7 @@ function content(slide,lines,pt=26,y=190,h=430){
   shape.text=lines.map(line=>({runs:[{run:line,style:{typeface:FONT,fontSize:`${pt}pt`}}],spaceAfter:18}));
   return shape;
 }
-function table(slide,values,{x=88,y=190,width=1104,height=355,widths,pt=20}={}){
+function table(slide,values,{x=88,y=190,width=1104,height=355,widths,pt=20,padding=7}={}){
   const t=slide.tables.add({rows:values.length,columns:values[0].length,left:x,top:y,width,height,values,columnWidths:widths});
   t.styleOptions={headerRow:true,bandedRows:false};
   t.borders.assign({style:'solid',fill:'#B6BEC8',width:1});
@@ -47,10 +47,10 @@ function table(slide,values,{x=88,y=190,width=1104,height=355,widths,pt=20}={}){
     cell.fill=r===0?BLUE:(r%2?'#E9EDF5':'#D5DFEF');
     cell.text.style={fontFamily:FONT,typeface:FONT,fontSize:pt*4/3,color:r===0?'#FFFFFF':'#000000',bold:r===0,alignment:'left',verticalAlignment:'middle'};
   }
-  t.cells.block({row:0,column:0,rowCount:values.length,columnCount:values[0].length}).assign({margins:{left:9,right:9,top:7,bottom:7},anchor:'center'});
+  t.cells.block({row:0,column:0,rowCount:values.length,columnCount:values[0].length}).assign({margins:{left:9,right:9,top:padding,bottom:padding},anchor:'center'});
   return t;
 }
-const titles=['','Guide Approval and Project Context','Aim and Scope','Abstract and Dataset','Literature Review','Research Gap and Novelty','Objectives and Evaluation Plan','Framework / Architecture','Functional Requirements and Inputs','Implementation Modules','Experiments and Results','External Validation','Conclusion and Future Work','Outcome Achieved and Demo','References'];
+const titles=['','Guide Approval and Project Context','Aim and Scope','Abstract and Dataset','Literature Survey 1: Drift and Adaptation','Research Gap and Novelty','Objectives and Evaluation Plan','Framework / Architecture','Functional Requirements and Inputs','Inputs and Implementation Modules','Experiments and Results','External Validation','Conclusion and Future Work','Outcome Achieved and Demo','References'];
 
 // Preserve the original title slide and logo. Clear only editable source slots.
 const cover=slides[0];
@@ -107,7 +107,7 @@ notes(slides[2],'Drift means that data changes over time. Adaptation means updat
 content(slides[3],[
   'CloudTrail records AWS API calls, services, regions and identity details.',
   'New workloads and normal behaviour changes can increase false alarms.',
-  'Isolation Forest scores unusual events. SHAP shows which inputs affect its output.',
+  'Isolation Forest [9] scores unusual events. SHAP [10] explains the model output.',
   'The framework measures data drift, explanation drift and their feature-level coupling.',
 ],22,170,195);
 box(slides[3],'Dataset and time split',88,390,1104,40,24,{bold:true});
@@ -116,14 +116,14 @@ box(slides[3],'The original corpus has no attack labels. Real months show observ
 notes(slides[3],'The source has 18 columns and 45 monthly windows. The calendar split is 27 training, 9 validation and 9 test months. Controlled scenario validation/test seeds are a different protocol from those calendar partitions. Real-data findings are observational.', ['data_manifest/real_cloudtrail_manifest.json','data/processed/temporal_split.json']);
 
 table(slides[4],[
-  ['Paper','Objective','Method','Strength / limit','Finding'],
-  ['Sethi &\nKantardzic, 2017','Find drift without labels','Monitor changes in unlabelled data','May flag changes unrelated to decisions','Input drift needs model context'],
-  ['Han et al.\n2023','Handle changes in normal behaviour','Detect, explain and adapt to shifts','Security setting\nDifferent data','Updates must protect normality'],
-  ['Lee et al.\n2023','Monitor model drift','Compare SHAP-based evidence','Uses explanations\nDifferent setting','SHAP drift is established'],
-  ['Varma & Ramya\n2025','Explain CloudTrail anomalies','ML and contextual explanations','CloudTrail focus\nNo coupling gate','Cloud audit explanations are useful'],
-],{y:170,height:385,widths:[195,210,220,255,224],pt:18});
-box(slides[4],'Related work: Kuppa and Le-Khac (2022) study security drift. Li et al. (2024) use drift type to guide updates. This project tests feature-level coupling in CloudTrail.',88,600,1104,55,18);
-notes(slides[4],'Core literature only. This is not a claim that the separate 100-record PRISMA collection is a completed systematic review. Sethi and Kantardzic DOI 10.1016/j.eswa.2017.04.008; Han et al. DOI 10.14722/ndss.2023.24830; Lee et al. DOI 10.32604/cmc.2023.040235; Varma and Ramya DOI 10.1109/ICNGN67480.2025.11413642.', ['docs/literature_matrix.csv']);
+  ['Paper','Objective','Method','Limit / scope','Project response'],
+  ['[1] Kuppa &\nLe-Khac, 2022','Detect security\ndrift','Drift detector and\nrecursive updates','Security datasets.\nDifferent protocol.','Combine input\nand SHAP drift.'],
+  ['[2] Han et al.\n2023','Handle normality\nshifts','OWAD detects and\nadapts normality','Deep security models.\nDifferent datasets.','Test lightweight\nCloudTrail models.'],
+  ['[3] Lee et al.\n2023','Monitor drift\nwithout labels','SHAP-based drift\nsuspicion metric','DGA data.\nNo CloudTrail test.','Compare SHAP drift\nwith input drift.'],
+  ['[4] Li et al.\n2024','Use drift type\nfor adaptation','Learn drift type\nand change point','Needs supervised\ndrift-type training.','Use unlabelled\nruntime evidence.'],
+],{y:170,height:355,widths:[195,190,245,250,224],pt:18});
+box(slides[4],'Main lesson: drift detection, explanation and adaptation already exist.\nOur question is whether feature-level coupling improves CloudTrail update decisions.',88,590,1104,65,18);
+notes(slides[4],'Selected core comparators, not a completed 100-paper systematic review. J means journal and C means conference. [1] Aditya Kuppa and Nhien-An Le-Khac, Learn to Adapt: Robust Drift Detection in Security Domain, Computers and Electrical Engineering 102, 108239 (2022). https://doi.org/10.1016/j.compeleceng.2022.108239 [2] Dongqi Han and colleagues, Anomaly Detection in the Open World: Normality Shift Detection, Explanation, and Adaptation, NDSS 2023. https://www.ndss-symposium.org/ndss-paper/anomaly-detection-in-the-open-world-normality-shift-detection-explanation-and-adaptation/ [3] Yongsoo Lee, Yeeun Lee, Eungyu Lee and Taejin Lee, Explainable Artificial Intelligence-Based Model Drift Detection Applicable to Unsupervised Environments, CMC 76(2), 1701–1719 (2023). https://www.techscience.com/cmc/v76n2/54010 [4] Jinpeng Li, Hang Yu, Zhenyu Zhang, Xiangfeng Luo and Shaorong Xie, Concept Drift Adaptation by Exploiting Drift Type, ACM TKDD 18(4), article 96 (2024). https://doi.org/10.1145/3638777 The project-response column states our design choice. It does not claim direct benchmark superiority over these papers.', ['docs/literature_matrix.csv','docs/review3_literature_evidence.md']);
 
 box(slides[5],'Gap: a change in input data does not show how much the detector is affected.\nOur method compares each feature’s data shift with its SHAP attribution shift.',88,165,1104,105,22);
 table(slides[5],[
@@ -174,17 +174,17 @@ box(slides[8],'System requirements',650,170,542,40,23,{bold:true});
 box(slides[8],'Read the source without changing it.\n\nKeep training and later months separate.\n\nSave anomaly scores and SHAP values.\n\nMeasure drift and log each update decision.\n\nWrite CSV/JSON outputs, model files and figures for repeatable review.',650,225,542,420,21);
 notes(slides[8],'The seven detector inputs are eventName, eventSource, awsRegion, userIdentitytype, errorCode, requestParametersinstanceType and derived isRoot. Unknown categorical values map to -1. The main export has month-level time, limiting event-sequence analysis.', ['src/features/event_features.py','configs/model.yaml']);
 
+box(slides[9],'Inputs: API name, AWS service, region, identity type, error code, instance type and root flag.\nTraining-only maps. Unseen categories use −1. The source stays read-only.',88,155,1104,75,18);
 table(slides[9],[
   ['Module','Main task','Saved output'],
-  ['Data preparation','Audit the source and build monthly windows','Manifest and monthly features'],
-  ['Anomaly detector','Fit Isolation Forest using historical rows','Model file and event scores'],
-  ['SHAP validation','Explain the output and check additivity','SHAP sample and residual'],
-  ['Drift and coupling','Compare feature and explanation distributions','PSI, SHAP drift and coupling'],
-  ['Protected update','Filter current normal rows and refit when requested','Candidate count and model'],
-  ['Evaluation','Compare rules on the same scenarios and seeds','Metrics and paired tests'],
-],{y:175,height:435,widths:[285,495,324],pt:18});
+  ['Data preparation','Audit source, encode inputs\nand build monthly windows','Manifest and features'],
+  ['Detector and SHAP','Fit Isolation Forest and verify\nSHAP additivity','Model, scores and SHAP'],
+  ['Drift diagnosis','Measure PSI, SHAP drift\nand feature coupling','Signals and drift states'],
+  ['Protected update','Use replay and normal candidates\nwhen the policy requests a refit','Candidates and model'],
+  ['Evaluation','Compare policies on identical\nscenario and seed pairs','Metrics and paired tests'],
+],{y:230,height:315,widths:[285,495,324],pt:18,padding:3});
 box(slides[9],'SHAP additivity residual: 2.66e-14. Reports read saved experiment results.',88,625,1104,28,18);
-notes(slides[9],'Implementation modules: src/features/event_features.py; src/explain/shap_explainer.py; src/drift/drift_monitor.py; src/drift/diagnosis.py; src/adaptation/controller.py; src/evaluation/metrics.py. This slide describes the current repository rather than the earlier cloud-remediation backend.', ['src','README.md']);
+notes(slides[9],'The seven exact model inputs are eventName, eventSource, awsRegion, userIdentitytype, errorCode, requestParametersinstanceType and derived isRoot. Fit maps on training rows only and map unseen categories to -1. Requirements: keep source data unchanged, preserve time order, separate evaluation labels, save scores and SHAP values, log update decisions and produce auditable CSV/JSON evidence. Implementation modules: src/features/event_features.py; src/explain/shap_explainer.py; src/drift/drift_monitor.py; src/drift/diagnosis.py; src/adaptation/controller.py; src/evaluation/metrics.py. The merged slide retains functional requirements and implementation coverage within the 15-slide limit.', ['src','README.md']);
 
 box(slides[10],'7 scenarios: stable, 3 routine changes and 3 security-related changes.\nMain change intensity: 25%. 5 validation seeds, 10 test seeds and 70 test units per rule.\nValidation diagnosis macro-F1: 0.7306.',88,155,1104,95,19);
 table(slides[10],[
@@ -199,7 +199,7 @@ table(slides[10],[
 box(slides[10],'Dual false-positive rate fell from 0.4282 to 0.3397, an 8.85 percentage-point drop.\nThe F1 difference was inconclusive. Coupling and SHAP-only matched the dual rule.\nDual and coupling avoided unnecessary updates in these controlled tests.',88,565,1104,90,18);
 notes(slides[10],'Controlled benchmark only: 7 scenario families times 10 held-out seeds gives 70 paired scenario-seed units per policy. Five separate validation seeds tune thresholds. Dual validation diagnosis macro-F1 is 0.7306. The paired dual-minus-static FPR difference is -0.088478, 95% CI [-0.127232,-0.056106], BH q=0.000434. Paired F1 difference is -0.002796 with CI [-0.018096,0.011245]. The interval crosses zero. Unnecessary update rate uses all evaluated runs as denominator. Coupling and SHAP-only match dual under current settings, including the conservative-coupling ablation. These are not attack metrics on the primary unlabelled corpus.', ['results/adaptation_summary.csv','results/paired_inference.csv','data/benchmark/diagnosis_thresholds.json']);
 
-box(slides[11],'Independent corpus: 16,495 training events and 24,087 test events.\nTest labels: 2,585 attack events and 21,502 benign events.\nIsolation Forest: precision 0.3306, recall 0.7137, F1 0.4519 and FPR 0.1738.',88,160,1104,105,20);
+box(slides[11],'Independent corpus [13]: 16,495 training events and 24,087 test events.\nTest labels: 2,585 attack events and 21,502 benign events.\nIsolation Forest: precision 0.3306, recall 0.7137, F1 0.4519 and FPR 0.1738.',88,160,1104,105,20);
 box(slides[11],'Drift checkpoint: 12 windows (10 security and 2 benign)',88,285,1104,45,22,{bold:true});
 table(slides[11],[
   ['Rule','Recall','F1','False-positive rate'],
@@ -227,20 +227,28 @@ table(slides[13],[
 box(slides[13],'Live demonstration',88,480,1104,38,23,{bold:true});
 box(slides[13],'1. Check the dataset manifest and monthly split.\n2. Show drift, coupling and the model-update decisions.\n3. Compare saved results and run the automated tests.',88,530,1104,90,21);
 box(slides[13],'github.com/sani3055/DriftDetection',88,632,1104,25,18);
-notes(slides[13],'Demonstration path: manifest and temporal split; model feature contract; score and SHAP samples; monthly drift and coupling CSVs; controlled diagnosis and adaptation rows; independent transfer metrics. Commands: python scripts/run_all.py; python scripts/run_external_temporal_diagnosis.py; python -m pytest tests -q. A fresh run on 27 October 2026 passed all 28 tests. The source CSV is external and required for full regeneration. A 100-record literature collection is not a finished PRISMA review. Publication, patent, outcome-form submission and supervisor approval are not established by this presentation.', ['docs/final_validation.md','README.md','outputs/BCSE497J_Capstone_Report_Final.docx']);
+notes(slides[13],'Demonstration path: manifest and temporal split; model feature contract; score and SHAP samples; monthly drift and coupling CSVs; controlled diagnosis and adaptation rows; independent transfer metrics. Commands: python scripts/run_all.py; python scripts/run_external_temporal_diagnosis.py; python -m pytest tests -q. The saved validation record reports 28 passing tests. The source CSV is external and required for full regeneration. A 100-record literature collection is not a finished PRISMA review. Publication, patent, outcome-form submission and supervisor approval are not established by this presentation.', ['docs/final_validation.md','README.md','outputs/BCSE497J_Capstone_Report_Submission_Ready.docx']);
 
-content(slides[14],[
-  '[1] Liu, Ting and Zhou. Isolation Forest. IEEE ICDM, 2008.',
-  '[2] Lundberg and Lee. A Unified Approach to Interpreting Model Predictions. NeurIPS, 2017.',
-  '[3] Sethi and Kantardzic. Reliable detection of concept drift from unlabelled data. ESWA, 2017.',
-  '[4] Kuppa and Le-Khac. Learn to Adapt: Robust Drift Detection in Security Domain. C&EE, 2022.',
-  '[5] Han et al. Normality Shift Detection, Explanation and Adaptation. NDSS, 2023.',
-  '[6] Lee et al. Explainable model drift detection in unsupervised settings. CMC, 2023.',
-  '[7] Li et al. Concept Drift Adaptation by Exploiting Drift Type. ACM TKDD, 2024.',
-  '[8] Varma and Ramya. An Explainable ML and LLM Framework for CloudTrail Logs. ICNGN, 2025.',
-  '[9] AWS CloudTrail and SageMaker feature-attribution documentation.',
-],20,172,470);
-notes(slides[14],'Full sources: [1] https://doi.org/10.1109/ICDM.2008.17 [2] https://proceedings.neurips.cc/paper_files/paper/2017/hash/8a20a8621978632d76c43dfd28b67767-Abstract.html [3] https://doi.org/10.1016/j.eswa.2017.04.008 [4] https://doi.org/10.1016/j.compeleceng.2022.108239 [5] https://doi.org/10.14722/ndss.2023.24830 [6] https://doi.org/10.32604/cmc.2023.040235 [7] https://doi.org/10.1145/3638777 [8] https://doi.org/10.1109/ICNGN67480.2025.11413642 [9] https://docs.aws.amazon.com/awscloudtrail/latest/userguide/cloudtrail-events.html and https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-model-monitor-feature-attribution-drift.html.', ['docs/literature_matrix.csv']);
+const referenceLines=[
+  '[1] Kuppa and Le-Khac. Learn to Adapt. C&EE, 2022.',
+  '[2] Han et al. Normality Shift Detection, Explanation and Adaptation. NDSS, 2023.',
+  '[3] Lee et al. Explainable Model Drift Detection in Unsupervised Environments. CMC, 2023.',
+  '[4] Li et al. Concept Drift Adaptation by Exploiting Drift Type. ACM TKDD, 2024.',
+  '[5] Arora, Rani and Saxena. Review of Concept Drift Detection and Adaptation. WIREs DMKD, 2024.',
+  '[6] Decker et al. Explanatory Model Monitoring. ACM KDD, 2024.',
+  '[7] Varma.I and Ramya K. Explainable ML and LLM Framework for CloudTrail Logs. ICNGN, 2025.',
+  '[8] Maseno, Sun and Wang. Detecting Adversarial Evasion Using Explainable AI. IJIS, 2026.',
+  '[9] Liu, Ting and Zhou. Isolation Forest. IEEE ICDM, 2008.',
+  '[10] Lundberg and Lee. A Unified Approach to Interpreting Model Predictions. NeurIPS, 2017.',
+  '[11] AWS. Understanding CloudTrail Events. CloudTrail documentation.',
+  '[12] AWS. Feature Attribution Drift for Models in Production. SageMaker documentation.',
+  '[13] ArielCyber. Cloud Log Sampling. Public dataset repository.',
+];
+for(let i=0;i<referenceLines.length;i++){
+  const col=i<7?0:1;const row=col===0?i:i-7;
+  box(slides[14],referenceLines[i],88+col*570,172+row*67,534,63,18);
+}
+notes(slides[14],'Titles on the slide are shortened for readability. Full titles, author metadata and primary verification links for [1]–[8] are in docs/review3_literature_evidence.md and the literature-slide notes. [1] https://doi.org/10.1016/j.compeleceng.2022.108239 [2] https://doi.org/10.14722/ndss.2023.24830 [3] https://doi.org/10.32604/cmc.2023.040235 [4] https://doi.org/10.1145/3638777 [5] https://doi.org/10.1002/widm.1536 [6] https://doi.org/10.1145/3637528.3671959 [7] https://doi.org/10.1109/ICNGN67480.2025.11413642 [8] https://doi.org/10.1007/s10207-026-01299-x [9] https://doi.org/10.1109/ICDM.2008.17 [10] https://proceedings.neurips.cc/paper_files/paper/2017/hash/8a20a8621978632d76c43dfd28b67767-Abstract.html [11] https://docs.aws.amazon.com/awscloudtrail/latest/userguide/cloudtrail-events.html [12] https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-model-monitor-feature-attribution-drift.html [13] https://github.com/ArielCyber/cloud_log_sampling. References in this standalone deck use their own numbering, separate from the report.', ['docs/literature_matrix.csv','docs/review3_literature_evidence.md']);
 
 const speakingPoints={
   2:'Explain that the project keeps the same historical corpus but now asks when the detector should be updated. The approval slide is a required administrative section, and an authentic guide email is still needed.',
@@ -261,17 +269,42 @@ for(const [slideNumber,explanation] of Object.entries(speakingPoints)){
   slide.speakerNotes.text+='\n\nPresentation explanation\n'+explanation;
 }
 
+// A second literature slide replaces the separate inputs slide. All inputs and
+// functional requirements now appear on the combined implementation slide.
+const beforeLiterature=[...deck.slides.items];
+const literatureB=deck.slides.add({layoutId:layout?.id ?? 'p83mt83u'});
+box(literatureB,'Literature Survey 2: Explanations and Cloud Logs',88,71.5,1104,65,30,{bold:true});
+table(literatureB,[
+  ['Paper','Objective','Method','Limit / scope','Project response'],
+  ['[5] Arora et al.\n2024','Review drift\nresearch','Survey detection\nand adaptation','Broad review.\nNo cloud experiment.','Frame our\nresearch gaps.'],
+  ['[6] Decker et al.\n2024','Explain effects\nof feature shift','Optimal transport\nand Shapley values','General monitoring.\nDifferent update task.','Test alignment\nbefore updating.'],
+  ['[7] Varma &\nRamya, 2025','Explain cloud\nanomalies','ML detection and\nLLM explanations','Simulated events.\nDifferent policy.','Measure unnecessary\nmodel updates.'],
+  ['[8] Maseno et al.\n2026','Detect evasion\nin network IDS','SHAP displacement\nand top-k overlap','Supervised IDS.\nDifferent data.','Test unlabelled\nCloudTrail drift.'],
+],{y:170,height:355,widths:[195,190,245,250,224],pt:18});
+box(literatureB,'Eight selected studies from 2022–2026: five journal papers and three conference papers.\nThese comparisons motivate our design. We do not claim to outperform these methods.',88,590,1104,65,18);
+box(literatureB,'28-10-2026',88,667.33,288,38.33,12,{color:'#8B8B8B'});
+box(literatureB,'SCOPE',424,667.33,432,38.33,12,{color:'#8B8B8B',alignment:'center'});
+box(literatureB,'6',904,667.33,288,38.33,12,{color:'#8B8B8B',alignment:'right'});
+notes(literatureB,'[5] Shruti Arora, Rinkle Rani and Nitin Saxena, A Systematic Review on Detection and Adaptation of Concept Drift in Streaming Data Using Machine Learning Techniques, WIREs Data Mining and Knowledge Discovery 14(4), e1536 (2024). https://wires.onlinelibrary.wiley.com/doi/10.1002/widm.1536 [6] Thomas Decker, Alexander Koebler, Michael Lebacher, Ingo Thon, Volker Tresp and Florian Buettner, Explanatory Model Monitoring to Understand the Effects of Feature Shifts on Performance, KDD 2024, pp. 550–561. https://arxiv.org/abs/2408.13648 and https://doi.org/10.1145/3637528.3671959 XPE combines optimal transport with Shapley values to explain estimated performance changes. [7] Surya Karthikeya Varma.I and Ramya K, An Explainable Machine Learning and Large Language Model Framework for Anomaly Detection in AWS CloudTrail Logs, ICNGN 2025, pp. 1–5. https://doi.org/10.1109/ICNGN67480.2025.11413642 Author metadata verified through the publisher-deposited Crossref record. [8] E. M. Maseno, Y. Sun and Z. Wang, Detecting Adversarial Evasion in Deep Learning Intrusion Detection Systems Using Explainable AI, International Journal of Information Security 25, 125 (2026), published 15 July 2026. https://link.springer.com/article/10.1007/s10207-026-01299-x That work measures SHAP explanation displacement and dominant-feature stability in recurrent network IDS models. It differs from our unlabelled CloudTrail diagnosis and adaptation task. No head-to-head reproduction is claimed. Explain that the specific contribution is the tested CloudTrail protocol and coupling question, with neutral and negative results retained.', ['docs/literature_matrix.csv','docs/review3_literature_evidence.md']);
+deck.delete('sl/'+beforeLiterature[8].id);
+deck.slides.reorder([...beforeLiterature.slice(0,5),literatureB,...beforeLiterature.slice(5,8),...beforeLiterature.slice(9)].map(s=>'sl/'+s.id));
+for(const [i,slide] of deck.slides.items.entries()){
+  for(const shape of slide.shapes.items){
+    if(shape.position.top>660 && shape.position.left>850)shape.text=String(i+1);
+  }
+}
+
 await (await PresentationFile.exportPptx(deck)).save(path.join(tmp,'candidate.pptx'));
 await fs.writeFile(path.join(tmp,'authored-inspection.ndjson'),(await deck.inspect({kind:'slide,textbox,table',maxChars:80000})).ndjson);
 const {finalizePresentation}=await import(pathToFileURL(path.join(skill,'container_tools/artifact_tool_utils.mjs')).href);
-const final=path.join(root,'outputs/Review_3_Expanded_SHAP_CloudTrail.pptx');
+const final=path.join(root,'outputs/Review_3_Capstone_Final.pptx');
 const result=await finalizePresentation({
   workspaceDir:root,candidatePath:path.join(tmp,'candidate.pptx'),finalPath:final,
   pythonExecutable:path.join(dependencies,'python/python.exe'),
   integrityValidatorPath:path.join(skill,'container_tools/inspect_presentation_package_integrity.py'),
   layoutValidatorPath:path.join(skill,'container_tools/inspect_presentation_layout_geometry.py'),
-  explicitTotalSlideCount:15,requiredNativeTableOwnerSlides:[5,6,10,11,12,14],
-  layoutArgs:['--expected-slide-size-emu','12192000,6858000','--validate-heading-fit',...[5,6,10,11,12,14].flatMap(n=>['--require-native-table-slide',String(n)])],
+  explicitTotalSlideCount:15,requiredNativeTableOwnerSlides:[5,6,7,10,11,12,14],
+  layoutArgs:['--expected-slide-size-emu','12192000,6858000','--validate-heading-fit',...[5,6,7,10,11,12,14].flatMap(n=>['--require-native-table-slide',String(n)])],
   fontPolicy:{basis:'reference',families:['Times New Roman','Calibri'],referencePath:source,referenceSha256:createHash('sha256').update(await fs.readFile(source)).digest('hex')},
   verifyArtifactToolImport:true,receiptPath:path.join(tmp,`validation-${Date.now()}.json`),
 });

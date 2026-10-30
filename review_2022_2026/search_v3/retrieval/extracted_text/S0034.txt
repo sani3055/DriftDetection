@@ -1,0 +1,2259 @@
+Journal of King Saud University Computer and Information Sciences (2026) 38:546 
+https://doi.org/10.1007/s44443-026-00964-4
+RESEARCH
+ADAWU-IDS: a dynamic adaptive weight update mechanism
+for concept drift-aware network intrusion detection systems
+Jinliang Yuan 1 · Yu Yang 1 · Mingqi Wang 1
+Received: 22 March 2026 / Accepted: 14 June 2026
+© The Author(s) 2026
+Abstract
+Network intrusion detection systems deployed in dynamic environments are vulnerable to concept drift, where changes in
+trafﬁc distributions can degrade detection performance over time. This paper proposes ADAWU-IDS, an interpretable and
+validation-calibrated drift-response framework for concept drift-aware network intrusion detection. The framework combines
+Multi-Scale Drift Index (MSDI)-based drift-severity estimation, Adaptive Drift-Aware Weight Updating (ADAWU), and
+validation-selected response control within a chronological evaluation pipeline. Unlike ﬁxed-response adaptive designs,
+ADAWU-IDS does not assume that stronger intervention is always beneﬁcial. Candidate response conﬁgurations are calibrated
+on a held-out validation stream and then ﬁxed before ﬁnal chronological testing. MSDI is used as an auxiliary drift-severity
+signal rather than as a standalone binary drift detector, while ADAWU adjusts ensemble contributions according to recent
+predictive behavior, drift severity, and temporal relevance. Under a chronological CICIDS2017 protocol, the validation-
+selected conﬁguration, denoted as ADAWU-IDS-Calibrated, shows modest improvements over Static LSTM in Weighted F1
+and Attack F1. However, these improvements are not statistically signiﬁcant at the p < 0.05 level, and the calibrated framework
+does not consistently improve Attack Recall or reduce the false-negative rate. Classical online ensemble baselines, including
+Dynamic Weighted Majority, Online Bagging, and Leveraging Bagging, achieve stronger raw predictive performance under the
+same protocol. The ablation results show that mandatory hierarchical retraining can over-adapt to short-term chunk behavior
+and harm attack detection. Therefore, hierarchical response is reformulated as an optional response action selected through
+validation calibration. Overall, ADAWU-IDS provides a transparent and conﬁgurable framework for analyzing drift-response
+behavior in intrusion detection, with practical value in drift-severity interpretation, response calibration, and component-level
+diagnosis. The evaluation reports paired statistical tests, ablation analysis, segment-wise drift-window results, computational
+cost, and drift-detection diagnostics. The implementation is available at: https://anonymous.4open.science/r/ADAWU-IDS-
+800B.
+Keywords Network intrusion detection · Concept drift · Dynamic ensemble learning · Adaptive weighting · Multi-scale drift
+index · Cybersecurity
+1 Introduction
+The exponential growth of network connectivity and digi-
+tal services has made network security a critical requirement
+B Jinliang Y uan
+lighteryuan@163.com
+Yu Ya n g
+miaoyude@163.com
+Mingqi Wang
+wangmq202412@163.com
+1 Chinese People’s Armed Police Force Engineering
+University, Xi’an, China
+for modern information infrastructures. Network Intrusion
+Detection Systems (NIDS) are widely used as a frontline
+defense mechanism for identifying malicious activities from
+complex network trafﬁc patterns (Chinnasamy et al. 2025;
+Anis et al. 2025; Hozouri et al. 2025). Traditional NIDS
+approaches, including signature-based, anomaly-based, and
+machine-learning-based methods, often rely on a static learn-
+ing paradigm in which a model is trained on historical data
+and then deployed without sufﬁcient adaptation (Shyaa et al.
+2024; Seth et al. 2024). However, real network environments
+are inherently non-stationary. Evolving attack strategies,
+changes in network services, shifting user behavior, and
+variations in trafﬁc composition can continuously alter the
+0123456789().: V,-vol 123
+
+546 Page 2 of 23 Journal of King Saud University Computer and Information Sciences (2026) 38:546 
+underlying data distribution, leading to concept drift (Shyaa
+et al. 2024; Lara-Gutierrez et al. 2025; Luo et al. 2024).
+Concept drift is particularly challenging for intrusion detec-
+tion because predictive degradation may directly increase
+missed attacks or false alarms. A detector trained on his-
+torical trafﬁc may perform well under similar conditions
+but fail when the distribution of benign or malicious traf-
+ﬁc changes over time (Seth et al. 2024; Lara-Gutierrez et al.
+2025; Cai et al. 2025). This issue is not limited to NIDS.
+Recent anomaly detection and condition-monitoring studies
+have also shown that distribution shift, domain shift, lim-
+ited labeled data, and complex deployment environments
+can substantially affect model reliability in practical mon-
+itoring systems (Y an et al. 2025a, b, 2024). These studies
+suggest that robust anomaly detection requires not only accu-
+rate classiﬁers, but also explicit mechanisms for monitoring
+distributional changes, adapting model behavior, and report-
+ing failure cases under changing operating conditions.
+Existing drift-aware learning methods can be broadly cat-
+egorized into passive adaptation, active drift detection, and
+adaptive ensemble learning (Swarnalatha et al. 2025; Thock-
+chom et al. 2023). Passive methods continuously update
+models as new data arrive, but they may overﬁt tempo-
+rary ﬂuctuations or noisy labels. Active methods monitor
+performance or distributional indicators and trigger adapta-
+tion when a change is detected, but their effectiveness often
+depends on threshold choices and the detectability of the drift
+event (Zhang et al. 2026; Abdulrahaman et al. 2026). Adap-
+tive ensembles, such as Dynamic Weighted Majority, Online
+Bagging, and related online learning methods, adjust the
+inﬂuence of base learners over time and have shown strong
+performance under non-stationary data streams (Swarnalatha
+et al. 2025; Thockchom et al.2023;Y ue ta l .2024). Neverthe-
+less, many adaptive IDS studies still face three limitations.
+First, drift is often characterized using a single indicator,
+such as prediction error, window-level statistics, or a one-
+dimensional distributional distance. Such indicators may be
+insufﬁcient for describing heterogeneous changes in network
+trafﬁc, where feature distributions, class-conditional struc-
+tures, and attack composition may evolve differently (Cai
+et al. 2025; Chu et al. 2023). Second, ensemble adaptation is
+frequently driven mainly by recent predictive performance,
+while the severity of distributional change and temporal
+relevance of models are not always explicitly represented
+(Cai et al. 2025;Y ue ta l . 2024; Chen et al. 2025). Third,
+many adaptive systems use ﬁxed response rules once drift is
+detected. However, unconditional or overly aggressive adap-
+tation can be harmful when short-term chunk labels are noisy,
+imbalanced, or not representative of future trafﬁc. Therefore,
+response control should be calibrated rather than assumed to
+be universally beneﬁcial.
+To address these issues, this paper proposes ADAWU-
+IDS, an interpretable and validation-calibrated drift-response
+framework for concept drift-aware network intrusion detec-
+tion. The motivation of ADAWU-IDS is not to replace
+strong accuracy-oriented online ensemble classiﬁers such as
+Dynamic Weighted Majority, Online Bagging, or Leverag-
+ing Bagging. These methods are highly effective when the
+primary objective is raw predictive performance under non-
+stationary streams. However, in practical intrusion detection
+deployment, prediction accuracy alone is often insufﬁcient.
+Security operators may also need to understand whether a
+performance change is associated with distributional drift,
+how severe the drift is, whether an adaptive response should
+be triggered, and whether stronger intervention may actually
+harm later detection due to noisy labels, short-term imbal-
+ance, or non-representative attack patterns.
+From this perspective, ADAWU-IDS is designed to
+address a complementary deployment need: transparent
+and conﬁgurable drift-response analysis. The framework
+combines a Multi-Scale Drift Index (MSDI), an Adaptive
+Drift-Aware Weight Update mechanism (ADAWU), and a
+validation-selected response policy within a chronological
+IDS evaluation pipeline. MSDI summarizes feature-group
+and class-conditional distributional changes as an inter-
+pretable drift-severity signal. ADAWU adjusts ensemble
+contributions by jointly considering recent predictive behav-
+ior, drift-severity information, and temporal relevance. The
+response policy is not treated as a ﬁxed or mandatory inter-
+vention; instead, candidate conﬁgurations are calibrated on a
+held-out chronological validation stream before ﬁnal testing.
+This design allows the framework to examine when adap-
+tive components are useful, when they are harmful, and how
+response actions should be selected before deployment.
+The practical value of ADAWU-IDS therefore lies in its
+diagnostic and calibration-oriented role rather than in claim-
+ing universal predictive superiority. Strong online ensemble
+baselines may achieve better attack-detection metrics in some
+settings, especially when the objective is minimizing false
+negatives or maximizing aggregate F1 scores. ADAWU-
+IDS, by contrast, provides additional information about drift
+severity, model temporal relevance, component interaction,
+and response-policy sensitivity. Such information is useful
+in deployment scenarios where interpretability, auditabil-
+ity, response control, and failure-case analysis are important
+alongside predictive performance.
+The methodological novelty of ADAWU-IDS lies in the
+explicit coupling of drift-severity estimation, adaptive weight
+control, and validation-selected response policy in a tempo-
+rally ordered IDS pipeline. First, unlike methods that rely
+mainly on prediction error or a binary drift alarm, MSDI pro-
+vides a severity-oriented view of distributional deviation by
+integrating feature-level and class-conditional information.
+Second, unlike conventional online ensemble methods that
+primarily update learners according to recent classiﬁcation
+performance, ADAWU incorporates drift severity and tem-
+123
+
+Journal of King Saud University Computer and Information Sciences (2026) 38:546 Page 3 of 23 546 
+poral relevance into the ensemble weighting process. Third,
+unlike ﬁxed-response adaptive IDS designs, ADAWU-IDS
+does not assume that stronger adaptation is always beneﬁ-
+cial. Instead, it evaluates candidate response actions through
+validation calibration and then ﬁxes the selected conﬁgura-
+tion before ﬁnal chronological testing.
+The main contributions of this work are summarized as
+follows:
+• We propose MSDI as an interpretable drift-severity signal
+for chronological IDS streams. Rather than treating drift
+detection as a standalone binary decision, MSDI summa-
+rizes temporal distributional deviation from complemen-
+tary feature-group and class-conditional perspectives.
+• We introduce ADAWU, a drift-aware ensemble weight-
+ing mechanism that updates learner contributions by
+combining recent predictive behavior, MSDI-based drift
+severity, and temporal relevance.
+• We reformulate hierarchical response as a validation-
+selected response policy rather than a mandatory inter-
+vention. Candidate conﬁgurations, including weight-
+ing parameters, drift thresholds, and optional response
+actions, are calibrated on a held-out chronological vali-
+dation stream before ﬁnal testing.
+• We provide a conservative chronological evaluation
+that reports repeated runs, paired statistical tests, abla-
+tion analysis, segment-wise drift-window results, drift-
+detection diagnostics, computational cost, and failure-
+case discussion. This evaluation clariﬁes both the poten-
+tial and the limitations of ADAWU-IDS relative to Static
+LSTM and strong online ensemble baselines.
+Overall, ADAWU-IDS should be interpreted as a trans-
+parent, conﬁgurable, and calibration-aware framework for
+studying drift-response behavior in intrusion detection sys-
+tems. It is not intended to be a universally superior IDS
+classiﬁer. Instead, it contributes a structured way to connect
+drift-severity signals, adaptive weighting, and response-
+policy selection under chronological evaluation, thereby
+supporting more interpretable and cautious deployment of
+adaptive IDS systems under concept drift.
+The experimental results show that the validation-calibrated
+ADAWU-IDS conﬁguration provides modest improvements
+over Static LSTM in Weighted F1 and Attack F1, but the
+improvements are not statistically signiﬁcant at the p <
+0.05 level. The calibrated framework does not consistently
+reduce false negatives, and classical online ensemble base-
+lines achieve stronger raw predictive performance. These
+ﬁndings motivate a calibration-oriented interpretation of
+ADAWU-IDS: the framework is most useful for analyz-
+ing how drift-severity information, adaptive weighting, and
+response-policy selection interact under chronological IDS
+evaluation. These results suggest that ADAWU-IDS is most
+useful in deployment settings where drift interpretation,
+response calibration, and component-level diagnosis are
+required in addition to raw predictive accuracy.
+The remainder of this paper is organized as follows. Sec-
+tion 2 reviews related work. Section 3 presents the proposed
+ADAWU-IDS methodology. Sections 4 and 5 describe the
+system implementation and experimental design, respec-
+tively. Section 6 analyzes the evaluation results, followed
+by a discussion in Section 7. Finally, Section 8 concludes the
+paper.
+2 Related work
+This section reviews related studies from four perspectives:
+static network intrusion detection, concept drift detection and
+adaptation, adaptive ensemble learning for non-stationary
+streams, and recent distribution-shift-aware anomaly detec-
+tion studies. The purpose is to clarify the methodological
+context of ADAWU-IDS and to distinguish the proposed
+framework from prior adaptive weighting and drift-response
+approaches.
+2.1 Static network intrusion detection
+Conventional NIDS predominantly rely on signature-based
+detection, employing pattern matching against established
+attack proﬁles. Although highly effective for identifying
+documented threats, these systems are inherently vulnera-
+ble to zero-day exploits and rapidly evolving attack variants.
+To mitigate this vulnerability, machine learning approaches
+have been widely adopted to model normal and malicious
+trafﬁc patterns from historical data. Traditional algorithms,
+such as Support V ector Machines, decision trees, and ran-
+dom forests, have demonstrated considerable efﬁcacy in
+NIDS applications (Chinnasamy et al. 2025; Hozouri et al.
+2025). Furthermore, deep learning architectures, notably
+Long Short-Term Memory networks and Convolutional Neu-
+ral Networks, have shown strong capability in extracting
+complex temporal and spatial dependencies within network
+trafﬁc (Hore et al. 2024; Bamber et al. 2025; Hochreiter and
+Schmidhuber 1997).
+Despite these advancements, the majority of existing
+methods are constrained by a “train-once-deploy” paradigm
+predicated on the assumption of stationary data distributions
+(Shyaa et al. 2024; Seth et al. 2024; Cai et al. 2025). In real-
+world network environments, this assumption is frequently
+violated, inevitably leading to severe model degradation as
+underlying data concepts drift over time (Lara-Gutierrez et al.
+2025; Luo et al. 2024; Jemili et al. 2024).
+123
+
+546 Page 4 of 23 Journal of King Saud University Computer and Information Sciences (2026) 38:546 
+2.2 Concept drift detection and adaptation
+Concept drift refers to changes in the underlying data distri-
+bution over time, which may degrade the predictive perfor-
+mance of models trained on historical data (Lara-Gutierrez
+et al. 2025; Abdulrahaman et al. 2026; Cai et al. 2024).
+Passive adaptation methods continuously update the learn-
+ing model without explicit drift detection mechanisms,
+typically employing sliding windows or instance weighting
+techniques (Jemili et al. 2024). While computationally efﬁ-
+cient, these approaches are prone to overﬁtting temporary
+data ﬂuctuations and noise during stable periods.
+Active detection methods explicitly monitor performance
+or data distributions to trigger model updates only when
+a change is conﬁrmed (Lara-Gutierrez et al. 2025; Mahdi
+et al. 2024;H ue ta l . 2025). Representative algorithms, such
+as the Drift Detection Method (DDM), Early Drift Detec-
+tion Method (EDDM), and Adaptive Windowing (ADWIN),
+attempt to balance stability and adaptability (Gama et al.
+2004; Baena-Garcıa et al. 2006; Bifet and Gavalda 2007).
+However, they frequently struggle with signiﬁcant detection
+delays and extreme sensitivity to predeﬁned thresholds (Cai
+et al. 2024).
+Ensemble learning approaches maintain a dynamic com-
+bination of multiple base classifiers, adjusting their influence
+through weight updates (Swarnalatha et al. 2025; Thock-
+chom et al. 2023;Y ue ta l . 2024). Algorithms like Dynamic
+Weighted Majority (DWM) and Online Bagging have demon-
+strated robust performance in non-stationary environments.
+Nevertheless, a major limitation of current ensemble tech-
+niques is their reliance on oversimpliﬁed weight update
+mechanisms—often based exclusively on recent predictive
+accuracy—thereby neglecting critical factors such as spe-
+ciﬁc drift characteristics and historical model staleness (Cai
+et al. 2025; Guerrero Cano et al. 2026; Chen et al. 2025).
+More recent advances have explored model-internal drift
+detection via parameter monitoring and probabilistic frame-
+works for distinguishing real drift from virtual drift (Mahdi
+et al. 2024). While theoretically promising, these meth-
+ods currently lack seamless integration with comprehensive
+drift quantiﬁcation metrics and adaptive ensemble structures
+(Lara-Gutierrez et al. 2025; Cai et al. 2025; Guerrero Cano
+et al. 2026).
+2.3 Adaptive ensemble learning under
+non-stationary data
+Adaptive ensemble learning is a major direction for han-
+dling non-stationary data streams. Instead of relying on a
+single static classiﬁer, ensemble methods maintain multi-
+ple base learners and adjust their contribution over time.
+Dynamic Weighted Majority (DWM) reduces the inﬂuence
+of poorly performing classiﬁers and can add or remove learn-
+ers when the stream changes. Online Bagging approximates
+bootstrap aggregation in an online setting, while Leveraging
+Bagging strengthens diversity through resampling and drift-
+aware updating. These methods are widely used because they
+provide strong predictive performance and efﬁcient online
+adaptation under many non-stationary settings.
+However, classical adaptive ensembles usually update
+model weights mainly according to recent prediction errors
+or online classiﬁcation performance. This design is effective
+for accuracy-oriented adaptation, but it may provide limited
+interpretability regarding why a speciﬁc response is triggered
+and how drift severity affects model behavior. In IDS applica-
+tions, such interpretability is important because operational
+decisions often need to distinguish between mild trafﬁc ﬂuc-
+tuation, severe attack-distribution shift, and temporary class
+imbalance.
+Another challenge is response control. Stronger interven-
+tions, such as retraining or aggressive model replacement,
+are not always beneﬁcial. If the current chunk contains noisy
+labels, short-term imbalance, or a non-representative attack
+pattern, unconditional adaptation may overﬁt the current
+chunk and harm later detection. Therefore, adaptive IDS
+frameworks should not assume that all response components
+are always beneﬁcial. Instead, response actions should be
+calibrated on validation data and evaluated through ablation
+analysis, statistical testing, and failure-case discussion.
+2.4 Drift-aware and dynamic learning frameworks
+for NIDS
+In the speciﬁc context of NIDS, streaming learning algo-
+rithms have been deployed to process sequential data without
+retaining extensive historical logs (Jin et al. 2024; Singh
+et al. 2024). For instance, Hoeffding Trees and their vari-
+ants provide efﬁcient incremental learning capabilities but
+generally exhibit poor autonomous drift identiﬁcation. To
+overcome this, hybrid systems that couple explicit drift detec-
+tion with incremental updates have emerged (Cai et al. 2025;
+Jemili et al. 2024; Chu et al. 2023). Y et, these systems
+predominantly rely on uniform, “one-size-ﬁts-all” response
+strategies, executing identical adaptation procedures regard-
+less of the actual severity or type of the detected drift
+(Lara-Gutierrez et al.2025; Zhang et al.2026; Guerrero Cano
+et al. 2026).
+The proposed ADAWU-IDS framework is designed to
+address these limitations from a calibration-oriented per-
+spective. MSDI summarizes drift severity using feature-level
+and class-conditional information. ADAWU updates ensem-
+ble weights using recent predictive behavior, drift-severity
+information, and temporal relevance. More importantly, the
+response policy is not treated as an always-active hierarchi-
+cal mechanism. Instead, candidate response conﬁgurations
+are selected on a held-out validation stream and then ﬁxed
+123
+
+Journal of King Saud University Computer and Information Sciences (2026) 38:546 Page 5 of 23 546 
+before ﬁnal chronological testing. This design distinguishes
+ADAWU-IDS from methods that assume a ﬁxed response
+action for all detected drift events (Thein et al.2024; Nassred-
+dine et al. 2025; Chen et al. 2024).
+2.5 Recent distribution-shift-aware anomaly
+detection studies
+Recent studies outside network intrusion detection also high-
+light the importance of robustness under complex deploy-
+ment environments, limited labeled data, and domain shift.
+In railway arc detection, multimodal imitation learning has
+been used to combine visible-light and infrared features,
+transferable feature learning, and optimal-transport-based
+representation alignment to improve robustness under glare,
+reﬂection, weather interference, and small-target variation
+(Y an et al. 2025a0. Other multimodal learning studies have
+introduced distribution constraints and knowledge distilla-
+tion to improve robustness and computational efﬁciency
+under uncertain degradation and long-tail data distributions
+(Y an et al.2024).
+Limited-data anomaly detection has also attracted increas-
+ing attention. A DDPM-based multimodal arc detection
+framework uses self-supervised pretraining on unlabeled
+data and audiovisual semantic cues to improve detection
+under sparse labeled samples (Y an et al. 2025b). However,
+the same study also shows that practical deployment may be
+affected by high computational cost, multimodal hardware
+dependency, and limited interpretability. These concerns are
+relevant to adaptive IDS deployment, where adaptation cost,
+data availability, and explanation of failure cases are critical.
+Domain-shift-aware unsupervised anomaly detection pro-
+vides another relevant perspective. Transformer and graph
+convolution-based anomalous sound detection has been stud-
+ied under domain shifts, where the model must distinguish
+normal and anomalous distributions despite changes in oper-
+ating conditions (Y an et al.2024). This line of work reinforces
+the need for adaptive feature alignment, domain-aware mod-
+eling, and explicit evaluation under shifted conditions.
+Although these studies are not designed for NIDS, they
+reﬂect a broader trend in anomaly detection: robustness
+should be evaluated not only by aggregate predictive accu-
+racy, but also by adaptation behavior, calibration strategy,
+computational overhead, and failure modes under distribu-
+tion shift. This motivates the positioning of ADAWU-IDS
+as an interpretable and validation-calibrated drift-response
+framework rather than a universally superior classiﬁer.
+2.6 Research gap and positioning of ADAWU-IDS
+The above review suggests that existing adaptive and drift-
+aware methods have made important progress, but several
+gaps remain for concept drift-aware intrusion detection. First,
+drift signals are often treated as binary triggers rather than
+severity-oriented diagnostic information. Second, ensem-
+ble weight updates are frequently driven mainly by recent
+predictive performance and do not explicitly combine drift
+severity and temporal relevance. Third, response actions such
+as retraining are often predeﬁned, although their effective-
+ness may depend strongly on the dataset, attack distribution,
+and validation behavior. Fourth, many studies report aggre-
+gate performance without sufﬁcient statistical validation,
+component-interaction analysis, false-negative discussion, or
+computational trade-off analysis.
+ADAWU-IDS is proposed to address these gaps in a trans-
+parent and testable manner. Its novelty does not lie in claim-
+ing universal predictive superiority over all adaptive ensem-
+bles. Instead, the contribution lies in coupling MSDI-based
+drift-severity estimation, ADAWU-based dynamic weight
+control, and validation-selected response policy within a
+chronological IDS evaluation pipeline. This formulation
+allows the framework to expose when adaptive components
+are useful, when they are harmful, and how response actions
+should be calibrated before ﬁnal testing.
+3 Methodology
+In this section, we present the proposed ADAWU-IDS
+framework. We ﬁrst formulate intrusion detection under
+non-stationary trafﬁc as a temporally ordered classiﬁcation
+problem. We then describe the LSTM-based detection back-
+bone and introduce the main methodological components
+of the framework: the Multi-Scale Drift Index (MSDI), the
+Adaptive Drift-Aware Weight Update (ADAWU) mecha-
+nism, and a validation-selected response policy. Finally, we
+summarize how these components are integrated into a uni-
+ﬁed dynamic ensemble learning process.
+3.1 Problem formulation
+Network intrusion detection in real-world environments is
+inherently non-stationary (Seth et al. 2024; Lara-Gutierrez
+et al. 2025). As network services, user behavior, and attack
+strategies evolve over time, the joint distribution of trafﬁc
+features and labels may change, causing predictive models
+trained on historical data to degrade after deployment (Luo
+et al. 2024; Cai et al. 2025; Chu et al. 2023). This prob-
+lem is particularly important for intrusion detection systems,
+where delayed adaptation can lead to a substantial loss of
+detection capability under newly emerging trafﬁc conditions
+(Lara-Gutierrez et al. 2025; Haddane et al. 2026).
+In this work, we consider a temporally ordered intru-
+sion detection setting in which network trafﬁc arrives as
+a sequence of consecutive data chunks, D
+1, D2,..., DT ,
+123
+
+546 Page 6 of 23 Journal of King Saud University Computer and Information Sciences (2026) 38:546 
+where each chunk corresponds to a consecutive observation
+period in the evolving trafﬁc stream. Let X ⊆ RL×d denote
+the input feature space, where L is the sequence length and
+d is the feature dimension. In the current implementation,
+L=10 and d=78. Let Y ={ 0, 1} denote the binary label
+space, where 0 represents benign trafﬁc and 1 represents
+malicious trafﬁc. For each temporal chunk D
+t , samples are
+drawn from a time-dependent joint distribution Pt(X, Y),
+which may vary over time due to concept drift.
+The objective of this study is to design an adaptive intru-
+sion detection framework that can be analyzed under tempo-
+rally evolving trafﬁc conditions. Speciﬁcally, given an initial
+training stage and an incoming sequence of temporal chunks,
+the framework should: (1) provide an interpretable signal for
+characterizing distributional changes, (2) adjust the contri-
+bution of ensemble members according to recent predictive
+behavior and drift-severity information, and (3) evaluate
+whether validation-calibrated adaptation can mitigate perfor-
+mance degradation compared with static deployment without
+assuming universal superiority over all adaptive baselines.
+To achieve this objective, we propose ADAWU-IDS,
+a drift-aware adaptive ensemble framework that combines
+explicit drift-severity estimation, dynamic weight adjust-
+ment, and validation-selected response control. The frame-
+work is intended to support transparent drift-response behav-
+ior under evolving trafﬁc distributions rather than to replace
+all existing online ensemble methods in raw predictive per-
+formance.
+3.2 Base LSTM detection model
+As the predictive backbone of the proposed framework, we
+adopt Long Short-Term Memory (LSTM) networks to model
+temporal dependencies in network trafﬁc sequences (Hore
+et al. 2024; Hochreiter and Schmidhuber 1997; Devendi-
+ran and Turukmane 2024). LSTM is suitable for this task
+because intrusion patterns often evolve across consecutive
+packets or ﬂow observations rather than appearing as iso-
+lated feature values (Bamber et al. 2025; Hochreiter and
+Schmidhuber 1997). Compared with purely static classiﬁers,
+recurrent architectures are better suited to capturing short-
+term temporal structure in sequential trafﬁc data.
+For each input sample, a sequence of length L with fea-
+ture dimension d is fed into the LSTM model. The hidden
+representation is updated recurrently over time through the
+standard gating mechanism, including the forget gate, input
+gate, output gate, cell state, and hidden state. The ﬁnal hid-
+den representation is then passed to a classiﬁcation head to
+produce the predicted trafﬁc label.
+In the current implementation, each base learner uses a
+two-layer LSTM architecture followed by normalization,
+regularization, and a ﬁnal fully connected classiﬁer. Con-
+cretely, the model consists of a ﬁrst LSTM layer with 64
+hidden units and sequence output, a second LSTM layer with
+32 hidden units and ﬁnal-state output, a dense layer with 64
+neurons and ReLU activation, a dropout layer with dropout
+rate 0.2, batch normalization layers for training stabilization,
+and a two-neuron softmax output layer. Model training uses
+the Adam optimizer with sparse categorical cross-entropy
+loss.
+This design serves two purposes. First, it provides a
+temporally aware detection backbone suitable for sequence-
+based intrusion analysis. Second, it enables adaptive ensem-
+ble control, where multiple LSTM-based learners trained
+under different initializations can contribute unequally as the
+trafﬁc distribution evolves (Swarnalatha et al. 2025; Thock-
+chom et al. 2023; Nassreddine et al. 2025).
+3.3 Multi-scale drift index (MSDI)
+A key challenge in adaptive intrusion detection is that distri-
+butional change may appear in multiple forms (Mahdi et al.
+2024). Drift may affect low-level feature distributions, class-
+conditional structure, or the overall relationship between
+benign and malicious trafﬁc. Relying on a single indica-
+tor may therefore provide an incomplete view of temporal
+change. To address this issue, we introduce the Multi-Scale
+Drift Index (MSDI), which quantiﬁes distributional change
+from complementary perspectives and provides a structured
+signal for adaptation (Hu et al. 2025).
+It is important to clarify that MSDI is not treated as
+a complete standalone drift detector. Instead, it is used
+as a drift-severity signal that supports adaptive weight-
+ing and response-policy calibration. Its diagnostic value is
+assessed empirically in the drift-detection analysis rather
+than assumed a priori.
+In practical deployment, MSDI should be interpreted as
+an auxiliary severity indicator rather than as an autonomous
+alarm module. A high MSDI value indicates that the current
+trafﬁc chunk differs from the reference state in feature-level
+or class-conditional structure, but it does not by itself prove
+that the predictive decision boundary has changed. Therefore,
+MSDI is used to modulate ensemble weights and to sup-
+port response-policy calibration, while operational decisions
+should also consider predictive performance, false-negative
+behavior, computational constraints, and analyst-deﬁned risk
+tolerance.
+3.3.1 Feature-group drift
+Let the feature set be partitioned into G semantically mean-
+ingful groups. In the current implementation, these groups
+correspond to ﬂow statistics, packet-size descriptors, direc-
+tional packet features, TCP ﬂag features, and temporal
+123
+
+Journal of King Saud University Computer and Information Sciences (2026) 38:546 Page 7 of 23 546 
+behavior features. For the g-th feature group, we compare
+its empirical distribution in the current chunk Dt with that
+in a reference chunk Rt , which represents the recent stable
+state (Bifet and Gavalda 2007).
+For each feature f in group g, we compute a normalized
+one-dimensional Wasserstein distance:
+δ(g, f )
+t = min
+⎛
+⎝ 1,
+W1
+(
+P(g, f )
+t , Q(g, f )
+t
+)
+σ(g, f )
+R + ε
+⎞
+⎠ (1)
+where P(g, f )
+t and Q(g, f )
+t denote the empirical distributions
+of feature f in the current chunk and the reference chunk,
+respectively,W1(·,·) is the one-dimensional Wasserstein dis-
+tance (Cai et al. 2025), σ(g, f )
+R is the standard deviation of the
+reference feature distribution, and εis a small positive con-
+stant for numerical stability.
+The group-level score is then deﬁned as
+S(g)
+t = 1
+|Gg|
+∑
+f ∈Gg
+δ(g, f )
+t (2)
+where Gg denotes the set of features in group g. The feature-
+group drift component is obtained by averaging across
+groups:
+S
+feat
+t = 1
+G
+G∑
+g=1
+S(g)
+t (3)
+This component captures drift in the input space at the
+grouped feature level while preserving interpretability across
+different functional subsets of network trafﬁc descriptors.
+3.3.2 Class-conditional drift
+Feature-level change alone does not fully characterize con-
+cept drift, because the relationship between features and
+labels may also evolve. To capture this aspect, we compute
+a compact class-conditional drift summary. For each class
+c ∈ Y,l e tμ
+t,c and μR,c denote the class-wise mean feature
+vectors estimated from the current chunk and the reference
+chunk, respectively. The class-conditional drift for class c is
+deﬁned as
+S
+class
+t,c = min
+(
+1,
+μt,c − μR,c
+
+2μR,c
+
+2 + ε
+)
+(4)
+The overall class-conditional component is then
+Sclass
+t = 1
+|Y|
+∑
+c∈Y
+Sclass
+t,c (5)
+This term does not attempt to reconstruct the full within-
+class distribution. Instead, it provides a compact and inter-
+pretable summary of how class-conditional feature structure
+changes over time.
+3.3.3 Global integration
+The ﬁnal MSDI score integrates the feature-group and class-
+conditional components (Lara-Gutierrez et al.2025; Cai et al.
+2025;H ue ta l . 2025):
+MSDI
+t = ηSfeat
+t + (1 − η)Sclass
+t , (6)
+where η ∈[ 0, 1] controls the relative importance of the two
+views.
+In practice, the resulting score is normalized to the interval
+[0, 1], and larger values indicate stronger deviation between
+the current chunk and the reference state. In the following
+sections, MSDIt denotes this normalized drift score for sim-
+plicity. This score serves as a drift-severity signal used by
+the adaptive weight update mechanism and by candidate
+response policies during validation calibration.
+3.4 Adaptive drift-aware weight update (ADAWU)
+Once distributional change is quantiﬁed, the ensemble should
+respond by adjusting the contribution of its base learners
+(Swarnalatha et al. 2025; Thockchom et al. 2023). To this
+end, we propose Adaptive Drift-Aware Weight Updating
+(ADAWU), a dynamic reweighting mechanism that continu-
+ously updates model weights according to recent predictive
+behavior, drift-related information, and temporal relevance.
+Assume that the ensemble contains K base learners. Let
+w
+k,t denote the weight of learner k at time t. In the current
+framework, the updated weight is computed from three com-
+ponents.
+First, a performance contribution term reﬂects the recent
+predictive quality of learner k:
+P
+k,t = α Perfk,t, (7)
+where Perf k,t denotes a recent performance summary of
+learner k and α is its scaling coefﬁcient.
+Second, a drift-conditioned reliability term incorporates
+the current drift signal and adaptation conﬁdence:
+Rt = β(1 − MSDIt) + γ(1 − Ct) (8)
+where Ct ∈[ 0, 1] denotes the conﬁdence of the current adap-
+tation context, and β,γ are balancing coefﬁcients. Under
+this formulation, stronger drift or lower conﬁdence leads to
+a more conservative contribution from this term.
+123
+
+546 Page 8 of 23 Journal of King Saud University Computer and Information Sciences (2026) 38:546 
+Third, a temporal decay factor is used to moderate the
+inﬂuence of stale historical context:
+Tt = exp(−λt), (9)
+where λ is the decay rate.
+Following the current implementation logic, the interme-
+diate score of learner k can be written as
+˜wk,t = α Perfk,t + β(1 − MSDIt) + γ Tt (1 − Ct) (10)
+To avoid model starvation, a minimum weight threshold
+wmin is imposed:
+ˆwk,t = max
+(
+wmin, ˜wk,t
+)
+. (11)
+The ﬁnal normalized weight is then obtained as
+wk,t = ˆwk,t
+∑K
+j=1 ˆw j,t
+. (12)
+This design allows the ensemble to adapt gradually rather
+than switching abruptly between models. Learners that
+remain useful under the current trafﬁc condition retain larger
+inﬂuence, whereas learners that become less reliable under
+evolving distributions are downweighted.
+It is important to note that ADAWU primarily governs
+continuous ensemble reweighting during online operation.
+More aggressive response actions, such as localized retrain-
+ing or broader model intervention, are not assumed to be
+always beneﬁcial. They are treated as candidate response
+actions and are selected only through validation-based cali-
+bration, as described in Section 3.5.
+3.5 Validation-selected response policy
+In non-stationary intrusion detection, not all drift events
+require the same response (Lara-Gutierrez et al. 2025; Zhang
+et al. 2026; Guerrero Cano et al. 2026). Some changes are
+mild and may be handled through lightweight reweight-
+ing, whereas stronger distributional shifts may require more
+substantial intervention (Jamshidi et al. 2025). However,
+applying stronger intervention unconditionally can also be
+harmful. If the current chunk contains noisy labels, short-
+term imbalance, or a non-representative attack pattern,
+aggressive retraining may over-adapt to that chunk and
+degrade attack detection in later segments.
+For this reason, the ADAWU-IDS framework does not
+treat hierarchical response as an always-active core module.
+Instead, response behavior is formulated as a validation-
+selected policy. A response policy deﬁnes how the framework
+reacts to the current drift-severity score and adaptation
+context. Candidate policies may include: 1. weight-only
+adaptation, where ADAWU updates ensemble weights with-
+out retraining; 2. mild response, where only lightweight
+weight adaptation is applied; 3. moderate response, where
+localized incremental retraining or targeted parameter refresh
+may be enabled; 4. severe response, where stronger interven-
+tion may be enabled when the validation stream indicates that
+such intervention is beneﬁcial.
+During calibration, candidate conﬁgurations differ in the
+weighting coefﬁcients, drift thresholds, temporal decay set-
+ting, minimum weight constraint, and whether stronger
+response actions are enabled. Each candidate conﬁguration
+is evaluated only on the held-out validation stream. The ﬁnal
+conﬁguration is selected according to an IDS-oriented val-
+idation score that emphasizes Attack F1 and Attack Recall
+while penalizing false negatives. The exact calibration proto-
+col and the selected conﬁguration are reported in Section5.4.
+After validation, the selected response policy is ﬁxed
+before ﬁnal testing. No information from the ﬁnal test
+stream is used to select thresholds, weighting coefﬁcients,
+or response actions. This design is intended to prevent test
+leakage and to avoid treating stronger intervention as uni-
+versally beneﬁcial. Under the CICIDS2017 protocol used
+in this study, the validation-selected conﬁguration retains
+MSDI-guided dynamic weighting but disables hierarchical
+retraining. Therefore, hierarchical response is best under-
+stood as an optional candidate response action rather than
+a mandatory component of ADAWU-IDS.
+3.6 Dynamic ensemble learning framework
+The complete ADAWU-IDS framework integrates LSTM-
+based base learners, MSDI-based drift-severity estimation,
+ADAWU-based dynamic weight updating, and validation-
+selected response control into a uniﬁed online learning
+process (Thockchom et al. 2023).
+At initialization, the framework trains K diverse LSTM-
+based learners from the available historical data and assigns
+them initial ensemble weights. During online operation, the
+system processes temporally ordered chunks sequentially
+(Jemili et al. 2024;H ue ta l .2025). For each incoming chunk
+D
+t , the framework ﬁrst produces ensemble predictions using
+the current model weights. This order is important: the cur-
+rent chunk is ﬁrst predicted using the model state available
+before observing its labels, and only after prediction are
+labels used for updating under the online evaluation protocol.
+The framework then evaluates distributional change by
+comparing the current chunk with the recent reference state
+and computes the corresponding MSDI
+t . Based on the drift-
+severity signal, recent predictive behavior, and adaptation
+context, ADAWU updates the ensemble weights to reﬂect
+current learner usefulness and temporal relevance. Finally,
+the framework follows the adaptation strategy selected dur-
+ing validation. When the selected strategy only supports
+weight-based adaptation, the system updates learner weights
+without retraining. Stronger actions, such as retraining or
+123
+
+Journal of King Saud University Computer and Information Sciences (2026) 38:546 Page 9 of 23 546 
+model refresh, are used only if they have been enabled dur-
+ing validation calibration and their predeﬁned conditions are
+satisﬁed.
+Through this process, ADAWU-IDS aims to maintain
+detection capability under evolving trafﬁc conditions by
+combining explicit drift estimation, continuous ensemble
+reweighting, and severity-aware intervention within a single
+adaptive framework.
+4 System design and implementation
+This section describes the implementation pipeline of ADA-
+WU-IDS. The system is designed as a temporally ordered
+drift-response framework, in which prediction is performed
+before any update on the current chunk. This protocol
+avoids using current labels before prediction and better
+reﬂects online deployment conditions. The framework con-
+sists of ﬁve main stages: data preprocessing and sequence
+construction, initial ensemble training, online prediction,
+drift-severity estimation and dynamic weight updating, and
+validation-selected response control.
+4.1 Architecture overview
+The proposed ADAWU-IDS framework is implemented as a
+chronological drift-response pipeline. Unlike a static deploy-
+ment setting, in which a trained model is directly applied to
+all future trafﬁc, ADAWU-IDS processes incoming trafﬁc
+chunks sequentially and updates its adaptive state only after
+predictions for the current chunk have been produced. This
+design is important for avoiding test-label leakage and for
+reﬂecting a realistic online evaluation setting.
+Figure 1 summarizes the chronological workﬂow of
+ADAWU-IDS. Each incoming trafﬁc chunk is ﬁrst processed
+and evaluated using the current ensemble state before its
+labels are observed. After prediction, delayed labels become
+available and are used for online evaluation, MSDI-supported
+drift-severity analysis, and ADAWU-based weight updating.
+Any stronger response action is applied only when selected
+through validation calibration. The updated ensemble and
+reference state are then carried forward to the next chunk.
+4.2 Data preprocessing module
+The preprocessing module converts raw network trafﬁc
+records into sequence-based model inputs compatible with
+the LSTM backbone (Hore et al. 2024; Sajid et al. 2024;
+Dhanvijay et al. 2025). In the current study, the CICIDS2017
+dataset is processed through four main steps.
+First, a subset of 78 discriminative trafﬁc features is
+retained (Xu et al. 2024;M a r ye ta l .2024). These features
+cover ﬂow-level statistics, packet-size descriptors, direc-
+tional packet information, TCP ﬂag behavior, and temporal
+Incoming chunk Dt
+Preprocessing and
+sequence encoding t
+Current ensemble
+prediction
+Stage I: Chronological prediction
+Stage II: Post-label adaptive updating
+Post-prediction
+labeled chunk (Dt ,y t)
+MSDI drift-
+severity signal
+ADAWU-based
+weight update
+Validation-selected
+response policy
+Updated ensemble
+and reference state
+for Dt+1
+f e e d b a c kf o rn e x tc h u n k
+Delayed labels become available
+Next-chunk ensemble
+prediction for Dt+1
+Fig. 1 Simpliﬁed workﬂow of ADAWU-IDS under chronological eval-
+uation. For each incoming trafﬁc chunk, weighted prediction output
+using the model state available before observing the chunk labels. After
+prediction, delayed labels become available for online updating and
+diagnostic analysis. MSDI is computed as an interpretable drift-severity
+signal rather than as a standalone binary drift detector. ADAWU updates
+ensemble weights using recent predictive behavior, drift severity, and
+temporal relevance. The validation-selected response policy updates the
+ensemble and reference state for subsequent chunks, as indicated by the
+dashed next-chunk feedback connection
+123
+
+546 Page 10 of 23 Journal of King Saud University Computer and Information Sciences (2026) 38:546 
+characteristics. This selection is consistent with the grouped
+feature design later used by MSDI.
+Second, missing-value handling and feature normaliza-
+tion are applied before model training and evaluation. In the
+current pipeline, missing values are imputed and the resulting
+features are standardized using statistics estimated from the
+initialization-stage data only. This prevents leakage of future
+evaluation information into the preprocessing stage.
+Third, the feature vectors are reshaped into ﬁxed-length
+sequences (Hore et al. 2024; Bamber et al. 2025; Devendi-
+ran and Turukmane 2024). The current implementation uses
+sequence length L = 10, so that each input sample con-
+tains ten consecutive observations with 78 features per step.
+This representation allows the downstream LSTM model to
+capture short-range temporal dependencies across adjacent
+trafﬁc observations.
+Fourth, the preprocessed data are organized into tempo-
+rally ordered chunks for subsequent evaluation and adap-
+tation. This chunk-based design is important because the
+framework operates under chronological distribution shift
+rather than under i.i.d. sampling assumptions.
+Overall, the preprocessing module serves two purposes:
+it produces stable inputs for the predictive backbone and
+establishes the temporal organization required for drift-aware
+evaluation.
+4.3 Model training module
+The training module initializes the predictive backbone of
+ADAWU-IDS before online adaptation begins. The current
+implementation follows a two-stage procedure.
+First, the system constructs LSTM-based base learners
+using the architecture described in Section 3.2. Each model
+is initialized independently so that the ensemble contains
+diversiﬁed learners rather than identical copies of the same
+network instance (Swarnalatha et al. 2025; Thockchom et al.
+2023; Nassreddine et al. 2025). In the training code, multi-
+ple learners are created with different random seeds, which
+improves the potential usefulness of later adaptive reweight-
+ing.
+Second, the initialized learners are trained on the same
+initialization-stage data under a consistent optimization pro-
+tocol. During ensemble initialization, the framework uses
+bootstrap-like resampling to provide each learner with a
+slightly different training view, further increasing ensemble
+diversity. No validation or test data are used during ini-
+tial training. The held-out validation stream is reserved for
+response-policy calibration.
+In the current experimental pipeline, the ensemble con-
+tains three base learners with uniform initial weights. The
+purpose of this design is not to maximize architectural hetero-
+geneity, but to provide a controlled setting in which weight
+adaptation can be examined clearly. After training is com-
+pleted, the initialization-stage data are also used to establish
+the initial reference state for later drift detection.
+This module therefore provides the ofﬂine foundation of
+ADAWU-IDS: a set of LSTM-based learners that share the
+same general architecture and task objective, but retain suf-
+ﬁcient diversity to support adaptive ensemble control during
+online deployment.
+4.4 Online prediction and update protocol
+The online adaptation module is the central operational
+component of ADAWU-IDS. It combines drift monitoring,
+adaptive weight control, and applies the validation-selected
+response policy ﬁxed before ﬁnal testing within a chunk-
+based chronological evaluation setting.
+The module contains three interconnected components:
+Drift monitoring component: The component combines
+MSDI with complementary performance-based and distribu-
+tion-based signals (Hu et al. 2025; Mahdi et al. 2024). In the
+current code structure, drift evidence may arise from three
+sources: predictive degradation on the current chunk, distri-
+butional deviation from the reference state, and the MSDI
+score itself. These signals are aggregated into a conﬁdence-
+aware decision that determines whether the current chunk
+shows meaningful distributional deviation from the recent
+reference state. This component is used for drift-severity
+monitoring and response support, rather than as a standalone
+binary drift detector.
+Weight updater: The weight updater executes ADAWU to
+rebalance the contribution of ensemble members over time
+(Thockchom et al. 2023;Y ue ta l . 2024; Chen et al. 2024).
+For each base learner, the update considers recent predictive
+behavior, the current drift score, adaptation conﬁdence, and a
+temporal decay factor. The resulting weights are normalized
+and constrained by a minimum weight threshold to avoid
+model starvation. This mechanism allows the ensemble to
+adapt continuously without forcing abrupt model switching
+in every window.
+Response-control module: The response-control mod-
+ule applies the response policy selected on the held-out
+validation stream. In the calibrated CICIDS2017 conﬁgura-
+tion, this policy relies on MSDI-guided dynamic weighting
+and disables hierarchical retraining. Stronger intervention is
+therefore treated as an optional candidate action rather than
+a mandatory response.
+Operationally, the online adaptation module processes each
+incoming chunk in sequence. It first obtains the current predic-
+tion result, then estimates drift, updates ensemble weights,
+determines drift severity, and ﬁnally applies stronger adap-
+tation only when necessary. This staged design is impor-
+tant because it separates routine monitoring and reweighting
+from higher-cost adaptation actions, thereby supporting the
+123
+
+Journal of King Saud University Computer and Information Sciences (2026) 38:546 Page 11 of 23 546 
+deployment-oriented trade-off between robustness and efﬁ-
+ciency.
+4.5 Drift-severity estimation and dynamic weight
+updating
+After each chunk is evaluated, MSDI is computed to summa-
+rize the degree of distributional change between the current
+chunk and the reference state. As described in Section 3.3,
+MSDI combines feature-level and class-conditional informa-
+tion to provide a structured drift-severity signal. The resulting
+value is not treated as a perfect drift detector; rather, it is
+used as diagnostic information for adaptive weighting and
+response control.
+The ADAWU module then updates the ensemble weights.
+Learners with stronger recent predictive behavior retain
+greater inﬂuence, while learners that become less reliable
+under changing trafﬁc conditions are downweighted. The
+weight update also incorporates drift-severity information
+and temporal relevance, allowing the ensemble to adapt grad-
+ually instead of switching abruptly between models.
+To avoid learner starvation, a minimum weight constraint
+is used before normalization. This prevents any base learner
+from being completely eliminated due to temporary degra-
+dation and allows it to regain inﬂuence if its later predictive
+behavior improves. All experiments were conducted on a
+machine equipped with 16 vCPU Intel(R) Xeon(R) Gold
+6430 CPU and RTX 4090(24GB) GPU.
+4.6 Validation-selected response control
+The response-control module determines whether the system
+should rely only on dynamic weighting or apply stronger
+adaptation actions. In the proposed implementation, response
+behavior is not ﬁxed a priori. Candidate conﬁgurations are
+evaluated on a held-out validation stream, and the selected
+conﬁguration is ﬁxed before ﬁnal testing.
+This design is important because stronger response actions,
+such as retraining or aggressive model intervention, may be
+harmful when the current chunk is noisy, highly imbalanced,
+or not representative of future trafﬁc. Therefore, ADAWU-
+IDS treats hierarchical response as an optional candidate
+action rather than a mandatory core module.
+During ﬁnal testing, the system applies only the validation-
+selected response policy. No information from the ﬁnal test
+stream is used to choose thresholds, weighting coefﬁcients,
+or response actions. Under the CICIDS2017 protocol used
+in this study, the selected conﬁguration retains MSDI-guided
+dynamic weighting and disables hierarchical retraining. The
+ﬁnal test-time conﬁguration is denoted as ADAWU-IDS-
+Calibrated in the experimental sections. This name refers to
+the validation-selected instance of the ADAWU-IDS frame-
+work, rather than to a separate model architecture.
+4.7 Implementation and reproducibility
+considerations
+The implementation is organized to ensure that training, vali-
+dation, and test operations remain separated. Initial training is
+performed only on the designated training stream. V alidation
+data are used only for calibration of response conﬁguration
+and adaptive-control parameters. Final test segments are used
+only after the conﬁguration has been ﬁxed.
+All adaptive methods in the ﬁnal evaluation follow the
+same chronological protocol: the model ﬁrst predicts the cur-
+rent chunk, and only then uses the current labels for updating.
+This protocol is applied consistently to ADAWU-IDS and the
+online ensemble baselines to support fair comparison.
+For reproducibility, the experimental section reports the
+chronological data split, the evaluated baselines, the selected
+validation conﬁguration, repeated-run results, statistical tests,
+ablation settings, segment-wise performance, drift-detection
+diagnostics, and computational cost. These components are
+reported to clarify not only the predictive behavior of
+ADAWU-IDS, but also its calibration behavior, component
+interactions, and deployment trade-offs.
+5 Experimental design
+This section describes the experimental protocol used to eval-
+uate ADAWU-IDS under temporally ordered concept drift
+conditions. The evaluation is designed to avoid information
+leakage between training, validation, and test streams. All
+adaptive methods follow the same online protocol: each tem-
+poral chunk is ﬁrst predicted using the current model state,
+and the labels of that chunk are used only after prediction for
+model updating or adaptation. CICIDS2017 is used as the
+main chronological evaluation dataset, while UNSW-NB15
+is retained as a secondary dataset for cross-dataset general-
+ization analysis.
+5.1 Dataset and chronological partitioning
+The experiments are conducted on two widely used intru-
+sion detection datasets: CICIDS2017 and UNSW-NB15.
+CICIDS2017 contains benign and attack trafﬁc collected
+over multiple days, making it suitable for evaluating con-
+cept drift-aware intrusion detection under temporally ordered
+conditions. UNSW-NB15 is used as an additional dataset
+to examine whether the proposed framework generalizes
+beyond CICIDS2017 and to assess dataset-speciﬁc limita-
+tions.
+For CICIDS2017, this study adopts a strictly chrono-
+logical partitioning strategy instead of random train-test
+splitting. Tuesday and Wednesday are used for initial train-
+ing. Thursday WebAttacks is used as the validation stream for
+123
+
+546 Page 12 of 23 Journal of King Saud University Computer and Information Sciences (2026) 38:546 
+hyperparameter calibration and response-policy selection.
+Thursday Inﬁltration, Friday Morning, and Friday PortScan
+are used only for ﬁnal testing. No samples from the ﬁnal test
+segments are used during training, validation, hyperparame-
+ter selection, or response-policy calibration.
+This chronological design has two purposes. First, it pre-
+serves the temporal order of trafﬁc evolution and prevents
+information leakage caused by random shufﬂing. Second,
+it allows the evaluation to examine whether an adaptive
+framework calibrated on a held-out validation stream can
+generalize to later unseen trafﬁc and attack segments.
+UNSW-NB15 is retained as a secondary cross-dataset
+generalization case. Unlike CICIDS2017, it does not pro-
+vide the same multi-day chronological structure for con-
+structing a directly comparable drift stream with separate
+training, validation, and later attack windows. Therefore,
+the UNSW-NB15 results are interpreted as robustness and
+generalization evidence rather than as the primary validation-
+calibrated chronological drift evaluation. This distinction
+is important because the proposed framework may require
+dataset-speciﬁc calibration when transferred to trafﬁc distri-
+butions different from CICIDS2017.
+The preprocessing procedure follows the same gen-
+eral principles for both datasets. Non-numeric identiﬁers
+are removed when appropriate, categorical attributes are
+encoded, missing or invalid values are handled, and numer-
+ical features are normalized using statistics estimated only
+from the training portion. For sequence-based LSTM input,
+trafﬁc records are transformed into ﬁxed-length temporal
+sequences. The same preprocessing logic is applied consis-
+tently to ADAWU-IDS and the compared baselines within
+each dataset.
+Because this study focuses on preventing test leakage and
+evaluating validation-calibrated adaptation under chronolog-
+ical drift, CICIDS2017 is used for the main fair compari-
+son, validation calibration, statistical testing, ablation study,
+segment-wise drift-window analysis, drift-detection diag-
+nostics, and computational-cost analysis. UNSW-NB15 is
+discussed as a secondary generalization case, especially in
+relation to dataset-speciﬁc calibration and the limitations of
+ADAWU-IDS under different trafﬁc distributions.
+5.2 Baselines and comparative methods
+The following baselines and compared methods are evaluated
+under the same chronological protocol whenever applicable.
+Static LSTM is used as the non-adaptive baseline. It is
+trained on the initial training stream and then directly eval-
+uated on the test stream without online adaptation. This
+baseline measures the degradation of a static temporal clas-
+siﬁer under later trafﬁc shifts.
+ADAWU-IDS-Calibrated denotes the validation-selected
+conﬁguration of the proposed ADAWU-IDS framework. The
+conﬁguration is selected only on the CICIDS2017 Thurs-
+day WebAttacks validation stream and then ﬁxed before
+ﬁnal CICIDS2017 testing. This name refers to the calibrated
+instance of ADAWU-IDS rather than to a separate model
+architecture.
+Full default ADAWU denotes the full conﬁguration in
+which MSDI, dynamic weighting, and hierarchical response
+are all enabled according to the initial design. This conﬁgura-
+tion is included in the ablation study to examine whether the
+complete uncalibrated response mechanism is always bene-
+ﬁcial.
+DWM, Online Bagging, and Leveraging Bagging are
+included as classical online ensemble baselines for non-
+stationary data streams. These methods are evaluated under
+the same prediction-before-update protocol as ADAWU-
+IDS in the CICIDS2017 chronological experiment. They are
+included to provide a fair comparison with established adap-
+tive ensemble methods rather than only with a static baseline.
+Additional ablation variants are evaluated to analyze com-
+ponent contributions and interactions, including variants
+without MSDI, without dynamic weighting, and without
+hierarchical response. The ablation design is described in
+Section 5.5, and the results are reported in Section 6.4.
+For UNSW-NB15, the comparison follows the dataset
+protocol used for the secondary generalization experiment.
+Because UNSW-NB15 does not provide the same chrono-
+logical validation structure as CICIDS2017, its results are
+interpreted cautiously and are not used to claim universal
+cross-dataset superiority.
+5.3 Online evaluation protocol and metrics
+All adaptive methods in the CICIDS2017 experiment are
+evaluated using a chunk-based online protocol. For each
+incoming test chunk, the method ﬁrst predicts the labels of the
+current chunk using the model state available before observ-
+ing the current labels. After prediction, the true labels of the
+chunk are revealed and used for evaluation, weight updating,
+and any response action allowed by the method.
+This prediction-before-update order is applied consis-
+tently to ADAWU-IDS and all adaptive baselines. It prevents
+the model from using labels from the current chunk before
+making predictions on that same chunk. Therefore, the
+reported results reﬂect online adaptation behavior rather than
+retrospective optimization.
+For ADAWU-IDS, MSDI is computed after prediction
+using the current chunk and the reference state. ADAWU then
+updates ensemble weights for subsequent chunks. If stronger
+response actions are enabled by the selected policy, they are
+applied only after the current chunk has already been eval-
+uated. In the ﬁnal calibrated conﬁguration selected in this
+study, hierarchical retraining is disabled and the framework
+relies on MSDI-guided dynamic weighting.
+123
+
+Journal of King Saud University Computer and Information Sciences (2026) 38:546 Page 13 of 23 546 
+The evaluation reports both aggregate classiﬁcation met-
+rics and IDS-sensitive attack-detection metrics. Weighted
+F1 is used to summarize overall classiﬁcation performance
+under class imbalance. However, because intrusion detection
+is especially sensitive to missed attacks, Weighted F1 alone is
+insufﬁcient. Therefore, Attack Recall, Attack F1, and false-
+negative rate are also reported.
+Attack Recall measures the proportion of attack samples
+correctly detected:
+Attack Recall = TP
+TP + FN (13)
+Attack F1 summarizes the balance between attack precision
+and attack recall:
+Attack F1 = 2 × Attack Precision × Attack Recall
+Attack Precision + Attack Recall (14)
+The false-negative rate is deﬁned as:
+FNR = FN
+TP + FN (15)
+where TP denotes attack samples correctly classiﬁed as
+attacks and FN denotes attack samples incorrectly classi-
+ﬁed as benign. Lower FNR is particularly important for IDS
+deployment because false negatives correspond to missed
+attacks.
+For drift-detection diagnostics, precision, recall, and false
+alarm rate are reported when comparing detected drift alarms
+with coarse segment-level drift annotations. These diagnostic
+results are used only to assess the usefulness of MSDI as a
+drift-severity signal. They are not treated as proof that MSDI
+is a complete standalone drift detector.
+Computational cost is measured as mean latency per
+chunk. This metric is used to compare the adaptation over-
+head of ADAWU-IDS with Static LSTM and classical online
+ensemble baselines.
+5.4 Hyperparameter calibration and response policy
+selection
+To address the sensitivity of adaptive parameters and response
+thresholds, ADAWU-IDS uses a held-out validation stream
+for calibration in the main CICIDS2017 experiment. The
+training, validation, and test streams are strictly separated.
+Tuesday and Wednesday are used for initial training, Thurs-
+day WebAttacks is used only for validation-based calibra-
+tion, and Thursday Inﬁltration, Friday Morning, and Friday
+PortScan are used only for ﬁnal testing.
+All adaptive parameters are ﬁxed before ﬁnal testing. No
+information from the ﬁnal test segments is used to select
+weighting coefﬁcients, drift thresholds, minimum weight
+constraints, or response actions. This design is intended to
+avoid evaluation leakage and to ensure that the ﬁnal results
+reﬂect a validation-selected conﬁguration rather than test-set
+tuning.
+The calibrated parameters include the performance coef-
+ﬁcient α, the MSDI-related drift-severity coefﬁcient β,t h e
+conﬁdence / temporal-relevance coefﬁcient γ, the temporal
+decay factor λ, the minimum weight constraint w
+min,t h e
+drift-threshold setting, and whether hierarchical retraining
+is enabled. These parameters directly control the behavior
+of ADAWU and the response policy. Therefore, they are
+selected using only the held-out validation stream before ﬁnal
+chronological evaluation.
+Table 1 summarizes the candidate parameter settings con-
+sidered during validation-only calibration. The candidate
+settings were designed to cover conservative, default, and
+attack-sensitive adaptation behaviors. Conservative settings
+assign less inﬂuence to short-term adaptation and reduce the
+probability of aggressive response. Default settings follow
+the initial ADAWU design. Attack-sensitive settings place
+greater emphasis on Attack F1, Attack Recall, and false-
+negative reduction during validation selection.
+The validation score is an attack-sensitive objective that
+combines Attack F1, Attack Recall, and FNR with ﬁxed
+weights. It favors conﬁgurations with stronger attack detec-
+tion and fewer missed attacks. The same scoring rule is
+Table 1 Candidate parameter
+settings used for validation-only
+calibration
+Parameter / component Candidate settings Selected setting
+α (predictive performance) {0.40, 0.50, 0.60} 0.60
+β (drift-severity information) {0.15, 0.25, 0.35} 0.25
+γ (adaptation conﬁdence) {0.10, 0.15, 0.25} 0.15
+λ (temporal decay) {0.05, 0.10, 0.20} 0.10
+wmin (minimum learner weight) {0.01, 0.05, 0.10} 0.05
+MSDI thresholds (response regimes) {0.30/0.50/0.70, 0.40/0.60/0.80} 0.30/0.50/0.70
+Hierarchical retraining {enabled, disabled} disabled
+Selection objective Attack-sensitive validation score –
+123
+
+546 Page 14 of 23 Journal of King Saud University Computer and Information Sciences (2026) 38:546 
+applied to all candidate conﬁgurations on the Thursday
+WebAttacks validation stream. The ﬁnal test stream is never
+used to modify the scoring rule, the candidate set, or the
+selected conﬁguration.
+As shown in Table 2, the validation stream selects the
+weight_only_attack_sensitive conﬁguration. This conﬁgura-
+tion retains MSDI-guided dynamic weighting but disables
+hierarchical retraining. Compared with the full hierarchical
+conﬁgurations, the selected conﬁguration achieves the best
+attack-sensitive validation score, the highest Attack Recall,
+the highest Attack F1, and the lowest false-negative rate on
+the validation stream. This result indicates that stronger hier-
+archical response is not automatically beneﬁcial and should
+be selected through validation calibration rather than enabled
+unconditionally.
+No ﬁnal test-segment information is used during calibra-
+tion. After the validation-selected conﬁguration is ﬁxed, it
+is applied unchanged to Thursday Inﬁltration, Friday Morn-
+ing, and Friday PortScan. The ﬁnal test-time conﬁguration is
+denoted as ADAWU-IDS-Calibrated. This name refers to the
+validation-selected instance of the ADAWU-IDS framework
+rather than to a separate model architecture.
+It should be noted that this validation-only calibration does
+not claim universal optimality of the selected coefﬁcients
+or thresholds. Instead, it provides a leakage-free procedure
+for selecting a ﬁxed response policy before chronological
+testing. Although the candidate settings cover conservative,
+default, and attack-sensitive behaviors, the current study does
+not exhaustively evaluate all possible parameter combina-
+tions across multiple datasets and drift regimes. Broader
+sensitivity analysis under gradual, recurring, and class-
+conditional drift remains an important direction for future
+work.
+5.5 Ablation study design, statistical validation,
+and reporting structure
+To examine the contribution and interaction of the proposed
+components, an ablation study is conducted in addition to
+the main chronological comparison. The ablation study com-
+pares the validation-selected ADAWU-IDS conﬁguration
+with the full default ADAWU conﬁguration and component-
+removal variants. Speciﬁcally, the evaluated variants include
+ADAWU-IDS-Calibrated, Full default ADAWU, w/o MSDI,
+w/o Dynamic Weighting, and w/o Hierarchical Response.
+The purpose of the ablation study is not only to determine
+whether each component improves performance individu-
+ally, but also to identify harmful component interactions. This
+is important because adaptive mechanisms may not always be
+beneﬁcial under non-stationary and imbalanced IDS streams.
+In particular, stronger response actions such as hierarchical
+retraining may over-adapt to short-term chunk labels when
+the current chunk is noisy, imbalanced, or not representative
+of later trafﬁc. Therefore, the ablation study is used to evalu-
+ate whether the full response mechanism should be retained
+as an always-active module or treated as a candidate response
+action selected through validation calibration.
+To assess variability, the main CICIDS2017 experiments
+are repeated across three random seeds. The reported results
+are based on the mean performance across these runs.
+In addition, paired statistical tests are performed between
+ADAWU-IDS-Calibrated and Static LSTM on the main IDS-
+sensitive metrics. A p-value threshold of 0.05 is used. If the
+paired comparison does not reach this threshold, the result is
+interpreted as an improvement trend rather than statistically
+signiﬁcant superiority.
+This design follows a conservative interpretation strat-
+egy. The purpose is not to overstate the performance of
+ADAWU-IDS, but to determine whether the validation-
+calibrated framework provides reliable improvement over
+static deployment, how its components interact, and how it
+compares with established online ensemble baselines.
+The experimental results are reported in Section 6.T h e
+section ﬁrst presents the chronological comparison among
+Static LSTM, ADAWU-IDS-Calibrated, and representative
+online ensemble baselines, followed by paired statistical test-
+ing to assess whether the observed differences are statistically
+reliable. It then reports segment-wise drift-window results to
+examine temporal performance variation under drift, and pro-
+vides ablation analysis to clarify the effects and interactions
+of the main adaptive components. Additional drift-detection
+Table 2 V alidation-based
+response policy selection for
+ADAWU-IDS
+Conﬁguration Hierarchy V al. score Attack Rec. Attack F1 FNR Selected
+Weight-only AS No -1.4437 0.1362 0.0621 0.8638 Y es
+Full default Y es -1.4620 0.1312 0.0593 0.8688 No
+Full conservative Y es -1.4786 0.1261 0.0573 0.8739 No
+Weight-only default No -1.4827 0.1234 0.0587 0.8766 No
+Note: AS denotes attack-sensitive. All candidate conﬁgurations enable MSDI and dynamic weighting. The
+validation score is computed only on the Thursday WebAttacks validation stream. Higher Attack Recall
+and Attack F1 and lower FNR are preferred. The ﬁnal test segments are not used for selecting coefﬁcients,
+thresholds, or response actions. The selected conﬁguration disables hierarchical retraining and is ﬁxed before
+ﬁnal testing
+123
+
+Journal of King Saud University Computer and Information Sciences (2026) 38:546 Page 15 of 23 546 
+diagnostics are included to interpret the behavior of MSDI as
+an auxiliary drift-severity signal rather than as a standalone
+detector. Computational cost is discussed separately in Sec-
+tion 7.2 to clarify the practical overhead introduced by the
+adaptive framework. The UNSW-NB15 results are presented
+as a secondary cross-dataset generalization analysis and are
+interpreted as evidence of dataset-speciﬁc limitations rather
+than universal transferability.
+This reporting structure is designed to address not only
+aggregate performance, but also statistical robustness, false-
+negative behavior, component-level limitations, drift-detec-
+tion reliability, cross-dataset generalization, and deployment
+trade-offs.
+5.6 Reproducibility and code availability
+To improve reproducibility, the released repository includes
+the preprocessing scripts, chronological split conﬁguration,
+model-training code, validation-calibration procedure, base-
+line implementations, and scripts for reproducing the main
+tables and ﬁgures. The chronological experiments can be
+reproduced by following three steps. First, the CICIDS2017
+data should be prepared using the provided preprocessing
+script and the reported 78-feature list. Second, the validation-
+calibration script should be executed to select the response
+conﬁguration without using the ﬁnal test stream. Third, the
+chronological evaluation script should be run with the ﬁxed
+conﬁguration and the random seeds reported in this paper.
+The repository also documents the sequence length,
+chunk size, random seeds, selected hyperparameters, base-
+line settings, and commands used to generate the statisti-
+cal tests, ablation results, drift-detection diagnostics, and
+computational-cost analysis. This structure is intended to
+make the chronological evaluation protocol transparent and
+to reduce ambiguity in reproducing the reported results.
+6 Experimental results
+This section reports the experimental results of ADAWU-
+IDS under the fair chronological CICIDS2017 protocol.
+The evaluation focuses on ﬁve aspects: overall compari-
+son with static and adaptive baselines, statistical validation,
+segment-wise drift-window performance, ablation analysis,
+and drift-detection diagnostics. All adaptive methods follow
+the same online evaluation order: each method ﬁrst predicts
+the current chunk and then uses the current chunk labels for
+updating. The validation stream is used only for calibration,
+and the ﬁnal test segments are not used for selecting thresh-
+olds, weighting coefﬁcients, or response actions.
+The results are interpreted according to the positioning
+adopted in this study. The objective is not to demon-
+strate universal predictive superiority over all adaptive
+baselines. Instead, the experiments examine whether the
+validation-calibrated ADAWU-IDS conﬁguration provides
+interpretable drift-response behavior and whether it can mit-
+igate degradation relative to a static LSTM baseline under a
+chronological test protocol.
+6.1 Fair chronological comparison
+Table 3 presents the main comparison under the fair chrono-
+logical CICIDS2017 protocol. The evaluated methods include
+the Static LSTM baseline, the validation-calibrated ADAWU-
+IDS conﬁguration, and three classical adaptive online ensem-
+ble baselines: Dynamic Weighted Majority, Online Bagging,
+and Leveraging Bagging. The reported results are averaged
+over three repeated runs.
+As shown in Table 3, ADAWU-IDS-Calibrated achieves
+a modest improvement over Static LSTM in Weighted F1
+and Attack F1. Speciﬁcally, Weighted F1 increases from
+0.8865 to 0.9022, and Attack F1 increases from 0.7549
+to 0.7831. These results indicate that validation-calibrated
+adaptive weighting can mitigate part of the classiﬁcation
+degradation observed under chronological testing.
+However, the improvement is limited and metric-dependent.
+ADAWU-IDS-Calibrated does not improve Attack Recall,
+which slightly decreases from 0.8712 to 0.8696, and the
+false-negative rate slightly increases from 0.1288 to 0.1304.
+Therefore, the calibrated framework should not be inter-
+preted as consistently improving attack detection sensitivity
+or reducing missed attacks.
+In addition, DWM, Online Bagging, and Leveraging
+Bagging outperform ADAWU-IDS-Calibrated in all major
+IDS-sensitive metrics. Leveraging Bagging achieves the
+strongest overall performance, with Weighted F1 of 0.9859,
+Table 3 Overall chronological
+performance on CICIDS2017.
+V alues are mean± 95% CI over
+three repeated runs. Best results
+are in bold; the best
+LSTM-based results are
+underlined
+Method W-F1 A-Rec. A-F1 FNR
+Static LSTM 0.8865 ±0.0040 0.8712 ±0.0122 0.7549 ±0.0056 0.1288 ±0.0122
+ADAWU-IDS-Cal. 0.9022 ±0.0106 0.8696±0.0036 0.7831 ±0.0203 0.1304±0.0036
+DWM 0.9854 ±0.0001 0.9537 ±0.0009 0.9650 ±0.0003 0.0463 ±0.0009
+Online Bagging 0.9855 ±0.0001 0.9534 ±0.0006 0.9652 ±0.0002 0.0466 ±0.0006
+Leveraging Bagging 0.9859±0.0004 0.9620 ±0.0001 0.9663 ±0.0009 0.0380 ±0.0001
+Note: W-F1 denotes Weighted F1; Rec. denotes Attack Recall; A-F1 denotes Attack F1
+123
+
+546 Page 16 of 23 Journal of King Saud University Computer and Information Sciences (2026) 38:546 
+Table 4 Paired statistical
+comparison between
+ADAWU-IDS-Calibrated and
+Static LSTM over three repeated
+chronological runs
+Metric ADAWU-IDS Static LSTM Mean Diff. t-test p Wilcoxon p
+Weighted F1 0.9022 0.8865 +0.0157 0.0562 0.2500
+Attack Recall 0.8696 0.8712 -0.0017 0.8507 1.0000
+Attack F1 0.7831 0.7549 +0.0282 0.0680 0.2500
+FNR 0.1304 0.1288 +0.0017 0.8507 1.0000
+Attack Recall of 0.9620, Attack F1 of 0.9663, and FNR of
+0.0380. These results show that classical online ensemble
+methods remain substantially stronger in raw predictive per-
+formance under this chronological protocol.
+Therefore, the main result does not support a claim of
+universal predictive superiority for ADAWU-IDS. Instead,
+ADAWU-IDS should be interpreted as an interpretable and
+validation-calibrated drift-response framework that provides
+modest improvement over a static LSTM baseline in selected
+F1-based metrics, while remaining less competitive than
+established online ensemble baselines in terms of attack
+recall and false-negative reduction.
+6.2 Statistical validation
+To assess whether the observed improvement over Static
+LSTM is statistically reliable, paired statistical tests are con-
+ducted over the repeated runs. Table 4 reports the mean
+differences between ADAWU-IDS-Calibrated and Static
+LSTM for the main evaluation metrics. None of the paired
+comparisons reaches the conventional p < 0.05 signiﬁcance
+level. Therefore, the observed gains should be interpreted as
+modest tendencies rather than statistically conﬁrmed superi-
+ority.
+The paired comparison shows that ADAWU-IDS-Calibra-
+ted has positive mean differences over Static LSTM in
+Weighted F1 and Attack F1. The mean difference is +0.0157
+for Weighted F1 and +0.0282 for Attack F1. However, the
+corresponding p-values are 0.0562 and 0.0680, respectively,
+which are greater than the conventional signiﬁcance thresh-
+old of p < 0.05.
+For Attack Recall and FNR, the mean differences are -
+0.0017 and +0.0017, respectively, with p = 0.8507. These
+results indicate that ADAWU-IDS-Calibrated does not pro-
+vide statistically reliable improvement in attack recall or
+false-negative reduction.
+Therefore, the statistical analysis supports a conserva-
+tive interpretation. ADAWU-IDS-Calibrated shows a modest
+improvement trend in Weighted F1 and Attack F1 compared
+with Static LSTM, but the differences are not statistically sig-
+niﬁcant at the p < 0.05 level. Accordingly, this study does
+not claim statistically signiﬁcant superiority over the static
+baseline.
+6.3 Segment-wise drift-window analysis
+Table 5 reports the segment-wise performance of the eval-
+uated methods on the chronological test windows. This
+analysis is important because aggregate performance may
+obscure behavior in drift-affected segments. In intrusion
+detection, segment-level degradation is particularly relevant
+because missed attacks may concentrate in speciﬁc attack
+windows rather than being uniformly distributed across the
+test stream.
+The Friday PortScan segment represents an important
+drift-affected window. On this segment, ADAWU-IDS-
+Calibrated improves Weighted F1 from 0.8503 to 0.8631
+and Attack F1 from 0.8679 to 0.8774 compared with Static
+LSTM. This suggests that the calibrated framework can mit-
+igate part of the performance degradation in this segment.
+However, the improvement remains limited. ADAWU-
+IDS-Calibrated does not reduce the false-negative rate on
+Table 5 Segment-wise
+diagnostic summary on
+chronological CICIDS2017 drift
+windows
+Segment ADAWU-IDS-Calibrated Strongest baseline Key interpretation
+Thursday Inﬁltration Rec.: 0.0648; FNR: 0.9352 DWM / Leveraging
+Bagging
+Severe attack-distribution
+mismatch; adaptive response
+remains insufﬁcient.
+Friday Morning A-F1: 0.0254; FNR: 0.9412 Leveraging Bagging Calibration provides limited
+beneﬁt but does not resolve
+low-recall behavior.
+Friday PortScan A-F1: 0.8774; FNR: 0.1202 Leveraging Bagging Adaptation is more effective,
+although online ensembles
+remain stronger.
+123
+
+Journal of King Saud University Computer and Information Sciences (2026) 38:546 Page 17 of 23 546 
+Friday PortScan. The FNR slightly increases from 0.1189
+for Static LSTM to 0.1202 for ADAWU-IDS-Calibrated,
+while Attack Recall slightly decreases from 0.8811 to 0.8798.
+Therefore, the calibrated framework does not provide sufﬁ-
+cient recovery for high-risk deployment under this severe
+attack-distribution shift.
+The online ensemble baselines remain substantially stron-
+ger on the same segment. DWM, Online Bagging, and Lever-
+aging Bagging achieve much higher Attack F1 and lower
+FNR than ADAWU-IDS-Calibrated. Leveraging Bagging
+obtains the best PortScan performance, with Weighted F1
+of 0.9819, Attack Recall of 0.9692, Attack F1 of 0.9834, and
+FNR of 0.0308.
+These segment-wise results reinforce the overall conclu-
+sion. ADAWU-IDS-Calibrated can provide modest F1-based
+improvement over Static LSTM in certain drift-affected win-
+dows, but it does not consistently improve attack recall or
+reduce false negatives. The results also show that classi-
+cal online ensemble methods remain more effective when
+the primary objective is raw predictive performance under
+chronological drift.
+6.4 Ablation study and component interaction
+Table 6 presents the ablation study used to examine the
+contribution and interaction of the main ADAWU-IDS com-
+ponents. The evaluated conﬁgurations include the validation-
+calibrated conﬁguration, the full default ADAWU con-
+ﬁguration, and variants without MSDI, without dynamic
+weighting, and without hierarchical response.
+The most important observation is that the full default
+ADAWU conﬁguration performs poorly. Its Weighted F1 is
+0.6967, Attack Recall is 0.0001, Attack F1 is 0.0002, and
+FNR is 0.9999. This indicates that the mandatory hierarchical
+response in the default conﬁguration can severely harm attack
+detection under the current chronological CICIDS2017 set-
+ting.
+This result reveals an important component interaction
+issue. Stronger intervention is not necessarily beneﬁcial
+when applied unconditionally. If hierarchical retraining or
+aggressive response is triggered under short-term chunk
+labels that are imbalanced, noisy, or not representative of
+future trafﬁc, the model may over-adapt to the current chunk
+and lose its ability to detect attack trafﬁc in later segments.
+Therefore, hierarchical response should not be treated as an
+always-active core component.
+The validation-calibrated conﬁguration avoids this failure
+by disabling hierarchical retraining and retaining the weight-
+only attack-sensitive conﬁguration. This result supports the
+design choice of selecting response actions through valida-
+tion calibration rather than assuming that stronger adaptation
+is universally useful.
+The ablation results also show that removing MSDI,
+dynamic weighting, or hierarchical response produces results
+close to the calibrated conﬁguration under the current
+CICIDS2017 setting. This indicates that the marginal con-
+tribution of MSDI and dynamic weighting is limited in this
+particular protocol. Therefore, MSDI should be interpreted
+as a drift-severity signal that supports transparent response
+analysis rather than as a standalone guarantee of predictive
+improvement.
+Overall, the ablation study clariﬁes the role of the
+ADAWU-IDS components. The main value of the frame-
+work lies in exposing and controlling drift-response behavior
+through validation calibration. The results do not support the
+claim that every adaptive component is independently bene-
+ﬁcial in all settings. Instead, they show that adaptive response
+actions require careful calibration and that component inter-
+actions can strongly affect IDS performance.
+6.5 Drift detection diagnostic analysis
+Table7 reports the drift-detection diagnostic results of MSDI
+under the chronological CICIDS2017 protocol. This analysis
+evaluates whether the MSDI signal aligns with drift-affected
+regions at the segment level. The purpose is not to claim that
+MSDI is a complete standalone drift detector, but to examine
+its usefulness as a diagnostic drift-severity signal.
+The results show that MSDI does not achieve robust stan-
+dalone drift detection under the current evaluation setting.
+The diagnostic precision is 0.2564, recall is 0.3448, and false
+alarm rate is 0.5918. These values indicate that the MSDI sig-
+nal captures only part of the drift-affected behavior and also
+produces a substantial number of false alarms.
+Table 6 Ablation study and
+component interaction analysis.
+V alues are reported as mean±
+standard deviation over three
+repeated runs
+V ariant Component setting W-F1 A-F1 FNR
+Calibrated MSDI+DW+V -HR 0 .9022 ± 0.0093 0 .7831 ± 0.0179 0 .1304 ± 0.0031
+Default full MSDI+DW+F-HR 0 .6967 ± 0.0001 0 .0002 ± 0.0001 0 .9999 ± 0.0000
+w/o MSDI DW+V -HR 0 .9022 ± 0.0094 0 .7831 ± 0.0179 0 .1304 ± 0.0031
+w/o DW MSDI+V -HR 0 .9019 ± 0.0095 0 .7824 ± 0.0182 0 .1306 ± 0.0030
+w/o HR MSDI+DW 0 .9022 ± 0.0093 0 .7831 ± 0.0179 0 .1304 ± 0.0031
+Note: DW denotes dynamic weighting; HR denotes hierarchical response; V -HR denotes validation-selected
+HR; F-HR denotes ﬁxed mandatory HR
+123
+
+546 Page 18 of 23 Journal of King Saud University Computer and Information Sciences (2026) 38:546 
+Table 7 Drift-detection diagnostic analysis of MSDI under the chronological CICIDS2017 protocol
+Panel A: Aggregate diagnostic results.
+Conﬁguration Precision Recall FAR TP FP FN TN Mean MSDI
+ADAWU-IDS-Calibrated 0.2564 0.3448 0.5918 30 87 57 60 0.4798
+ADAWU-Calibrated w/o Hierarchy 0.2564 0.3448 0.5918 30 87 57 60 0.4798
+ADAWU-Calibrated w/o MSDI 0.0000 0.0000 0.0000 0 0 87 147 0.0000
+ADAWU-Calibrated w/o Weighting 0.2564 0.3448 0.5918 30 87 57 60 0.4798
+ADAWU-IDS Default Full 0.0000 0.0000 0.5918 0 87 87 60 0.4798
+P a n e lB :S e g m e n t - w i s eM S D Is e v e r i t y
+distribution for ADAWU-IDS-Calibrated.
+Segment Chunks Mean MSDI Std MSDI None Mild Severe
+Friday Morning 60 0.1122 0.0309 60 0 0
+Friday PortScan 87 0.2152 0.0503 57 30 0
+Thursday Inﬁltration 87 0.9980 0.0016 0 0 87
+Note: FAR denotes false alarm rate. The diagnostic analysis uses coarse segment-level drift labels and is intended only to evaluate MSDI as a
+drift-severity signal, not as a complete standalone drift detector
+Several factors may explain this result. First, the avail-
+able drift labels are coarse and segment-level, whereas
+distributional change may occur gradually or locally within
+a segment. Second, network trafﬁc drift may be class-
+conditional, meaning that changes in attack trafﬁc and benign
+trafﬁc may not occur at the same time or with the same
+magnitude. Third, recurring or gradual drift may not pro-
+duce a sharp distributional boundary, making it difﬁcult for
+a distance-based signal to align perfectly with drift labels.
+Therefore, MSDI should not be interpreted as a perfect
+drift detector. In this study, it is used as a drift-severity sig-
+nal for adaptive weighting and response-policy analysis. The
+diagnostic results support a cautious interpretation: MSDI
+can provide interpretable information about distributional
+change, but it requires further improvement and validation
+under more challenging drift scenarios, including gradual
+drift, recurring drift, and class-conditional drift.
+In summary, the experimental results provide a conser-
+vative but informative assessment of ADAWU-IDS. The
+validation-calibrated conﬁguration shows modest improve-
+ment over Static LSTM in Weighted F1 and Attack F1, but
+the improvement is not statistically signiﬁcant and does not
+translate into consistent false-negative reduction. Classical
+online ensemble baselines remain stronger in raw predic-
+tive performance. The ablation study further shows that
+mandatory hierarchical response can be harmful, while the
+drift-detection diagnostics indicate that MSDI should be
+treated as a drift-severity signal rather than a complete detec-
+tor. These ﬁndings support the positioning of ADAWU-IDS
+as an interpretable and validation-calibrated drift-response
+framework, not as a universally superior intrusion detection
+classiﬁer.
+7 Discussion
+This section discusses ADAWU-IDS from four deployment-
+oriented perspectives: its practical motivation relative to
+strong online ensemble baselines, the interpretation of MSDI
+as a drift-severity signal, cross-dataset generalizability, and
+deployment trade-offs involving false-negative risk, calibra-
+tion dependence, and computational cost.
+7.1 Practical motivation relative to strong online
+ensemble baselines
+The comparison with classical online ensemble baselines
+clariﬁes the complementary role of ADAWU-IDS. Dynamic
+Weighted Majority, Online Bagging, and Leveraging Bag-
+ging remain stronger choices when the primary deployment
+objective is raw predictive performance, especially Attack
+Recall and false-negative reduction. ADAWU-IDS addresses
+a different deployment need: transparent drift-response anal-
+ysis, response-policy calibration, and component-level diag-
+nosis under chronological trafﬁc evolution. These results
+indicate that when the primary deployment goal is to max-
+imize immediate predictive accuracy or minimize missed
+attacks under limited computational cost, classical online
+ensembles remain highly competitive choices.
+The motivation of ADAWU-IDS is therefore comple-
+mentary rather than purely competitive. Classical online
+ensembles are effective because they update learner inﬂu-
+ence or sample weighting according to recent prediction
+behavior. However, their adaptation process is usually less
+explicit in explaining whether a performance change is asso-
+123
+
+Journal of King Saud University Computer and Information Sciences (2026) 38:546 Page 19 of 23 546 
+ciated with distributional drift, how severe the drift is, and
+whether stronger intervention should be applied or avoided.
+In practical IDS deployment, these questions can be impor-
+tant because operators may need not only a prediction output,
+but also diagnostic information about trafﬁc evolution, model
+temporal relevance, and response-policy sensitivity.
+ADAWU-IDS addresses this deployment need by cou-
+pling drift-severity estimation, adaptive weight control, and
+validation-selected response policy in a temporally ordered
+IDS pipeline. MSDI provides an interpretable indication
+of distributional pressure from feature-group and class-
+conditional perspectives. ADAWU uses recent predictive
+behavior, MSDI-based drift severity, and temporal relevance
+to adjust ensemble contributions. The response policy is
+selected on a held-out chronological validation stream rather
+than being treated as a mandatory intervention. This design
+makes it possible to examine when adaptive components are
+useful, when they become harmful, and how response actions
+should be calibrated before ﬁnal testing.
+Thus, the practical value of ADAWU-IDS lies in trans-
+parent drift-response analysis and deployment calibration. It
+is most relevant when interpretability, auditability, response
+control, and failure-case analysis are required alongside
+predictive performance. This role complements accuracy-
+oriented online ensembles rather than replacing them in
+low-latency attack detection.
+7.2 Practical interpretation and robustness of MSDI
+MSDI is designed as an auxiliary drift-severity signal rather
+than a standalone binary drift detector. Its purpose is to sum-
+marize the magnitude of temporal distributional deviation
+from complementary feature-group and class-conditional
+perspectives, and to provide interpretable information for
+downstream adaptive weighting and response-policy calibra-
+tion. Therefore, a high MSDI value should not be interpreted
+automatically as evidence that retraining is required, and a
+low MSDI value does not necessarily imply that the classiﬁer
+will remain reliable.
+The behavior of MSDI depends on the type and severity of
+the underlying drift. Under abrupt and distributionally sepa-
+rable drift, feature-group and class-conditional deviations are
+more likely to increase simultaneously, making MSDI easier
+to interpret as a strong drift-severity signal. Under gradual
+drift, the change may accumulate slowly across consecutive
+chunks, and the MSDI trajectory may show a progressive
+increase rather than an isolated peak. Under recurring drift,
+MSDI may increase when the current trafﬁc distribution
+departs from the recent reference window, even if a simi-
+lar pattern appeared earlier in the stream. This reﬂects the
+local-reference nature of the current implementation. Under
+class-conditional drift, MSDI may be informative when the
+feature structure of benign or malicious samples changes, but
+its reliability depends on the availability and representative-
+ness of class labels within each chunk.
+MSDI and predictive degradation are not necessarily syn-
+chronized. A high MSDI value with limited performance
+loss may indicate covariate shift, benign trafﬁc-composition
+changes, or distributional movement that does not substan-
+tially affect the decision boundary. Conversely, a low or
+moderate MSDI value with clear attack-detection degrada-
+tion may occur when the drift mainly affects rare attack
+patterns, minority-class behavior, or class boundaries that are
+not fully captured by aggregate distributional summaries. For
+this reason, MSDI should be interpreted together with IDS-
+sensitive metrics such as Attack Recall, false-negative rate,
+Attack F1, and segment-wise post-drift performance. Table8
+summarizes the expected interpretation of MSDI under dif-
+ferent drift scenarios.
+In the proposed framework, MSDI is therefore used as
+a response-support signal. It contributes drift-severity infor-
+mation to ADAWU-based weight updating and helps analyze
+when adaptive intervention may be useful. However, the ﬁnal
+response policy is not triggered solely by MSDI. Candidate
+response conﬁgurations are selected through chronological
+validation calibration, and the selected conﬁguration is ﬁxed
+before ﬁnal testing. This design reduces the risk of treating
+every distributional deviation as requiring stronger interven-
+tion, which is particularly important when short-term chunks
+are noisy, imbalanced, or not representative of future traf-
+ﬁc. Therefore, MSDI is most informative when distributional
+deviation is aligned with observable feature-group or class-
+conditional changes, but it should be interpreted together
+Table 8 Practical interpretation of MSDI as an auxiliary drift-severity signal under representative drift scenarios
+Drift scenario Practical interpretation of MSDI
+Abrupt and separable drift Sharp increase; severity signal, not autonomous retraining trigger.
+Gradual drift Progressive increase across chunks; interpret as temporal trend.
+Recurring drift Increase relative to recent reference window; compare with historical behavior.
+Class-conditional drift Sensitive to class-wise feature changes; interpret with Attack Recall, FNR, and Attack F1.
+Rare-attack or boundary drift May remain low or moderate; combine with failure-case and attack-sensitive analysis.
+123
+
+546 Page 20 of 23 Journal of King Saud University Computer and Information Sciences (2026) 38:546 
+with attack-sensitive predictive metrics when drift affects
+rare attacks or decision boundaries.
+7.3 Cross-dataset generalizability
+and dataset-specific calibration
+The UNSW-NB15 evaluation indicates that the effective-
+ness of ADAWU-IDS is strongly affected by dataset-speciﬁc
+distributional structure and calibration conditions. Unlike
+CICIDS2017, which contains more temporally concentrated
+attack periods and clearer trafﬁc-phase changes, UNSW-
+NB15 presents a more mixed trafﬁc composition, different
+attack-category distribution, and different feature-generation
+process. As a result, a response policy calibrated under one
+chronological trafﬁc stream should not be assumed to trans-
+fer directly to another dataset. This observation is important
+because it shows that drift-aware IDS frameworks require not
+only adaptive mechanisms, but also dataset-aware calibration
+before deployment.
+A key reason is that distributional deviation and clas-
+siﬁcation difﬁculty may not be aligned in the same way
+across datasets. MSDI measures feature-group and class-
+conditional distributional changes relative to a recent refer-
+ence state. This signal can be informative when distributional
+movement corresponds to meaningful changes in the clas-
+siﬁcation problem. However, on UNSW-NB15, the trafﬁc
+distribution may contain more overlapping attack and benign
+patterns, more mixed attack categories, or less clearly sep-
+arated temporal drift segments. In such cases, an increase
+in MSDI may indicate distributional pressure without nec-
+essarily identifying the changes that most affect the deci-
+sion boundary. Conversely, security-critical degradation may
+occur in minority attack patterns even when the aggregate
+MSDI value remains moderate.
+This mismatch helps explain why explicit drift-response
+control may be less effective than classical online ensem-
+ble adaptation on UNSW-NB15. Methods such as Dynamic
+Weighted Majority, Online Bagging, and Leveraging Bag-
+ging respond directly to recent prediction errors or resam-
+pling-based online updates. When the main objective is
+raw predictive performance, especially Attack Recall and
+false-negative reduction, such error-driven mechanisms can
+adapt more directly to the observed classiﬁcation behav-
+ior. ADAWU-IDS, by contrast, introduces an additional
+drift-severity signal and response-control mechanism. These
+components provide diagnostic value, but they may also
+amplify short-term imbalance, noisy chunk behavior, or non-
+representative distributional changes when the calibration
+stream does not adequately match the ﬁnal test stream.
+The ablation behavior on UNSW-NB15 should therefore
+be interpreted as evidence of dataset-dependent compo-
+nent interaction. If removing MSDI or weakening adaptive
+response improves performance on a speciﬁc dataset, this
+does not necessarily mean that the component is always
+invalid. Rather, it indicates that the beneﬁt of MSDI-based
+weighting depends on whether the drift-severity signal is
+aligned with attack-sensitive predictive degradation. When
+this alignment is weak, simpler error-driven online ensembles
+may provide stronger classiﬁcation performance. This ﬁnd-
+ing supports a calibration-aware interpretation of ADAWU-
+IDS and cautions against direct cross-dataset transfer without
+reconﬁguration.
+The UNSW-NB15 results also highlight the limitation of
+the current calibration strategy. The selected response pol-
+icy, drift threshold, and weighting parameters are calibrated
+on a held-out chronological validation stream. This proce-
+dure reduces overclaiming and prevents response actions
+from being treated as automatically beneﬁcial. However, the
+candidate search space remains limited, and the validation
+stream may not cover all drift regimes or attack-composition
+changes encountered in another dataset. Therefore, the
+selected conﬁguration should be regarded as dataset-speciﬁc
+rather than universally transferable.
+These results suggest that ADAWU-IDS should not
+be deployed on a new dataset by directly transferring
+the CICIDS2017-calibrated conﬁguration; instead, dataset-
+speciﬁc validation calibration is necessary. In practical
+deployment, ADAWU-IDS should be recalibrated when
+applied to a new network environment. Such recalibration
+should consider not only aggregate metrics such as Accuracy
+and Weighted F1, but also attack-sensitive objectives includ-
+ing Attack Recall, false-negative rate, and Attack F1. Future
+work should further investigate which dataset characteris-
+tics make MSDI-based response control beneﬁcial, neutral,
+or harmful. Controlled studies involving different attack dis-
+tributions, temporal drift structures, class-imbalance levels,
+and recurring or gradual drift patterns would help clarify
+the conditions under which diagnostic drift-response frame-
+works provide advantages beyond classical online ensemble
+baselines.
+7.4 Deployment trade-offs, limitations, and future
+implications
+Several limitations should be considered when interpreting
+the results. First, ADAWU-IDS-Calibrated provides only
+modest improvements over Static LSTM in selected F1-
+based metrics, and these improvements are not statistically
+signiﬁcant at the p < 0.05 level. More importantly for IDS
+deployment, the calibrated framework does not consistently
+improve Attack Recall or reduce the false-negative rate.
+Since missed attacks are often more costly than benign mis-
+classiﬁcation in security applications, in high-risk settings,
+deployment decisions should prioritize Attack Recall and
+false-negative reduction over aggregate F1 gains.
+123
+
+Journal of King Saud University Computer and Information Sciences (2026) 38:546 Page 21 of 23 546 
+Second, adaptive response introduces additional com-
+putational cost. The calibrated ADAWU-IDS conﬁguration
+requires more processing time per chunk than the clas-
+sical online ensemble baselines. This overhead is mainly
+associated with multi-learner LSTM inference, MSDI com-
+putation, adaptive weight updating, and response-control
+logic. Therefore, in latency-sensitive environments where the
+main requirement is fast and accurate classiﬁcation, simpler
+online ensembles may be more suitable. Its added value is
+strongest when operators require interpretable drift diagnosis
+and calibrated response analysis.
+Third, the validation-calibration strategy depends on the
+representativeness of the validation stream. If the validation
+period does not contain drift patterns similar to those encoun-
+tered during ﬁnal deployment, the selected response policy
+may be suboptimal. A limited candidate search space can
+also restrict the achievable performance of the calibrated
+conﬁguration. These limitations are especially relevant for
+cross-dataset transfer, where trafﬁc composition, attack dis-
+tribution, and temporal drift structure may differ substantially
+from the calibration data.
+Fourth, MSDI should be viewed as a complementary
+severity indicator rather than a complete replacement for
+performance-based monitoring. As discussed in Section 7.2,
+MSDI may respond strongly to distributional changes that do
+not affect classiﬁcation performance, and it may be less sen-
+sitive to rare but security-critical decision-boundary changes.
+Practical deployment should therefore combine MSDI with
+attack-sensitive predictive metrics, uncertainty monitoring,
+and failure-case inspection.
+Future work should address these limitations in several
+directions. First, larger repeated-run studies and broader
+uncertainty analysis would improve conﬁdence in the obser-
+ved trends. Second, controlled experiments involving grad-
+ual, recurring, class-conditional, and rare-attack drift would
+provide a more systematic assessment of MSDI robustness.
+Third, stronger attack-sensitive calibration objectives could
+be explored to prioritize Attack Recall and false-negative
+reduction rather than aggregate F1 alone. Fourth, lightweight
+backbones or incremental update mechanisms could reduce
+computational cost. Finally, broader cross-dataset and real-
+world streaming evaluations are needed to identify when
+diagnostic drift-response frameworks such as ADAWU-IDS
+provide practical beneﬁts beyond accuracy-oriented online
+ensemble baselines.
+8 Conclusion and future work
+This study proposed ADAWU-IDS, an interpretable and
+validation-calibrated drift-response framework for concept
+drift-aware network intrusion detection. The framework
+couples MSDI-based drift-severity estimation, ADAWU-
+based dynamic ensemble weighting, and validation-selected
+response control within a chronological IDS evaluation
+pipeline. Unlike ﬁxed-response adaptive designs, ADAWU-
+IDS does not assume that stronger intervention is always
+beneﬁcial. Instead, candidate response conﬁgurations are cal-
+ibrated on a held-out validation stream before ﬁnal chrono-
+logical testing. The contribution of ADAWU-IDS is therefore
+not a new standalone classiﬁer or a universally superior
+online ensemble, but a calibrated framework that explicitly
+links drift-severity estimation, adaptive weight control, and
+response-policy selection under chronological IDS evalua-
+tion.
+The experimental results provide a cautious understand-
+ing of the framework. Under the chronological CICIDS2017
+protocol, ADAWU-IDS-Calibrated shows modest improve-
+ments over Static LSTM in Weighted F1 and Attack F1.
+However, these improvements are not statistically signiﬁcant
+at the p < 0.05 level. The calibrated framework does not con-
+sistently improve Attack Recall or reduce the false-negative
+rate, and classical online ensemble baselines achieve stronger
+raw predictive performance under the same chronological
+protocol. These ﬁndings indicate that ADAWU-IDS should
+not be interpreted as a universally superior IDS classiﬁer.
+The ablation and diagnostic analyses further clarify the
+role of each adaptive component. MSDI provides an inter-
+pretable drift-severity signal that helps characterize distribu-
+tional deviation, but it should not be used as a standalone
+binary drift detector. ADAWU supports continuous ensem-
+ble reweighting by incorporating recent predictive behavior,
+drift-severity information, and temporal relevance. In con-
+trast, stronger response actions such as retraining or model
+refresh may over-adapt to short-term chunk behavior when
+applied unconditionally. Therefore, hierarchical response is
+better formulated as an optional response action selected
+through validation calibration rather than as a mandatory
+component.
+Overall, the main value of ADAWU-IDS lies in its trans-
+parent drift-response structure, validation-based conﬁgura-
+bility, and interpretable adaptation behavior. The framework
+provides a testable pipeline for examining when adaptive
+components are useful, when they are harmful, and how
+response actions should be selected before deployment. This
+positioning is particularly relevant for intrusion detection
+under non-stationary trafﬁc, where aggregate accuracy alone
+is insufﬁcient and must be considered together with attack-
+recall behavior, false-negative risk, computational cost, and
+failure cases.
+Future work will focus on four directions. First, stronger
+attack-recall-oriented optimization is needed to reduce false
+negatives under severe attack-distribution shifts. Second,
+more efﬁcient online adaptation strategies should be explored
+to reduce computational overhead in latency-sensitive deploy-
+ment scenarios. Third, MSDI can be further improved by
+123
+
+546 Page 22 of 23 Journal of King Saud University Computer and Information Sciences (2026) 38:546 
+incorporating more ﬁne-grained drift annotations and evalu-
+ations under gradual, recurring, and class-conditional drift.
+Fourth, broader validation across additional datasets, longer
+trafﬁc streams, and real-world deployment environments is
+required to assess the generalizability of validation-selected
+drift-response policies.
+Author Contributions Author Contributions: Conceptualization, Jin-
+liang Y uan; methodology, Jinliang Y uan; software, Jinliang Y uan;
+validation, Jinliang Y uan; formal analysis, Jinliang Y uan; investiga-
+tion, Jinliang Y uan; data curation, Jinliang Y uan; writing—original draft
+preparation, Jinliang Y uan; writing—review and editing, Y u Y ang; visu-
+alization, Y u Y ang; supervision, Mingqi Wang; project administration,
+Mingqi Wang. All authors have read and agreed to the published version
+of the manuscript.
+Data Availability No datasets were generated or analysed during the
+current study.
+Declarations
+Competing Interests The authors declare no competing interests.
+Open Access This article is licensed under a Creative Commons
+Attribution-NonCommercial-NoDerivatives 4.0 International License,
+which permits any non-commercial use, sharing, distribution and repro-
+duction in any medium or format, as long as you give appropriate credit
+to the original author(s) and the source, provide a link to the Creative
+Commons licence, and indicate if you modiﬁed the licensed mate-
+rial. Y ou do not have permission under this licence to share adapted
+material derived from this article or parts of it. The images or other
+third party material in this article are included in the article’s Creative
+Commons licence, unless indicated otherwise in a credit line to the
+material. If material is not included in the article’s Creative Commons
+licence and your intended use is not permitted by statutory regula-
+tion or exceeds the permitted use, you will need to obtain permission
+directly from the copyright holder. To view a copy of this licence, visit
+http://creativecommons.org/licenses/by-nc-nd/4.0/.
+References
+Abdulrahaman MD, Balogun NA, Oloyede MO (2026) A systematic
+review of concept drift approaches for anomaly detection in iot net-
+works. SN Comput Sci 7(1):18. https://doi.org/10.1007/s42979-
+025-04624-8
+Anis FM, Alabdullatif M, Aljbli S, Hammoudeh M (2025) A survey
+on the applications of deep learning in network intrusion detection
+systems to enhance network security. IEEE Access 13:185357–
+185373. https://doi.org/10.1109/ACCESS.2025.3624952
+Baena-Garcıa M, Campo-Ávila J, Fidalgo R, Bifet A, Gavalda
+R, Morales-Bueno R (2006) Early drift detection method. In:
+Fourth international workshop on knowledge discovery from data
+streams, vol 6, pp 77–86. https://www.academia.edu/6351368
+Bamber SS, Katkuri A VR, Sharma S, Angurala M (2025) A hybrid
+cnn-lstm approach for intelligent cyber intrusion detection sys-
+tem. Comput Sec 148:104146. https://doi.org/10.1016/j.cose.
+2024.104146
+Bifet A, Gavalda R (2007) Learning from time-changing data with adap-
+tive windowing. In: Proceedings of the 2007 SIAM international
+conference on data mining, pp 443–448. https://doi.org/10.1137/
+1.9781611972771.42
+C a iS ,Z h a oY ,H uY ,W uJ ,W uJ ,Z h a n gG ,Z h a oC ,S o s uR N A
+(2024) Cd-btmse: A concept drift detection model based on
+bidirectional temporal convolutional network and multi-stacking
+ensemble learning. Knowl-Based Syst 294:111681. https://doi.
+org/10.1016/j.knosys.2024.111681
+Cai S, Tang H, Chen J, Hu Y , Guo W (2025) Cdda-md: An efﬁcient
+malicious trafﬁc detection method based on concept drift detection
+and adaptation technique. Comput Sec 148:104121. https://doi.
+org/10.1016/j.cose.2024.104121
+Chen J, Xue J, Wang Y , Liu Z, Huang L (2024) Classiﬁer clustering and
+feature alignment for federated learning under distributed concept
+drift. In: Globerson A, Mackey L, Belgrave D, Fan A, Paquet U,
+Tomczak J, Zhang C (eds) Advances in neural information process-
+ing systems, vol 37. Curran Associates, Inc., V ancouver,Canada,
+pp 81360–81388. https://doi.org/10.52202/079017-2586
+Chen W, Zhu Z, Zhang Y , Shen L, Y ang L, Wen Q, Sun L (2025)
+Learning to extrapolate and adjust: Two-stage meta-learning for
+concept drift in online time series forecasting. In: Proceedings
+of the thirty-fourth International Joint Conference on Artiﬁcial
+Intelligence, IJCAI-25. International Joint Conferences on Artiﬁ-
+cial Intelligence Organization, Montreal,Canada, pp 4869–4877.
+https://doi.org/10.24963/ijcai.2025/542
+Chinnasamy R, Subramanian M, Easwaramoorthy SV , Cho J (2025)
+Deep learning-driven methods for network-based intrusion detec-
+tion systems: A systematic review. ICT Express 11(1):181–215.
+https://doi.org/10.1016/j.icte.2025.01.005
+Chu R, Jin P , Qiao H, Feng Q (2023) Intrusion detection in the iot data
+streams using concept drift localization. AIMS Math 9(1):1535–
+1561. https://doi.org/10.3934/math.2024076
+Devendiran R, Turukmane A V (2024) Dugat-lstm: Deep learning based
+network intrusion detection system using chaotic optimization
+strategy. Expert Syst Appl 245:123027. https://doi.org/10.1016/
+j.eswa.2023.123027
+Dhanvijay DM, Dhanvijay MM, Kamble VH (2025) Cyber intrusion
+detection using ensemble of deep learning with prediction scoring
+based optimized feature sets for iot networks. Cyber Sec Appl
+3:100088. https://doi.org/10.1016/j.csa.2025.100088
+Gama J, Medas P , Castillo G, Rodrigues P (2004) Learning with drift
+detection. In: Advances in artiﬁcial intelligence – SBIA 2004.
+Springer, Berlin, Heidelberg, pp 286–295.https://doi.org/10.1007/
+978-3-540-28645-5_29
+Guerrero Cano JV , Aguiar GJ, Cano A (2026) Anticipating to
+change: A proactive approach for concept drift adaptation in data
+streams. Mach Learn 115(1):3. https://doi.org/10.1007/s10994-
+025-06945-4
+Haddane I, Hirchoua B, Moutachaouik H (2026) React-d3qn: resilient
+adaptive concept-drift-aware dueling double deep q-network for
+robust edge-centric intrusion detection. Cybersecurity 9(1):130.
+https://doi.org/10.1186/s42400-026-00558-7
+Hochreiter S, Schmidhuber J (1997) Long short-term memory. Neural
+Comput 9(8):1735–1780. https://doi.org/10.1162/neco.1997.9.8.
+1735
+Hore S, Ghadermazi J, Shah A, Bastian ND (2024) A sequential
+deep learning framework for a robust and resilient network intru-
+sion detection system. Comput Sec 144:103928. https://doi.org/
+10.1016/j.cose.2024.103928
+Hozouri A, Mirzaei A, Effatparvar M (2025) A comprehensive survey
+on intrusion detection systems with advances in machine learning,
+deep learning and emerging cybersecurity challenges. Discov Artif
+Intell 5(1):314. https://doi.org/10.1007/s44163-025-00578-1
+Hu X, Ma D, Wang W, Liu F (2025) Dual adaptive windows toward
+concept-drift in online network intrusion detection. In: Interna-
+tional conference on computational science, pp 210–224. https://
+doi.org/10.1007/978-3-031-97626-1_15
+123
+
+Journal of King Saud University Computer and Information Sciences (2026) 38:546 Page 23 of 23 546 
+Jamshidi S, Naﬁ KW, Nikanjam A, Khomh F (2025) Evaluating
+machine learning-driven intrusion detection systems in iot: Perfor-
+mance and energy consumption. Comput Indust Eng 204:111103.
+https://doi.org/10.1016/j.cie.2025.111103
+Jemili F, Jouini K, Korbaa O (2024) Intrusion detection based on concept
+drift detection and online incremental learning. Intern J Pervas
+Comput Commun 21(1):81–115. https://doi.org/10.1108/IJPCC-
+12-2023-0358
+Jin Z, Zhou J, Li B, Wu X, Duan C (2024) Fl-iids: A novel feder-
+ated learning-based incremental intrusion detection system. Futur
+Gener Comput Syst 151:57–70. https://doi.org/10.1016/j.future.
+2023.09.019
+Lara-Gutierrez A, Fernandez-Gago C, Onieva JA (2025) A frame-
+work for drift detection and adaptation in ai-driven anomaly and
+threat detection systems: A. Lara-Gutierrez, et al. Int J Inf Secur
+24(5):199. https://doi.org/10.1007/s10207-025-01118-9
+Luo X, Liu C, Gou G, Xiong G, Li Z, Fang B (2024) Identifying mali-
+cious trafﬁc under concept drift based on intraclass consistency
+enhanced variational autoencoder. Sci China Inf Sci 67(8):182302.
+https://doi.org/10.1007/s11432-023-4010-4
+Mahdi OA, Ali N, Pardede E, Al-Quraishi T (2024) Online concept drift
+detector: Optimally balancing delay detection, runtime, memory,
+and accuracy. Proced Comput Sci 237:559–567. https://doi.org/
+10.1016/j.procs.2024.05.140
+Mary DS, Dhas LJS, Deepa AR, Chaurasia MA, Sheela CJJ (2024)
+Network intrusion detection: An optimized deep learning approach
+using big data analytics. Expert Syst Appl 251:123919.https://doi.
+org/10.1016/j.eswa.2024.123919
+Nassreddine G, Nassereddine M, Al-Khatib O (2025) Ensemble learn-
+ing for network intrusion detection based on correlation and
+embedded feature selection techniques. Computers 14(3). https://
+doi.org/10.3390/computers14030082
+Sajid M, Malik KR, Almogren A, Malik TS, Khan AH, Tanveer
+J, Rehman AU (2024) Enhancing intrusion detection: a hybrid
+machine and deep learning approach. J Cloud Comput 13(1):123.
+https://doi.org/10.1186/s13677-024-00685-x
+Seth S, Chahal KK, Singh G (2024) Concept drift–based intrusion detec-
+tion for evolving data stream classiﬁcation in ids: Approaches and
+comparative study. Comput J 67(7):2529–2547.https://doi.org/10.
+1093/comjnl/bxae023
+Shyaa MA, Ibrahim NF, Zainol Z, Abdullah R, Anbar M, Alzubaidi
+L (2024) Evolving cybersecurity frontiers: A comprehensive sur-
+vey on concept drift and feature dynamics aware machine and
+deep learning in intrusion detection systems. Eng Appl Artif Intell
+137:109143. https://doi.org/10.1016/j.engappai.2024.109143
+Singh A, Chouhan PK, Aujla GS (2024) Secureﬂow: Knowledge and
+data-driven ensemble for intrusion detection and dynamic rule
+conﬁguration in software-deﬁned iot environment. Ad Hoc Netw
+156:103404. https://doi.org/10.1016/j.adhoc.2024.103404
+Swarnalatha K, Narisetty N, Kancherla GR, Guntupalli N, Rao SM,
+Kalidindi A (2025) Adaptive ensemble models for robust intrusion
+detection in cloud environment on imbalanced dataset. Intern J
+Adv Computer Sci Appl 16(8). https://doi.org/10.14569/IJACSA.
+2025.0160829
+Thein TT, Shiraishi Y , Morii M (2024) Personalized federated learning-
+based intrusion detection system: Poisoning attack and defense.
+Futur Gener Comput Syst 153:182–192. https://doi.org/10.1016/
+j.future.2023.10.005
+Thockchom N, Singh MM, Nandi U (2023) A novel ensemble learning-
+based model for network intrusion detection. Compl Intell Syst
+9(5):5693–5714. https://doi.org/10.1007/s40747-023-01013-7
+Xu B, Sun L, Mao X, Liu C, Ding Z (2024) Strengthening network
+security: Deep learning models for intrusion detection with opti-
+mized feature subset and effective imbalance handling. Comput
+Mater Continua 78(2):1995–2022. https://doi.org/10.32604/cmc.
+2023.046478
+Y an J, Cheng Y , Wang Q, Liu L, Zhang W, Jin B (2024) Transformer
+and graph convolution-based unsupervised detection of machine
+anomalous sound under domain shifts. IEEE Trans Emerg Topics
+Computat Intell 8(4):2827–2842. https://doi.org/10.1109/TETCI.
+2024.3377728
+Y an J, Wang Q, Cheng Y , Su Z, Zhang F, Zhong M, Liu L, Jin B, Zhang W
+(2024) Optimized single-image super-resolution reconstruction: A
+multimodal approach based on reversible guidance and cyclical
+knowledge distillation. Eng Appl Artif Intell 133:108496. https://
+doi.org/10.1016/j.engappai.2024.108496
+Y an J, Cheng Y , Zhang F, Zhou N, Wang H, Jin B, Wang M, Zhang W
+(2025a) Multimodal imitation learning for arc detection in complex
+railway environments. IEEE Trans Instrum Meas 74:1–13. https://
+doi.org/10.1109/TIM.2025.3556896
+Y an J, Cheng Y , Zhang F, Li M, Zhou N, Jin B, Wang H,
+Y ang H, Zhang W (2025b) Research on multimodal tech-
+niques for arc detection in railway systems with limited data.
+Struct Health Monit 14759217251336797. https://doi.org/10.
+1177/14759217251336797
+Y u E, Lu J, Zhang B, Zhang G (2024) Online boosting adaptive learning
+under concept drift for multistream classiﬁcation. In: Proceedings
+of the AAAI conference on artiﬁcial intelligence, vol 38, pp 16522–
+16530. https://doi.org/10.1609/aaai.v38i15.29590
+Zhang M, Du L, Wang M, Gu Z (2026) Continual drift detection and
+adaptation for cybersecurity applications. In: Advanced data min-
+ing and applications. Springer, Singapore, pp. 303–317. https://
+doi.org/10.1007/978-981-95-3456-2_21
+Publisher’s Note Springer Nature remains neutral with regard to juris-
+dictional claims in published maps and institutional afﬁliations.
+123

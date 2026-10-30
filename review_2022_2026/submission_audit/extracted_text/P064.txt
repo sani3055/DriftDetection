@@ -1,0 +1,965 @@
+Pai et al. 
+EURASIP Journal on Information Security         (2025) 2025:29  
+https://doi.org/10.1186/s13635-025-00216-4
+RESEARCH
+Adaptive network anomaly detection using 
+machine learning approaches
+Vasudeva Pai1,2, Karthik Pai3,4, Manjunatha S.5*, Srujan Hirmeti1 and Vaibhav V. Bhat1 
+Abstract 
+This research aims to develop a Network Detection System (NDS) utilizing various machine learning techniques 
+to enhance network security through anomaly detection. It evaluates the effectiveness of K-nearest neighbors (KNN), 
+gradient boosting, support vector machines (SVM), random forests, and logistic regression in identifying deviations 
+from normal network behavior. Furthermore, ensemble learning methods, including voting and stacking techniques, 
+are explored to improve detection accuracy. The study proposes and tests a hybrid multi-layered stacking model 
+using the CICIDS 2017 dataset, which encompasses both historical and modern attack patterns, providing a compre-
+hensive benchmark for evaluation. Model performance is assessed using metrics such as accuracy, precision, recall, 
+and F1 score. Special emphasis is placed on feature importance and reduction in dimensionality to enhance model 
+efficiency. Additionally, the study addresses the critical challenge of minimizing false positives and false negatives 
+for practical deployment. Results indicate that the hybrid ensemble stacking model achieves superior performance, 
+with an accuracy of 98.79%, significantly improving network anomaly detection. The research highlights the poten-
+tial for further advances through deep learning and real-time detection methodologies to improve network security 
+in the future.
+Keywords Network detection system (NDS), Ensemble learning, Voting, Anomaly detection, CICIDS2017
+1 Introduction
+In the modern digital era, where network security is 
+paramount, the surge in cyberattacks has highlighted the 
+need for more advanced anomaly detection methods. 
+Conventional network security solutions, which often 
+depend on static rule-based systems, frequently fall short 
+in identifying complex and evolving threats [1]. Machine 
+learning has emerged as a powerful alternative, offering 
+the capability to learn from data and adapt to new attack 
+patterns autonomously, without requiring continuous 
+human oversight [2]. This field has seen rapid growth, 
+with numerous studies demonstrating the effectiveness 
+of machine learning algorithms in detecting network 
+threats while reducing false positives [3].
+This research focuses on detecting a range of network 
+attacks, including Distributed Denial of Service (DDoS), 
+port scanning, and various denial of service (DoS) attacks 
+such as DoS Hulk, GoldenEye, Slowhttptest, and Slow -
+loris. Each type of attack presents distinct challenges: 
+DDoS floods systems with excessive traffic, disrupting 
+service availability, while Port Scanning systematically 
+probes network ports to uncover vulnerabilities or open 
+services, often serving as a precursor to more severe 
+attacks. DoS Hulk is an HTTP-based attack that gener -
+ates a massive volume of web traffic to deplete server 
+Open Access
+© The Author(s) 2025. Open Access This article is licensed under a Creative Commons Attribution 4.0 International License, which 
+permits use, sharing, adaptation, distribution and reproduction in any medium or format, as long as you give appropriate credit to the 
+original author(s) and the source, provide a link to the Creative Commons licence, and indicate if changes were made. The images or 
+other third party material in this article are included in the article’s Creative Commons licence, unless indicated otherwise in a credit line 
+to the material. If material is not included in the article’s Creative Commons licence and your intended use is not permitted by statutory 
+regulation or exceeds the permitted use, you will need to obtain permission directly from the copyright holder. To view a copy of this 
+licence, visit http://creativecommons.org/licenses/by/4.0/.
+EURASIP Journal on
+Information Security
+*Correspondence:
+Manjunatha S.
+manjunatha.msh@manipal.edu
+1 Department of Information Science and Engineering, Nitte (Deemed 
+to be University), NMAM Institute of Technology (NMAMIT), Nitte, Udupi, 
+Karnataka 574110, India
+2 Research Scholar, Visvesvaraya Technological University, 
+Belagavi 590018, Karnataka, India
+3 Department of Computer Science and Engineering, Canara Engineering 
+College, Mangalore 574219, Karnataka, India
+4 Research Guide, Visvesvaraya Technological University, Belagavi 590018, 
+Karnataka, India
+5 Manipal Institute of Technology Manipal, Manipal Academy of Higher 
+Education, Manipal, Udupi, Karnataka 576104, India
+
+Page 2 of 23Pai et al. EURASIP Journal on Information Security         (2025) 2025:29 
+resources, and GoldenEye similarly exploits HTTP vul -
+nerabilities to exhaust server capabilities. Slowhttptest 
+and Slowloris, categorized as “slow” DoS attacks, extend 
+the duration of incomplete HTTP requests, monopo -
+lize server connections and deny legitimate user access. 
+Detecting these attacks effectively is critical to preserv -
+ing network integrity and enabling a prompt response to 
+incidents.
+The recent research explores machine learning algo -
+rithms applied to network security and strengthening 
+protection through ML techniques [4]. Artificial intel -
+ligence, big data, and emerging techniques like cloud 
+integration and transfer learning enhance smart grid 
+cybersecurity by enabling early threat detection, pro -
+active response, and greater resilience [5]. To improve 
+detection accuracy and robustness, this study utilizes a 
+multilayer stacking model, which combines the predic -
+tive strengths of multiple base classifiers with a meta-
+classifier. This ensemble technique, particularly stacking, 
+has proven effective in enhancing anomaly detection 
+systems by capitalizing on the strengths of individual 
+algorithms [6]. By integrating multiple models through 
+this approach, the research aims to develop a more resil -
+ient detection system capable of addressing the complex 
+and dynamic nature of network threats. This multilayer 
+strategy ensures greater adaptability and precision in 
+classification, contributing to the advancement of next-
+generation Network Detection Systems (NDS) [7].
+1.1  Scope of the proposed work:
+ 
+• Advanced threat detection: enhances the capability 
+to detect sophisticated and evolving cyber threats 
+that traditional methods may miss, providing a more 
+adaptive and responsive approach to network secu -
+rity.
+• Improved accuracy: focuses on reducing false posi -
+tives and false negatives, which is crucial for mini -
+mizing unnecessary alerts and ensuring that real 
+threats are detected accurately, thereby improving 
+operational efficiency.
+• Application of machine learning: demonstrates the 
+effectiveness of ML methods in network anomaly 
+detection, which can handle complex patterns and 
+dynamic network behaviour better than static rule-
+based systems.
+• Utilization of real-world dataset: leverages dataset 
+CICIDS 2017, ensuring that the models are evalu -
+ated against both historical and current attack pat -
+terns, thus providing more relevant and generalizable 
+results.
+• Ensemble learning techniques: explores the potential 
+of ensemble methods, specifically voting and stack -
+ing, to improve model performance by combining 
+the strengths of multiple algorithms, leading to better 
+detection accuracy.
+In this article, Sect.  1 introduces the paper, outlining 
+its background, significance, and objectives, emphasiz -
+ing the importance of anomaly detection in network 
+security and the potential advantages of machine learn -
+ing-based solutions. Section  2 provides a review of the 
+literature that summarizes previous research on network 
+anomaly detection, with a focus on existing approaches, 
+algorithms, and techniques that highlight the challenges 
+and limitations of traditional detection methods. In 
+Sect.  3, the research methodology is detailed, covering 
+model design, feature engineering, and data processing 
+techniques. This chapter explains the chosen machine 
+learning models, the feature selection methods, and the 
+data preprocessing steps used to prepare the data sets. 
+In Sect.  4, the results of the study are analyzed, with an 
+emphasis on comparing the performance of the hybrid 
+ensemble model to individual algorithms and demon -
+strating the advantages of ensemble methods in enhanc -
+ing detection accuracy. Finally, Sect.  5, concludes the 
+paper by summarizing the findings, contributions, and 
+suggestions for future research, including potential ave -
+nues for further exploration of deep learning techniques 
+and real-time detection capabilities.
+2  Literature review
+Anomaly detection research in cloud environments has 
+grown significantly, emphasizing the need to strengthen 
+security in complex and interconnected networks. For 
+instance, Hagemann and Katsarou [1] surveyed machine 
+learning techniques designed specifically for cloud net -
+works, showcasing a wide range of applications in areas 
+such as intrusion detection and performance monitor -
+ing. Their work underscores the importance of feature 
+selection and scalability in ensuring model effectiveness. 
+Expanding on this foundation, Shahzad et al. [2] explored 
+ensemble learning for multiclass anomaly detection, 
+employing methods like decision trees and gradient 
+boosting to enhance accuracy and robustness in cloud-
+based systems. Gupta et  al. [3] tackled the challenges 
+of multi-cloud environments by introducing a feder -
+ated learning approach that addresses privacy concerns 
+while ensuring robust anomaly detection. Integrated 
+with digital twins, their hierarchical federated learning 
+framework facilitates collaborative model training across 
+multiple platforms without exposing sensitive data, offer-
+ing a compelling solution for cloud-based applications. 
+In network traffic analysis, Kurniabudi et  al. [6] utilized 
+
+Page 3 of 23
+Pai et al. EURASIP Journal on Information Security         (2025) 2025:29 
+ 
+information gain for feature selection on the CICIDS2017 
+dataset to enhance machine learning models, striving to 
+achieve a balance between detection accuracy and com -
+putational efficiency. Similarly, Maseer et  al. [7] con -
+ducted an extensive benchmarking of machine learning 
+algorithms using the same dataset, emphasizing metrics 
+such as accuracy and detection rates to determine the 
+most effective approaches for anomaly detection.
+Additional research underscores the need to balance 
+performance with practical deployment requirements. 
+For example, the study “Evaluating the Performance 
+and Challenges of Machine Learning Models in Net -
+work Anomaly Detection” [8] examines various mod -
+els, focusing on challenges such as feature selection, 
+computational overhead, and adaptability to real-world 
+scenarios. Likewise, Neuschmied et  al. [9] proposed 
+a two-stage intrusion detection framework that inte -
+grates lightweight anomaly detection with a secondary, 
+detailed analysis, effectively reducing false positives while 
+enhancing detection efficiency. Adnan, Bshara, and Awad 
+[10] explored the use of unsupervised machine learning 
+for forensic analysis of Advanced Persistent Threat (APT) 
+attacks, emphasizing adaptability in detecting APT 
+patterns without relying on labeled data. Their study 
+addresses key challenges in feature extraction and real-
+time threat detection, which are critical for cybersecurity 
+forensics. Similarly, Abdallah and Otoom [11] conducted 
+a survey on supervised machine learning for intrusion 
+detection, comparing different methodologies across 
+various environments and providing valuable insights for 
+future research directions.
+Noto et al. [12] highlighted the effectiveness of ensem -
+ble methods in anomaly detection, showing that inte -
+grating multiple feature models improves robustness, 
+particularly in noisy datasets. Similarly, Vanerio and 
+Casas [13] emphasized the advantages of ensemble tech -
+niques in reducing false positives, especially in complex 
+network environments, and stressed the need for careful 
+model selection to optimize detection performance. Shon 
+and Moon [14] demonstrated that hybrid approaches, 
+which integrate multiple machine learning algorithms, 
+offer greater consistency and reliability in anomaly detec-
+tion compared to single-model methods. Lok et  al. [15] 
+proposed a hybrid model that combines several algo -
+rithms to improve flexibility and accuracy in detecting 
+unusual data patterns. Alkasassbeh [16] introduced an 
+innovative hybrid method that integrates traffic predic -
+tion with change point detection, designed to enhance 
+real-time anomaly detection in dynamic network envi -
+ronments. Wang et  al. [17] conducted a comprehensive 
+evaluation of various algorithms and methods used in 
+practical anomaly detection applications, addressing 
+challenges like scalability, adaptability, and the demand 
+for continuous refinement. Their study provides an 
+insightful outlook on leveraging emerging technolo -
+gies to improve the effectiveness of anomaly detection 
+systems.
+The authors in [18] presents innovative strategies to 
+improve intrusion detection systems (IDSs) by overcom -
+ing limitations in existing approaches, building on prior 
+studies that have employed machine learning techniques 
+such as nature-inspired metaheuristics, Bayesian meth -
+ods, and swarm intelligence for attribute selection and 
+performance enhancement. The authors proposed an 
+XAI-enhanced ensemble model that improves transpar -
+ency by explaining detection decisions, while remain -
+ing scalable and efficient for real-time deployment on 
+resource-constrained IoV gateways [19]. Blockchain 
+and Federated Learning (FL) provide complemen -
+tary strengths that make them particularly effective for 
+secure, privacy-preserving, and collaborative network 
+anomaly detection. Federated learning enables multiple 
+organizations or distributed devices to collaboratively 
+train machine learning models without directly sharing 
+sensitive raw data, thereby mitigating privacy and regula -
+tory concerns. However, FL alone is susceptible to chal -
+lenges such as model poisoning, data integrity issues, and 
+a lack of trust among participating entities. Blockchain, 
+with its decentralized ledger, immutability, and consen -
+sus mechanisms, addresses these limitations by ensuring 
+transparent auditing, traceability, and tamper-resistant 
+record-keeping of model updates and transactions. The 
+synergy of Blockchain and FL thus creates a trustworthy 
+ecosystem for collaborative security analytics. This dual 
+approach is especially beneficial in three contexts:
+• Multi-organization cybersecurity collaborations—
+enterprises, governments, and research institutions 
+can jointly detect and mitigate large-scale cyber 
+threats without exposing sensitive internal data. 
+Blockchain ensures fairness and accountability, while 
+FL enables knowledge sharing across organizational 
+boundaries.
+• IoT/edge networks with limited resources—in highly 
+distributed environments such as IoT or edge com -
+puting, FL reduces the need for centralized data 
+transfer, while Blockchain ensures secure coordina -
+tion among heterogeneous devices, even in untrusted 
+settings.
+• Privacy-sensitive sectors like healthcare and 
+finance—both domains demand stringent compli -
+ance with privacy regulations (e.g., HIPAA, GDPR). 
+FL allows cross-institutional anomaly detection with-
+out centralizing confidential records, while Block -
+chain enforces secure access control and verifiable 
+model updates.
+
+Page 4 of 23Pai et al. EURASIP Journal on Information Security         (2025) 2025:29 
+Recent studies have highlighted the promise of this inte -
+gration. For example, Buyuktanir et  al. demonstrated 
+how Federated Learning improves network intrusion 
+detection systems [20], while Khawla et  al. emphasized 
+the role of blockchain-based intrusion detection systems 
+in IoT networks [21]. Kang et al. demonstrated a block -
+chain-enabled federated learning framework to detect 
+anomalies in mobile edge computing environments. By 
+leveraging blockchain’s immutable ledger, participants 
+in different telecom operators could collaboratively train 
+intrusion detection models without exposing raw traffic 
+data. The system improved anomaly detection accuracy 
+compared to traditional federated learning while reduc -
+ing trust risks in multi-operator collaborations [22]. Dan-
+quah et al. implemented an efficient FL-based framework 
+with reduced computational complexity for effective 
+detection of IoT botnet threats [23]. Zhang et  al. out -
+line a typical blockchain-based decentralized federated 
+learning framework, detailing its operational workflow 
+and highlighting applications across domains such as the 
+Internet of Things and the Internet of Vehicles [24].
+The study in this article seeks to provide key insights 
+into the application of machine learning and ensem -
+ble methods to enhance network security [1, 2], with a 
+forward-looking focus on integrating deep learning and 
+real-time detection capabilities [3, 6]. By investigating the 
+potential of ensemble techniques and introducing a novel 
+hybrid model, the research aims to make meaningful 
+contributions to the field [7–9]. It emphasizes the ben -
+efits of machine learning in improving anomaly detection 
+accuracy [10, 11] while acknowledging the importance 
+of further exploration into deep learning and real-time 
+detection [12, 13]. The findings offer valuable guidance 
+for the design of next-generation network detection sys -
+tems [14, 15], contributing to the development of a more 
+secure and robust digital infrastructure [16, 17].
+A notable gap exists in the application of stacking 
+algorithms for anomaly detection, especially using the 
+CICIDS2017 dataset. Specifically, multi-layer stacking 
+techniques, which are valuable for optimizing multi -
+class and imbalanced data, remain underexplored. This 
+highlights the need for research into deeper stacking 
+layers capable of capturing complex interdependencies 
+among diverse feature sets. In addition, there is a scar -
+city of studies on lightweight stacking models designed 
+to balance efficiency and accuracy, making them suit -
+able for real-time detection in resource-constrained 
+environments.
+3  Methodology
+The proposed methodology aims to investigate the 
+research hypothesis outlined in Fig.  1. It includes the fol-
+lowing different stages:
+3.1  Data collection
+In the initial step, we loaded and pre-processed the 
+CICIDS2017 dataset, a widely recognized benchmark 
+for anomaly detection systems. This dataset includes 
+an extensive collection of normal and malicious net -
+work traffic records. Using the Pandas library, the data 
+was imported into a Python environment. We also used 
+another dataset, NFS-2023-TE which is a revised version 
+of CICIDS2017 for experimental evaluation.
+Fig. 1 Data flow diagram of proposed methodology
+
+Page 5 of 23
+Pai et al. EURASIP Journal on Information Security         (2025) 2025:29 
+ 
+3.1.1  Data splitting
+Given the large size of the original dataset, which com -
+prises 2,830,744 rows, it was reduced to 60,000 rows 
+for this analysis. The data was then divided into train -
+ing, testing, and validation sets using the train_test_split 
+function from scikit-learn. Specifically, 70% of the data -
+set was allocated for training, 20% for testing, and the 
+remaining 10% for validation.
+3.2  Data preprocess and feature importance
+For tree-based models such as Random Forest, feature 
+importance was analyzed in greater detail to identify the 
+most critical and influential features for network anomaly 
+detection. The feature importance attribute of the Ran -
+dom Forest model was employed to evaluate the relative 
+significance of individual features within the dataset. A 
+visual representation of feature importance was created, 
+providing valuable insights and aiding in the prioritiza -
+tion of the most impactful variables for anomaly detec -
+tion. Figure  2 illustrates the top features selected by the 
+SelectKBest method for CICIDS2017 dataset, ranked 
+according to their importance scores. The x-axis rep -
+resents the importance scores, while the y-axis lists the 
+corresponding features, with Bwd Packet Length Mean 
+and Avg Bwd Segment Size identified as the most signifi -
+cant. This analysis facilitates the identification of key fea -
+tures that enhance the performance of machine learning 
+models. Figure  3 illustrates similar results for NFS-
+2023-TE dataset used.
+3.3  Model selection
+To construct an ensemble model, we selected five diverse 
+machine learning algorithms: random forest (RF), gradi -
+ent boosting (GB), K-nearest neighbors (KNN) classifier, 
+support vector machine (SVM), and logistic regression 
+LR). These algorithms were chosen to provide a compre -
+hensive combination of methods capable of capturing 
+both linear and non-linear relationships. Furthermore, 
+including ensemble techniques, such as voting and stack -
+ing, ensures the development of a robust predictive 
+framework.
+3.4  Ensemble learning model
+To leverage the strengths of individual models, two types 
+of ensemble classifiers were implemented using the Vot -
+ing Classifier from the scikit-learn library:
+3.4.1  Voting
+This method was employed with both hard and soft vot -
+ing strategies. The Hard Voting Classifier is particularly 
+effective when the base classifiers exhibit similar levels of 
+reliability, as it selects the majority class based on discrete 
+outputs. The Soft Voting Classifier is advantageous when 
+base classifiers provide probabilistic outputs, enabling 
+Fig. 2 Feature importance from CICIDS2017 dataset
+
+Page 6 of 23Pai et al. EURASIP Journal on Information Security         (2025) 2025:29 
+more informed decision-making through weighted aver -
+aging of predictions.
+3.4.2  Stacking
+Stacking combines the predictions of multiple base mod -
+els, using a meta-model to generate the final output, 
+thereby enhancing predictive performance through the 
+integration of diverse algorithmic approaches.
+3.5  Training and evaluation of model
+Each classifier, including the hard voting, soft voting, and 
+stacking models, was trained on the training dataset. The 
+trained models were then evaluated using the test data -
+set, and various performance metrics were calculated to 
+assess their effectiveness. The evaluation process con -
+sisted of the following steps:
+3.5.1  Training individual models
+Each base model was independently trained on the train -
+ing dataset to establish a baseline performance.
+3.5.2  Training the ensemble models
+The ensemble methods, including hard voting, soft vot -
+ing, and stacking, were trained on the same training 
+dataset. The performance of the ensemble models was 
+computed by leveraging the outputs of the base models 
+as estimators, thereby aggregating their predictive capa -
+bilities. Figure  4  shows the detailed architecture of the 
+proposed methodology.
+4  Result and discussion
+In this study, the performance of the base model algo -
+rithms was evaluated using metrics such as the confu -
+sion matrix and accuracy score. The confusion matrix 
+provides a comprehensive analysis of the model’s per -
+formance by detailing the counts of true positives, false 
+positives, true negatives, and false negatives for each 
+attack category. This metric facilitates an in-depth under-
+standing of the model’s ability to differentiate between 
+benign and anomalous traffic. Furthermore, accuracy is 
+employed as an overall performance metric, reflecting 
+the model’s capability to classify both normal and mali -
+cious network activities correctly.
+The results, illustrated in Fig.  5, demonstrate that 
+the Random Forest model (CICIDS2017 dataset) on 
+performs robustly overall, particularly in accurately 
+identifying the BENIGN class, with 5686 instances 
+correctly classified. However, 303 BENIGN samples 
+are misclassified as PortScan, potentially due to simi -
+larities in the patterns of these two traffic types. The 
+model also handles DoS Hulk attack traffic effectively, 
+with 2550 instances accurately classified, although a 
+small number of samples are misclassified as BENIGN. 
+For the DDoS attack category, the model correctly pre -
+dicts 1399 instances, with minor misclassifications into 
+BENIGN or other attack types. Additionally, misclas -
+sifications are more pronounced for smaller attack cat -
+egories such as Bot and DoS Slowhttptest, likely due to 
+their limited representation in the dataset. This obser -
+vation highlights the need for improved strategies to 
+Fig. 3 Feature importance from NFS-2023-TE dataset
+
+Page 7 of 23
+Pai et al. EURASIP Journal on Information Security         (2025) 2025:29 
+ 
+Fig. 4 Architecture for proposed anomaly detection using ML
+Fig. 5 Confusion matrix using random forest classifier (CICIDS2017 dataset)
+
+Page 8 of 23Pai et al. EURASIP Journal on Information Security         (2025) 2025:29 
+handle underrepresented classes to enhance the mod -
+el’s overall performance and reliability. Figure  6, illus -
+trates the Random Forest model on the other dataset 
+(NFS-2023-TE).
+Figure  7 presents the performance of the Support 
+Vector Classifier (SVC) model for CICIDS2017 data -
+set, which demonstrates notable accuracy in classify -
+ing BENIGN traffic, with 5648 correct predictions, and 
+Fig. 6 Confusion matrix using random forest classifier (NFS-2023-TE dataset)
+Fig. 7 Confusion matrix using support vector classifier (CICIDS2017 dataset)
+
+Page 9 of 23
+Pai et al. EURASIP Journal on Information Security         (2025) 2025:29 
+ 
+PortScan, with 1743 accurate classifications. However, 
+the model exhibits significant challenges in handling 
+the DoS Hulk category, misclassifying 838 instances as 
+BENIGN, which underscores its difficulty in distinguish -
+ing between these classes. For the DDoS category, the 
+SVC achieves 1260 correct predictions but misclassi -
+fies 95 samples as BENIGN and 48 as other attack types, 
+indicating a lack of precision in differentiating DDoS 
+from traffic with similar patterns. Smaller attack catego -
+ries, such as DoS Slowhttptest and DoS Slowloris, also 
+pose difficulties, with instances frequently misclassified 
+as either BENIGN or other attack types. These results 
+suggest that while the SVC model performs effectively 
+for larger, more distinct classes, it struggles to general -
+ize across all attack types, particularly for underrep -
+resented categories, highlighting a need for improved 
+handling of minority classes. Similarly Fig.  8, illustrates 
+the Support Vector Classifier model on the other dataset 
+(NFS-2023-TE).
+Figure  9 illustrates the performance of the logistic 
+regression model on CICIDS2017 dataset, which exhib -
+its a decline in accuracy compared to the K-nearest 
+neighbors (KNN) model, particularly in distinguishing 
+DDoS attacks. Out of 1403 instances, only 967 are cor -
+rectly identified. The model also struggles with the DoS 
+Hulk category, misclassifying 845 instances as BENIGN, 
+which underscores its limitations in differentiating these 
+traffic types. While the model performs reasonably well 
+for PortScan and DoS Slowhttp, it demonstrates notable 
+weaknesses in identifying other attack categories. This 
+indicates a need for enhanced sensitivity to diverse attack 
+patterns to improve the model’s overall performance and 
+reliability. Similarly Fig. 10, illustrates the logistic regres -
+sion model on the other dataset (NFS-2023-TE).
+Figure  11 presents the performance of the gradient 
+boosting model on the CICIDS2017 dataset, which dem -
+onstrates strong classification accuracy for the BENIGN 
+and PortScan categories, with 5651 and 1746 correctly 
+classified instances, respectively. However, 331 BENIGN 
+samples are misclassified as PortScan, potentially due 
+to overlapping features between these two traffic types. 
+The model also achieves high accuracy for larger attack 
+categories, such as DoS Hulk (2549 correct predictions) 
+and DDoS (1397 correct predictions), with only minor 
+misclassifications observed. In contrast, smaller attack 
+classes, such as DoS GoldenEye and Bot, exhibit more 
+significant classification errors. For example, only 6 out of 
+21 Bot instances are correctly identified. These findings 
+indicate that while the gradient boosting model performs 
+effectively for majority classes, it encounters difficulties 
+with rare attack types, likely due to the imbalanced distri-
+bution of data in the dataset. Addressing this imbalance 
+could improve the model’s performance for underrepre -
+sented categories. Similarly Fig.  12, illustrates the Gradi -
+ent Boosting model on the other dataset (NFS-2023-TE).
+Figure 13 illustrates the performance of the K-nearest 
+neighbors (KNN) model using the CICIDS2017 dataset, 
+which demonstrates strong accuracy for BENIGN traffic, 
+correctly classifying 5896 instances with minimal mis -
+classifications, such as 82 BENIGN samples incorrectly 
+Fig. 8 Confusion matrix using support vector classifier (NFS-2023-TE dataset)
+
+Page 10 of 23Pai et al. EURASIP Journal on Information Security         (2025) 2025:29 
+Fig. 9 Confusion matrix using logistic regression (CICIDS2017 dataset)
+Fig. 10 Confusion matrix using logistic regression (NFS-2023-TE dataset)
+
+Page 11 of 23
+Pai et al. EURASIP Journal on Information Security         (2025) 2025:29 
+ 
+Fig. 11 Confusion matrix using gradient boosting (CICIDS2017 dataset)
+Fig. 12 Confusion matrix using gradient boosting (NFS-2023-TE dataset)
+
+Page 12 of 23Pai et al. EURASIP Journal on Information Security         (2025) 2025:29 
+identified as DoS Hulk. The model also performs well in 
+detecting DDoS attacks, with 1378 instances accurately 
+classified. However, the model exhibits notable misclas -
+sification for smaller attack categories. For example, only 
+57 and 60 instances of DoS Slowhttptest and DoS Slow -
+loris are correctly classified, respectively. The Bot cat -
+egory poses a particular challenge, with only 9 instances 
+accurately identified while 12 are misclassified. Overall, 
+the KNN model demonstrates strong performance for 
+larger and more distinct classes, such as BENIGN and 
+DDoS, but faces significant difficulties in handling rare or 
+similar attack types, highlighting the need for strategies 
+to improve its classification of minority classes. Similarly 
+Fig.  14, illustrates the KNN model on the other dataset 
+(NFS-2023-TE).
+Table 1 shows the comparison of the performance of 
+different base models used on two different datasets 
+(Dataset 1- CICIDS2017, Dataset 2 -NFS-2023-TE). The 
+results indicate that the K-nearest neighbors (98.28%, 
+91%), random forest (97.00%, 96%), and gradient boost -
+ing (96.62%, 92%) models achieved high accuracy, 
+demonstrating their effectiveness in network anomaly 
+detection due to their capability to capture complex 
+patterns. The support vector machine exhibited moder -
+ate performance, achieving an accuracy of 87.95%, likely 
+due to challenges in handling overlapping classes. Logis -
+tic regression, with an accuracy of 85.59%, recorded the 
+lowest performance among the evaluated models. To 
+improve overall model performance and accuracy, this 
+study implements ensemble approaches utilizing vot -
+ing and stacking methods. The voting approach includes 
+both hard voting and soft voting, leveraging the strengths 
+of individual models to enhance predictive capabilities.
+Figure 15 highlights the performance of the hard vot -
+ing classifier (CICIDS2017 dataset), which demonstrates 
+strong classification accuracy across multiple catego -
+ries, as evidenced by the high values along the diagonal 
+of the confusion matrix. Notably, the model correctly 
+classifies 5687 instances of the BENIGN class and 2549 
+instances of the DoS Hulk class. While misclassifications 
+are present, they are relatively minimal. For instance, 
+302 BENIGN instances are misclassified as DDoS, with 
+a few additional errors distributed across other classes. 
+For attack types such as PortScan, the classifier achieves 
+strong performance with 1746 correct predictions and 
+only a small number of misclassifications. Overall, the 
+model exhibits high accuracy, particularly for major -
+ity and well-defined classes. However, some confusion 
+persists in distinguishing between overlapping or less 
+frequent attack categories. Performance metrics for this 
+classifier are also computed and presented in Table  2 to 
+provide a comprehensive evaluation. Further, Fig 16 high-
+lights the performance of the hard voting classifier for 
+NFS-2023-TE dataset.
+The performance metrics demonstrate high effective -
+ness across most attack types in the anomaly detection 
+Fig. 13 Confusion matrix using K-nearest neighbors classifier (CICIDS2017 dataset)
+
+Page 13 of 23
+Pai et al. EURASIP Journal on Information Security         (2025) 2025:29 
+ 
+system as presented in Table  2 for both datasets (DS1 
+- CICIDS2017, DS2 - NFS-2023-TE). The comparison 
+of the F1-Score and precision of hard Voting model is 
+shown in Fig.  17 for DS1. BENIGN traffic is classified 
+with strong precision (0.99), recall (0.95), and F1-score 
+(0.97), indicating robust detection. Both DDoS and 
+PortScan categories achieved perfect scores (1.00), sig -
+nifying flawless detection for these attack types. DoS 
+GoldenEye, DoS Hulk, and DoS Slowloris also exhibited 
+strong performance, with F1-scores of 0.97, 0.94, and 
+0.99, respectively, reflecting consistent accuracy across 
+these categories. Similary, Fig.  18 demonstrates the com-
+parision of F1 Score and precision for another dataset 
+(NFS-2023-TE dataset).
+DoS Slowhttptest achieved a solid F1-score of 0.95, 
+further underscoring the model’s overall reliability. How-
+ever, the model faces challenges in detecting Bot traffic, 
+which shows a low recall of 0.48 and an F1-score of 0.65. 
+Despite achieving perfect precision (1.00) for Bot traffic, 
+the model struggles to identify all instances of this attack 
+type. Overall, the model performs excellently across the 
+majority of categories, with minor challenges in detect -
+ing Bot traffic, indicating areas for further improvement 
+in handling rare or less distinct attack types.
+Figure 19 illustrates the performance of the soft voting 
+classifier using CICIDS2017 dataset, which demonstrates 
+strong accuracy across multiple classes, with high val -
+ues along the diagonal. For example, the model correctly 
+classifies 5,906 instances of the BENIGN class and 2550 
+instances of the DoS Hulk class. Misclassifications are 
+slightly reduced compared to the hard voting classifier, 
+with only 84 BENIGN instances misclassified as DDoS, 
+suggesting an improved ability to distinguish between 
+these two classes. Further, Fig.  20 illustrates the perfor -
+mance of the soft voting classifier using NFS-2023-TE 
+dataset
+Attack categories such as DDoS and PortScan also 
+exhibit high accuracy, with 1398 and 1746 correct predic-
+tions, respectively, and fewer misclassifications. Overall, 
+the soft voting classifier leverages probability-weighted 
+decisions, resulting in a slightly better performance 
+in handling ambiguous or overlapping samples. This 
+enhances its robustness across all classes, improving clas-
+sification accuracy, particularly in cases where the attack 
+types exhibit similarities.
+The performance metrics demonstrate excellent 
+effectiveness across most attack types in the anomaly 
+Fig. 14 Confusion matrix using K-nearest neighbors classifier (NFS-2023-TE dataset)
+Table 1 Performance comparison of accuracy for base models
+Model Accuracy
+Dataset 1 Dataset 2
+Random forest 0.97 0.96
+Support vector machine 0.88 0.90
+K-nearest neighbors 0.98 0.91
+Gradient boosting 0.97 0.92
+Logistic regression 0.86 0.93
+
+Page 14 of 23Pai et al. EURASIP Journal on Information Security         (2025) 2025:29 
+Fig. 15 Hard voting confusion matrix (CICIDS2017 dataset)
+Fig. 16 Hard voting confusion matrix (NFS-2023-TE dataset)
+
+Page 15 of 23
+Pai et al. EURASIP Journal on Information Security         (2025) 2025:29 
+ 
+Table 2 Hard voting classification report
+Attacks Precision Recall F1-score Support
+DS1 DS2 DS1 DS2 DS1 DS2 DS1 DS2
+BENIGN 0.99 0.99 0.95 0.87 0.97 0.93 5995 6000
+Bot 1 1 0.48 0.75 0.65 0.86 21 8
+DDoS 1 1 1 1 1 1 1403 1134
+DoS GoldenEye 1 0.94 0.95 0.82 0.97 0.87 117 141
+DoS Hulk 0.89 0.99 0.99 1 0.94 0.99 2577 2720
+DoS Slowhttptest 0.94 0.95 0.97 0.91 0.95 0.93 60 46
+DoS slowloris 1 0.97 0.98 0.98 0.99 0.97 62 93
+PortScan 1 0.72 1 0.99 1 0.83 1749 1858
+Fig. 17 F1-score and precision of hard voting model (CICIDS2017 dataset)
+Fig. 18 F1-score and precision of hard voting model (NFS-2023-TE dataset)
+
+Page 16 of 23Pai et al. EURASIP Journal on Information Security         (2025) 2025:29 
+Fig. 19 Soft voting confusion matrix (CICIDS2017 dataset)
+Fig. 20 Soft voting confusion matrix (NFS-2023-TE dataset)
+
+Page 17 of 23
+Pai et al. EURASIP Journal on Information Security         (2025) 2025:29 
+ 
+detection system for both datasets (DS1 - CICIDS2017, 
+DS2 - NFS-2023-TE) as presented in Table  3. The com-
+parison of the F1-score and precision of the soft Voting 
+model is shown in Fig.  21 for the CICIDS2017 dataset. 
+BENIGN traffic is nearly perfectly classified, with preci -
+sion, recall, and F1-score values of 0.99, indicating robust 
+detection. Both DDoS and PortScan categories achieved 
+perfect scores (1.00), reflecting flawless detection. Simi -
+larly, DoS GoldenEye, DoS Hulk, and DoS Slowloris 
+exhibited high accuracy, with F1-scores of 0.98, 0.98, 
+and 0.99, respectively, signifying reliable detection for 
+these attack types. Similary, Fig.  22 demonstrates the 
+comparison of F1 Score and precision for another dataset 
+(NFS-2023-TE dataset).
+DoS Slowhttptest also performed well, with a bal -
+anced precision, recall, and F1-score of 0.97. However, 
+the model faces challenges with Bot traffic, which shows 
+a low recall (0.38) and F1-score (0.55), despite achieving 
+perfect precision (1.00). This indicates difficulty in iden -
+tifying all instances of Bot attacks. Overall, the system 
+demonstrates robustness across most categories, with 
+minor difficulties in handling Bot traffic, suggesting areas 
+for improvement in detecting rare or less distinct attack 
+types.
+Table 3 Soft voting classification report
+Attacks Precision Recall F1-score Support
+DS1 DS2 DS1 DS2 DS1 DS2 DS1 DS2
+BENIGN 0.99 0.99 0.99 0.87 0.99 0.93 5995 6000
+Bot 1 1 0.38 1 0.55 1 21 8
+DDoS 1 1 1 1 1 1 1403 1134
+DoS GoldenEye 1 0.92 0.97 0.84 0.98 0.88 117 141
+DoS Hulk 0.97 0.99 0.98 1 0.98 0.99 2577 2720
+DoS Slowhttptest 0.97 0.98 0.97 0.93 0.97 0.96 60 46
+DoS slowloris 1 0.97 0.98 0.98 0.99 0.97 62 93
+PortScan 1 0.72 1 0.99 1 0.83 1749 1858
+Fig. 21 F1-score and precision of soft voting model (CICIDS2017 dataset)
+
+Page 18 of 23Pai et al. EURASIP Journal on Information Security         (2025) 2025:29 
+Figure 23 illustrates that the stacking model performs 
+effectively, achieving high accuracy for the BENIGN 
+(5918 correct predictions), DoS Hulk (2527 correct 
+predictions), and PortScan (1746 correct predictions) 
+categories. However, some confusion is observed 
+between Class 3 and Class 4, indicating challenges in 
+distinguishing these closely related classes. Overall, this 
+ensemble approach delivers balanced performance, 
+Fig. 22 F1-score and precision of soft voting model (NFS-2023-TE dataset)
+Fig. 23 Stacking confusion matrix (CICIDS2017 dataset)
+
+Page 19 of 23
+Pai et al. EURASIP Journal on Information Security         (2025) 2025:29 
+ 
+effectively capturing primary patterns. Further optimi -
+zation could enhance its ability to differentiate between 
+these similar classes, improving classification precision. 
+Figure 24 demonstrates stacking model performance on 
+other dataset.
+The performance metrics demonstrate excellent accu -
+racy across most attack types in the anomaly detection 
+system, as presented in Table  4. The comparison of the 
+F1-score and precision of the stacking model for the 
+CICIDS2017 dataset is shown in Fig.  25. BENIGN traf -
+fic is classified nearly perfectly, with precision, recall, 
+and F1-score values of 0.99, indicating robust detec -
+tion. Both DDoS and PortScan achieved flawless detec -
+tion, attaining perfect scores (1.00) across all metrics. 
+Similarly, DoS GoldenEye, DoS Hulk, and DoS Slow -
+loris exhibited strong performance, with F1-scores of 
+0.98, 0.98, and 0.99, respectively, reflecting the model’s 
+consistent reliability for these attack types. Similarly, 
+Fig.  26 demonstrates the comparison of F1 Score and 
+precision of the stacking model for another dataset 
+(NFS-2023-TE dataset)
+Fig. 24 Stacking confusion matrix (NFS-2023-TE dataset)
+Table 4 Stacking classification report
+Attacks Precision Recall F1-score Support
+DS1 DS2 DS1 DS2 DS1 DS2 DS1 DS2
+BENIGN 0.99 1 0.99 0.87 0.99 0.93 5995 6000
+Bot 1 1 0.38 1 0.55 1 21 8
+DDoS 1 1 1 1 1 1 1403 1134
+DoS GoldenEye 1 0.96 0.97 0.91 0.98 0.93 117 141
+DoS Hulk 0.97 0.99 0.98 1 0.98 1 2577 2720
+DoS Slowhttptest 0.97 0.94 0.97 0.96 0.97 0.95 60 46
+DoS slowloris 1 0.97 0.98 0.99 0.99 0.98 62 93
+PortScan 1 0.72 1 1 1 0.83 1749 1858
+
+Page 20 of 23Pai et al. EURASIP Journal on Information Security         (2025) 2025:29 
+DoS Slowhttptest also performed well, with an F1-score 
+of 0.97, supported by high precision (0.98) and recall 
+(0.95). However, the model faces challenges with Bot 
+traffic, as evidenced by its low recall (0.38) and F1-score 
+(0.55), despite achieving perfect precision (1.00). This 
+suggests difficulty in detecting all instances of this attack 
+type. Overall, the system demonstrates robustness and 
+high effectiveness across most categories, with minor 
+limitations in handling Bot traffic, indicating potential 
+areas for further improvement in detecting rare or simi -
+lar attack types.
+Figure  27  demonstrates the accuracy scores of vari -
+ous classifiers and ensemble methods employed in the 
+classification task for CICIDS2017 dataset. Individual 
+Fig. 25 F1-score and precision of stacking model (CICIDS2017 dataset)
+Fig. 26 F1-score and precision of stacking model (NFS-2023-TE dataset)
+
+Page 21 of 23
+Pai et al. EURASIP Journal on Information Security         (2025) 2025:29 
+ 
+classifiers, including K-nearest neighbors (KNN), gradi -
+ent boosting, and random forest, achieved high accuracy, 
+ranging from 96 to 98%. The ensemble methods, spe -
+cifically soft voting and stacking, demonstrated slightly 
+improved performance, with stacking achieving the high-
+est accuracy at 98.79%. Further, Fig.  28 demonstrates the 
+accuracy scores of various classifiers and ensemble meth-
+ods employed in the classification task for NFS-2023-TE 
+dataset.
+5  Conclusion and future work
+This research highlights the increasing demand for 
+advanced solutions in network security as cyberattacks 
+continue to evolve in sophistication and complexity. 
+The investigation into ensemble learning methods, par -
+ticularly voting and stacking techniques, along with the 
+introduction of a novel hybrid model, emphasizes the 
+potential of combining multiple algorithms to achieve 
+superior detection accuracy. By utilizing the diverse and 
+Fig. 27 Comparison of accuracy for all the methods used for CICIDS2017 dataset
+Fig. 28 Comparison of accuracy for all the methods used for NFS-2023-TE dataset
+
+Page 22 of 23Pai et al. EURASIP Journal on Information Security         (2025) 2025:29 
+real-world CICIDS 2017 and NFS-2023-TE datasets, this 
+study ensures that the models are robust and capable of 
+addressing both historical and contemporary attack vec -
+tors. The thorough evaluation of model performance 
+using standard metrics further reinforces the practical 
+applicability of the research.
+In summary, this study provides a solid foundation for 
+future exploration in areas such as deep learning and 
+real-time detection. As the landscape of network security 
+continues to evolve, the findings of this research contrib -
+ute to the development of intelligent network detection 
+systems that are better equipped to defend against both 
+current and emerging cyber threats.
+Abbreviations
+NDS  Network detection system
+KNN  K-nearest neighbors
+SVM  Support vector machines
+GB  Gradient boosting
+RF  Random forest
+LR  Logistic regression
+DoS  Denial of service
+DDoS  Distributed Denial of Service
+APT  Advanced Persistent Threat
+HTTP  Hypertext Transfer Protocol
+FL  Federated learning
+Authors’ contributions
+All authors have made significant and direct intellectual contributions to this 
+work. The contributions are as follows: VP: conceptualization, investigation, 
+methodology, data collection, formal analysis, writing—original draft prepara-
+tion, and project administration. KP: supervise, validate, write, review, and edit. 
+MS: methodology, data analysis, writing—review and editing, and visualiza-
+tion. VB and SH: methodology, experimental evaluation, and review of the 
+manuscript. All authors have reviewed and approved the final version of the 
+manuscript for publication.
+Funding
+Open access funding provided by Manipal Academy of Higher Education, 
+Manipal
+Data availability
+No datasets were generated or analyzed during the current study.
+Declarations
+Ethics approval and consent to participate
+Not applicable.
+Consent for publication
+Not applicable.
+Competing interests
+The authors declare that they have no competing interests.
+Received: 17 December 2024   Accepted: 22 September 2025
+References
+ 1. T. Hagemann and K. Katsarou, A Systematic Review on Anomaly Detec-
+tion for Cloud Computing Environments. In Proceedings of the 2020 
+3rd Artificial Intelligence and Cloud Computing Conference (AICCC ’20). 
+Association for Computing Machinery, New York, NY, USA, 83–96. https:// 
+doi. org/ 10. 1145/ 34425 36. 34425 50
+ 2. F. Shahzad et al., Cloud -based multiclass anomaly detection and catego-
+rization using ensemble learning. J Cloud Comput 11, 74 (2022). https:// 
+doi. org/ 10. 1186/ s13677- 022- 00329-y
+ 3. D. Gupta, O. Kayode, S. Bhatt, M. Gupta and A. S. Tosun, "Hierarchical Fed-
+erated Learning based Anomaly Detection using Digital Twins for Smart 
+Healthcare," 2021 IEEE 7th International Conference on Collaboration and 
+Internet Computing (CIC), Atlanta, GA, USA 16-25 (2021). https:// doi. org/ 
+10. 1109/ CIC52 973. 2021. 00013
+ 4. Y.Y. Ghadi et al., Machine learning solutions for the security of wireless 
+sensor networks: a review. IEEE Access 12, 12699–12719 (2024). https:// 
+doi. org/ 10. 1109/ ACCESS. 2024. 33553 12
+ 5. Y. Yasin Ghadi, T. Mazhar, K. Aurangzeb, I. Haq, T. Shahzad, A. Ali Laghari, 
+A.M. Shahid, Security risk models against attacks in smart grid using big 
+data and artificial intelligence. PeerJ Comput. Sci. 10, (2024). https:// doi. 
+org/ 10. 7717/ peerj- cs. 1840
+ 6. K. Kurniabudi, D. Stiawan, D. Darmawijoyo, M.Y.B. Idris, A.M. Bamhdhi, R. 
+Budiarto, Cicids-2017 dataset feature analysis with information gain for 
+anomaly detection. IEEE Access PP(99), 1–1 (2020)
+ 7. Z.K. Maseer, R. Yusof, N. Bahaman, S.A. Mostafa, C.F.M. Foozy, Benchmark-
+ing of machine learning for anomaly based intrusion detection systems 
+in the CICIDS2017 dataset. IEEE Access PP(99), 1–1 (2021)
+ 8. S. Bakhare, S.W. Mohod, Evaluating the performance and challenges of 
+machine learning models in network anomaly detection. Int. J. Sci. Res. 
+Sci. Eng. Technol. 11(3), 42–52 (2024)
+ 9. H. Neuschmied, M. Winter, K. Hofer-Schmitz, B. Stojanovic, U. Kleb, Two 
+Stage Anomaly Detection for Network Intrusion Detection in Proc. 7th 
+Int. Conf. on Information Systems Security and Privacy (ICISSP) 450-457 
+(2021)
+ 10. M. Adnan, D. Bshara, A. Awad, Forensic analysis of apt attacks based 
+on unsupervised machine learning. Avrupa Bilim ve Teknoloji Derg 49, 
+75–82 (2023)
+ 11. Emad E.. Abdallah, Ahmed Fawzi Otoom, Intrusion detection systems 
+using supervised machine learning techniques: a survey. Procedia Com-
+put. Sci. 201, 205–212 (2022)
+ 12. K. Noto, C. Brodley, D. Slonim, Anomaly detection using an ensemble of 
+feature models, 2010 IEEE international conference on data mining (2010)
+ 13. J. Vanerio, and P . Casas, Ensemble-learning approaches for network secu-
+rity and anomaly detection, Proceedings of the workshop on big data 
+analytics and machine learning for data communication networks, (2017)
+ 14. T. Shon, J. Moon, A hybrid machine learning approach to network 
+anomaly detection. Inf. Sci. 177(18), 3799–3821 (2007)
+ 15. Lai Kai Lok, V. Abdul. Hameed, Muhammad Ehsan Rana, Hybrid machine 
+learning approach for anomaly detection. Indones. J. Electr. Eng. Comput. 
+Sci. 27(2), 1016 (2022).
+ 16. M. Alkasassbeh, A novel hybrid method for network anomaly detection 
+based on traffic prediction and change point detection, Journal of Com-
+puter Science, 14 , 2 (2018). https:// doi. org/ 10. 3844/ jcssp. 2018. 153. 162
+ 17. S. Wang et al., Machine learning in network anomaly detection: a survey. 
+IEEE Access 9, 152379–152396 (2021)
+ 18. Y. Saheed, T. Kehinde, M. Raji, U. Baba, Feature selection in intrusion 
+detection systems: a new hybrid fusion of bat algorithm and residue 
+number system. J. Inf. Telecommun. 8, 1–19 (2023). https:// doi. org/ 10. 
+1080/ 24751 839. 2023. 22724 84
+ 19. Y.K. Saheed, J.E. Chukwuere, XAIEnsembleTL-IoV: A new eXplainable arti-
+ficial intelligence ensemble transfer learning for zero-day botnet attack 
+detection in the Internet of Vehicles. Results Eng 24, 103171 (2024). 
+https:// doi. org/ 10. 1016/j. rineng. 2024. 103171
+ 20. B. Buyuktanir, Ş Altinkaya, G. Karatas Baydogmus et al., Federated learn-
+ing in intrusion detection: advancements, applications, and future 
+directions. Cluster Comput. 28, 473 (2025). https:// doi. org/ 10. 1007/ 
+s10586- 025- 05325-w
+ 21. K. Shalabi, Q.A. Al-Haija, M. Al-Fayoumi, A blockchain-based intrusion 
+detection/prevention systems in IoT network: a systematic review. Pro-
+cedia Comput. Sci. 236, 410–419 (2024). https:// doi. org/ 10. 1016/j. procs. 
+2024. 05. 048
+ 22. J. Kang, Z. Xiong, D. Niyato, Y. Zou, Y. Zhang, M. Guizani, Reliable federated 
+learning for mobile networks. IEEE Wirel. Commun. 27(2), 72–80 (2020). 
+https:// doi. org/ 10. 1109/ MWC. 001. 19001 19
+
+Page 23 of 23
+Pai et al. EURASIP Journal on Information Security         (2025) 2025:29 
+ 
+ 23. L.K.G. Danquah, S.Y. Appiah, V.A. Mantey, I. Danlard, E.K. Akowuah, Com-
+putationally efficient deep federated learning with optimized feature 
+selection for IoT botnet attack detection. Intell. Syst. Appl. 25, 200462 
+(2025). https:// doi. org/ 10. 1016/j. iswa. 2024. 200462
+ 24. H. Zhang, S. Jiang, S. Xuan, Decentralized federated learning based on 
+blockchain: concepts, framework, and challenges. Comput. Commun. 
+(2024). https:// doi. org/ 10. 1016/j. comcom. 2023. 12. 042
+Publisher’s Note
+Springer Nature remains neutral with regard to jurisdictional claims in pub-
+lished maps and institutional affiliations.

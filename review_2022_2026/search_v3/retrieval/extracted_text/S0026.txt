@@ -1,0 +1,1187 @@
+Vol.:(0123456789)
+ Discover Applied Sciences           (2024) 6:483  | https://doi.org/10.1007/s42452-024-06165-w
+Discover Applied Sciences
+Research
+An optimized isolation forest based intrusion detection system 
+for heterogeneous and streaming data in the industrial Internet 
+of Things (IIoT) networks
+Shaimaa Ahmed Elsaid1,2 · Adel Binbusayyis3,4
+Received: 2 May 2024 / Accepted: 21 August 2024
+© The Author(s) 2024  OPEN
+Abstract
+While conventional Intrusion Detection Systems (IDS) are essential for defending against intruders in the Industrial 
+Internet of Things (IIoT), handling data from heterogeneous and streaming data sources should receive more attention. 
+This work introduces a novel Optimized IForest-based Intrusion Detection System (OIFIDS) which is designed to handle 
+both heterogeneous and streaming data efficiently. The suggested approach employs a collection of optimized binary 
+trees, each of which is trained on a distinctive subset of data, and in which the location of empty leaves determines 
+the anomaly score assigned to a certain data point. Optimizing isolation Forest (iForest) utilizing a modified version of 
+the Harris Hawks Optimization algorithm, which exploits both Exploration factor and Random walk strategies (ERHHO) 
+decreases the dataset’s dimension, decreases its learning time, and enhances the detection precision, accuracy, F1-score, 
+FPR, and recall. To demonstrate how effective the proposed approach is, it is evaluated using three datasets: CICIDS-2018, 
+NSL-KDD, and UNSW-NB15. The experimental results prove the ability of the suggested approach in handling both het-
+erogeneous and streaming data efficiently and delivering results that were comparable to the cutting-edge baseline 
+techniques. Moreover, it performs effectively when there are no anomalies in the training sample and when dealing 
+with challenging scenarios with several irrelevant features and high dimensions. Based on the comparison with various 
+state-of-the-art IDSs, the suggested approach is able to detect intrusion with greater accuracies of 95.6%, 94.8%, and 
+99% than the other approaches on the NSL-KDD, UNSW-NB15, and CICIDS-2018 datasets, respectively. Experiments on 
+heterogenous data reveal that Area Under the ROC Curve (AUC) of OIFIDS beats the baseline approach for UNSW-NB15 
+dataset and is higher than the second-best method by 8% and 2.4% for NSL-KDD and CICIDS-2018 respectively. Evaluat-
+ing the proposed system on streaming data illustrates that it can address the concept drift problem well with high AUC 
+value of 0.948, 0.97, and 0.922 on the NSL-KDD, CICIDS-2018, and UNSW-NB15 datasets, respectively.
+Highlights
+Multiple benchmarking datasets and extensive evaluations show that the proposed OIFIDS.
+– Converges rapidly with a small number of trees; great detection accuracy and high efficiency can be attained with a 
+small subsampling size.
+ * Shaimaa Ahmed Elsaid, sh.ahmed@psau.edu.sa;  * Adel Binbusayyis, a.binbusayyis@seu.edu.sa | 1Department of Computer 
+Engineering, College of Computer Engineering and Sciences, Prince Sattam Bin Abdulaziz University, Al-Kharj, Saudi Arabia. 2Electronics 
+and Communications Dep, Faculty of Engineering, Zagazig University, Zagazig, Egypt. 3Department of Software Engineering, College 
+of Computer Engineering and Sciences, Prince Sattam Bin Abdulaziz University, Al-Kharj, Saudi Arabia. 4Department of Computer Science, 
+College of Computing and Informatics, Saudi Electronic University, Riyadh, Saudi Arabia.
+
+Vol:.(1234567890)
+Research Discover Applied Sciences           (2024) 6:483  | https://doi.org/10.1007/s42452-024-06165-w
+– Able to handle heterogeneous data efficiently. It consistently outperforms other IDSs with the highest average AUC-
+PR score.
+– Able to manage streaming data on the considered datasets and deliver results that were comparable to the cutting-
+edge baseline techniques.
+Keywords Industrial Internet of Things (IIoT) · Intrusion Detection System (IDS) · Isolation Forest (iForest) · Enhanced 
+Harris Hawks Optimization (ERHHO) · NSL-KDD dataset · UNSW-NB15 dataset · CICIDS-2018 dataset
+Abbreviations
+AI  Artificial Intelligence
+AUC   Area Under the ROC Curve
+CD  Concept drift
+DT  Decision tree
+FPR  False positive rate
+ERHHO  Enhanced Harris Hawks optimization
+HHO  Harris Hawks optimization
+IDS  Intrusion detection system
+IF  Isolation forest
+IIoT  Industrial Internet of Things
+iTree  Isolation tree
+ML  Machine learning
+OIFIDS  Optimized iForest-based Intrusion Detection System
+ROC  Receiver operating characteristics
+TPR  True Positive Rate
+1 Introduction
+Industrial Internet of Things (IIoT) is one of the most popular uses of the Internet of Things. which refers to a network of 
+linked sensors, instruments, and other devices associated with industrial computer applications, such as energy man-
+agement and manufacturing. Because of its interconnection, there is potential for increased productivity and efficiency 
+as well as other financial gains through the gathering, sharing, and analysis of data [1 ]. By leveraging cloud computing 
+to enhance and improve the process controls, the IIoT is an advancement of the distributed control system (DCS) that 
+enables a greater level of automation. While the industrial sector has benefited greatly from the incorporation of IoT 
+technologies, this connected critical environment lack adequate security and privacy protections. IIoT is found by cyber-
+criminals to be a very attractive target. Its security market is expected to increase at a compound annual growth rate 
+(CAGR) of 26.36% to reach $13.36 billion by 2028 from its estimated $3.35 billion in 2022 [1]. It is expected to be involved 
+in over 25% of all cyberattacks against enterprises. By 2027, endpoint security is anticipated to be valued over $29 bil-
+lion [2]. Researchers recommend employing Machine Learning (ML) and Deep Learning (DL) as an Intrusion Detection 
+System (IDS) to detect intrusions in IIoT networks [3 ]. Nevertheless, there are unique difficulties associated with using 
+ML and DL in IDS for this type of networks. These challenges are summarized in handling heterogenous and streaming 
+data, and the capability of generalizing the IDS to deal efficiently cross different heterogeneous networks. The following 
+paragraph highlights the effect of these challenges on detecting intrusions in IIoT networks.
+First, Managing the varied data gathered by various devices presents a challenge. There may be variations in the dis-
+tribution of data, quantity of samples, and duration of collecting for every edge device. In addition, the feature sizes and 
+attack types of data gathered from various devices/clients may also differ as a result of system updates or different device 
+activities. Designing ML/DL based IDS models for IIoT security detection are made more difficult by this heterogeneity 
+[4]. Second, the classification of the learning process can also be based on either the detection method uses a flowing 
+dataset or a static dataset for learning. Traditionally, learning from static datasets has been the method used for machine 
+learning algorithms and anomaly detection approaches [5 ]. Before performing actual detections, it is expected that all 
+relevant information may be gathered from the static training dataset. It implies that the dataset needs to be large and 
+easily available. If the entire training dataset is not currently available, then the performance of this approach degrades. 
+
+Vol.:(0123456789)
+Discover Applied Sciences           (2024) 6:483  | https://doi.org/10.1007/s42452-024-06165-w 
+ Research
+In actuality, there are numerous use cases such as those in the medical, IT security, and agricultural fields where there’s 
+initially no or little data, but that extra data gradually accumulates over time (streaming data). When fresh data becomes 
+available, the detection algorithms should be able to update their understanding and make detections as soon as pos-
+sible with the lowest amount of initial information possible. Online or progressive learning are two names for this tech-
+nique. The majority of these streaming data have the following features: high speed, nonstationary data distribution or 
+Concept Drift (CD), and infinite duration. Numerous research work has demonstrated that using ML/DL techniques may 
+result to encouraging outcomes in the IDS sector. However, by relying on static data sources, many of these studies have 
+failed to take into account the dynamic nature of the technology. Third, the capability for cross-contextual generalization 
+of the designed IDS. Stated differently, when applied to different networks, IDSs designed and trained using particular 
+network data typically yield subpar results.
+Despite the fact that there are several techniques that can detect anomalies in network traffic, Isolation Forest (iFor -
+est) [6–8] is clearly superior to other algorithms specially for handling heterogenous and streaming due to its low time 
+complexity and quantitative depiction of abnormalities and its capability of detecting both clustered and distributed 
+anomalies without "correcting" the fundamental measure and identifying anomalies encircled by regular points in addi-
+tion to outlying scattered points. Following are the characteristics of isolation forest:
+• It uses subsampling to a degree that is not possible with other techniques.
+• It does not detect problems by measuring density or distance. A considerable processing cost related with distance 
+calculation has been removed.
+• It can handle high dimensional challenges involving many irrelevant attributes and extremely large datasets.
+• It has constant training time as well as low memory requirement.
+Nevertheless, iForest struggles to identify local anomalous spots, which reduces algorithm accuracy. As a result, an 
+optimized version of iForest is proposed in this work based on ERHHO optimization algorithm to overcome its shortage 
+by reducing the features set and hence decreasing the training and testing time and making it possible to identify the 
+best split points that correlate to the attributes that are most easily separable. The following subsections highlight the 
+motivations and contribution of this work.
+1.1  Motivation
+Several of the existing IDSs are limited to static and relatively low dimensional datasets due to the inherent properties 
+of their original techniques. They frequently underperform as a result, leading to either too few or too many false alarms 
+(in which normal traffic is mistakenly detected as attack). The nature of heterogeneous networks and streaming data 
+affects the detection process as follows:
+– Real-world datasets contain heterogeneous data including several types of variables, categorical and continuous 
+attributes. It is extremely challenging to compare different data instances because of data heterogeneity. Throughout 
+categorization tasks, the suggested system continuously updates its backend data to adjust to varying data behaviors.
+– In streaming environments, data behaviors may evolve over time and this may cause degradation in the IDS perfor -
+mance. The proposed system employs concept drift technique to overcome drifting of streaming data.
+– Receiving too many data each day for classification. The suggested technique utilizes ERHHO to decrease the data 
+dimensionality and hence reduces the training and testing time
+1.2  Our contribution
+Despite the availability of research works on intrusion detection, detecting intrusions in heterogenous and stream-
+ing data in IIoT networks, necessitating the need for improved models. The following are the manuscript’s primary 
+contributions:
+• Suggesting an optimized isolation forest-based IDS to deal with large scale datasets and handle heterogenous and 
+streaming data.
+
+Vol:.(1234567890)
+Research Discover Applied Sciences           (2024) 6:483  | https://doi.org/10.1007/s42452-024-06165-w
+• Optimizing iForest algorithm using ERHHO to decrease the dataset dimensionality which reduces the training and 
+testing time and making it possible to identify the best split points that correlate to the attributes that are most easily 
+separable and hence overcome the randomization effect of iForest.
+• Conducting extensive trials to assess the resilience of our recommended strategy and demonstrate its effectiveness. 
+The experimental findings demonstrate that, in comparison to many other methods, OIFIDS considerably enhances 
+performance of intrusion detection in high dimensional heterogenous and streaming data.
+The structure of this document is as follows: In Sect.  2, the research shortage is highlighted and the relevant works 
+are reviewed. The UNSW-NB15, CICIDS-2018, and NSL-KDD datasets are described in Sect. 3 before a thorough explana-
+tion of the suggested OIFIDS system is provided. Section 4 evaluates the performance of the suggested IDS using the 
+three datasets and compares its performance to other state-of-the-art IDSs. Section 5 lists the conclusions this work and 
+presents the future work.
+2  Related work
+Network threats have increased as a result of the rapid growth of IIoT systems, which may negatively affect how well 
+they function. IDSs are a reliable way to safeguard IIoT devices, and a lot of research has been done on them. In recent 
+years, heterogenous and streaming data classification has emerged as a crucial area of study. High speed, nonstationary 
+data distribution, and unlimited duration are the features of these kinds of data. Furthermore, scholars are now forced 
+to focus on addressing heterogenous and streaming data categorization, including its challenges [11], due to the quick 
+growth of current technologies like the Internet of Things (IoT) [9 ] and Artificial Intelligence (AI) [10]. The majority of 
+research on anomaly identification in streaming environments has been limited to numerical data because it has been 
+done in the field of signal processing [12–14]. In an attempt to address the issues of concept drift and memory demand, 
+Tan et al. presented Streaming Half-Space Trees [15], although, like previous conventional approaches, the study only 
+focused on numerical data. Replicator Neural Networks (RNNs), which are theoretically similar to autoencoders, were 
+proposed by Hawkins et al. for one-class anomaly detection [16]. The RNNs attempt to replicate and learn input patterns. 
+An anomaly score is calculated as the reconstruction error, which is obtained by deducting the recovered output from 
+an input instance. Utilizing deep architectures, some recent publications [17– 19] demonstrate that deep architectures 
+can be applied to unsupervised anomaly detection.
+The effectiveness of the DL-based model has been evaluated in [20] using two datasets: NSLKDD and UNSW-NB15. 
+The results for the DL-based technique are as follows: for the NSL-KDD dataset, the results are 99.0% accuracy rate, 
+99.0% detection rate, and 1.0% false positive rate (FPR); in contrast, the UNSW-NB15 dataset shows 98.9% accuracy rate, 
+99.9% detection rate, and 1.1% FPR. However, by employing mixed rule-based characteristic gathering, the suggested 
+method achieves higher consistency by using only significant features for class classification in the data sets. Further -
+more, hybrid neural networks (HDRaNN) have been used to identify attacks in the IIoT network [21]. Two prominent IIOT 
+security datasets, UNSW-NB15 and DS2OS, are used to assess the suggested technique. Nevertheless, there are a lot of 
+security and privacy issues when combining physical and digital systems. The proposed model exhibits improved con-
+sistency due to the hybrid rule-based feature collecting technique that utilizes a restricted amount of suitable features 
+for class categorization inside the data sets. This model does not provide equal support for every feature. The HDRaNN 
+is a hybrid model that uses dropout regularization to combine the advantages of a multilayer perceptron and a deep 
+random neural network.
+In [22], a model for the adaptive light gradient boosting machine (light GBM) is presented for the analysis of Internet of 
+Things data. This model can adapt to idea drift and identify attacks with high accuracy. It is evident that locating concept 
+drift and updating the present model in accordance with the drift’s data stream is an efficient way to address the issue 
+of concept drift in IoT security challenges. By comparing the current Domain Generation Algorithm (DGA) standards 
+with the IoT intrusion detection system, the authors of [23] proposed leveraging deep learning and Deep Belief Net -
+work (DBN) to improve the system. In [24], a DL-based model utilizing sparse evolutionary training (SET) was created 
+for the analysis and identification of prevalent threat types. The mean accuracy of the SET-based prediction model is 
+99%, and its average testing time is 2.29 ms. It has been found that the expected model will improve accuracy by 6.25% 
+on average. While the suggested method in this study shows good overall detection performance and efficiency, it is 
+crucial to recognize some limits. First and foremost, it is crucial to remember that during training, the innovative sparse 
+evolutionary training (SET) based prediction model might not fully restore the old model’s ideal detection state. It also 
+
+Vol.:(0123456789)
+Discover Applied Sciences           (2024) 6:483  | https://doi.org/10.1007/s42452-024-06165-w 
+ Research
+causes the number of intrusion detection phases to rise. A hybrid Intrusion Detection System (IDS) based on edge com-
+puting and machine learning (ML) approaches is presented in [25] for Industrial Internet of Things (IIoT) security. To find 
+outliers and wrongdoers, this study combines Principal Component Analysis (PCA) with K-Nearest Neighbor (K-NN). To 
+expand feature engineering and training, principal component analysis is employed, and the K-NN classifier has been 
+integrated to improve detection accuracy and make pertinent decisions. The hybrid IDS for IIoT security based on the 
+edge outperforms the other recent models, according to the data gathered. The Principal Component Analysis (PCA) 
+method was used by the authors in [26] to identify outliers in data streams and to identify concept drift in IoT intrusion 
+detection data streams. The main contribution of this research is the way it addresses the drift problem in network data 
+streams. The author proposes a hedge weighting mechanism-based online deep neural network technique to lower the 
+false positive and missing positive rates of the model. With the use of this technique, the model is able to gradually learn 
+from and adjust to fresh intrusion data.
+Research work in [27] suggests a novel paradigm for concept drift adaption in Industrial Internet of Things (IIoT) sys-
+tems. It includes dynamic learning and selection, the recommended Window-based Performance Weighted Probability 
+Averaging Ensemble (W-PWPAE) model, dynamic data pre-processing, and the suggested Drift-based Dynamic Feature 
+Selection (DD-FS) technique. It is an all-inclusive automated data flow analytics technology that makes data analytics 
+automatic, efficient, and effective for IIoT systems in Industry 5.0. Experimental results on two publicly available IoT data-
+sets show that the proposed framework performs better for data stream analytics than the state-of-the-art methods. An 
+unsupervised federated learning (FL)-based network intrusion detection system (NIDS) is provided in [28] that leverages 
+a descriptive algorithm called the Energy Flow Classifier (EFC) to generalize across heterogeneous networks in a stacking 
+configuration. Four current NIDS datasets from various network contexts serve as representations of the diverse networks 
+in evaluating the generalizability of the proposed IDS. Three primary components make up the extended variation of 
+the Global Privacy Control (GPC) that the authors in [29] proposed. Initially, they substituted the current classifiers with 
+the following: Knowledge Preservation OSELM (KP-OSELM), Feature Adaptive OSELM (FAOSELM), and Online Sequential 
+Extreme Learning Machine (OSELM). Secondly, they incorporated two novel elements into the GPC, namely a classifier 
+update and data balancing. finally, the sub-models work together to create three new GPC variants: GPC-KOS for KA-
+OSELM, GPC-FOS for FA-OSELM, and GPC-OS for OSELM.
+A novel intrusion detection system called the Bidirectional Long Short-Term Memory based Explainable Artificial Intel-
+ligence framework (BiLSTMXAI) was created in [30] to find intrusions in heterogeneous IIoT networks. To improve the data 
+quality for detecting network intrusions, the preparation stage of data cleaning and normalization is first finished. The 
+Krill herd optimization (KHO) technique is then used to choose the noteworthy features from the databases. The authors 
+in [31] suggested an intelligent detection technique to identify cyberattacks in Industrial IoT networks. The suggested 
+model makes use of the singular value decomposition (SVD) technique to improve detection effectiveness and reduce 
+data characteristics. Synthetic minority over-sampling (SMOTE) is a strategy used to prevent biased categorization result-
+ing from issues with over- and under-fitting. Deep neural network (DNN) and deep auto-encoder (DAE) are both used 
+by the authors in [32] to swiftly identify intrusions with improved accuracy and a reduced false rate. As an alternative to 
+deep learning construction replicates, the proposed model applies a Hyperparameter Optimization (HPO) procedure that 
+integrates the Archimedes optimization method. This optimization technique can be used to determine the ideal mix 
+of category hyperparameters and the hyperparameter value for improved detection performance. In order to identify 
+intrusions in streaming data, the authors of [33] introduced an accuracy boosting model (ABM) that combines random 
+forest machine learning models and severe gradient boosting. To precisely identify IoT devices including lights, smoke 
+detectors, thermostats, motion sensors, baby monitors, outlets, TVs, security cameras, and watches, cross-validation and 
+engineering approaches are utilized. Extreme gradient boosting (XGB) and random forest (RF) are used as base learners 
+with adaptive boosting in the suggested ensemble model. The exam results show improved 91% accuracy, 93% precision, 
+93% recall, and 93% F1 score. A summary of the contributions made by the current approaches and their performance 
+on the datasets under consideration is shown in Table 1.
+2.1  Literature gap
+The literature study shows that although current IDS approaches used for Industrial IoT achieve good detection perfor-
+mance, they do not evaluate their techniques in respect to these types of data and do not account for heterogeneous 
+and streaming data. Furthermore, most intrusion detection systems (IDSs) that are trained on particular network data 
+typically exhibit poor performance on other networks due to a lack of generalization. Recent approaches to CD for stream-
+ing data have been devised, however none have been evaluated considering all potential variations. Memory must be 
+
+Vol:.(1234567890)
+Research Discover Applied Sciences           (2024) 6:483  | https://doi.org/10.1007/s42452-024-06165-w
+Table 1  An overview of the most recent IDS approaches for IIoT
+Ref. no Publishing year Techniques Considered Dataset Heterogenous 
+data
+Streaming data Performance
+[20] 2021 Deep Learning NSL-KDD UNSW-NB15 X √ NSL-KDD Acc = 99.0%
+DR = 99.0%
+FPR = 1.0%
+UNSW-NB15
+Acc = 98.9%
+DR = 99.9%
+FPR = 1.1%
+[21] 2021 Deep random neural network (DRaNN) + Multilayer 
+perceptron (MLP)
+ + Gradient Descent Algorithm
+DS2OS UNSW-NB15 X √ DS2OS
+Acc = 98%
+Precision = 98.25% Recall = 98.36%
+F1-score = 98.30%
+UNSW-NB15
+Acc = 99%
+Precision = 99.07% Recall = 98.98%
+F1-score = 99.10%
+[22] 2021 Light GBM IoTID20
+NSL-KDD
+X √  IoTID20
+Acc = 99.92% Precision = 99.93% 
+recall = 99.98%
+F1-score = 99.969%
+NSL-KDD Acc. = 98.31% Precision = 98.57% 
+Recall = 98.3%
+F1 = 98.43%
+[23] 2021 Deep Belief Network (DBN) Heterogeneous real IoT datasets √ X Acc = 99%
+[24] 2022 sparse evolutionary training (SET) DS2OS
+CICIDS2017
+X √ DS2OS
+Acc = 0.98
+Precision = 0.97
+Recall = 0.95
+F1-score = 0.95
+CICIDS2017
+Acc = 0.99
+Precision = 0.98
+Recall = 0.99
+F1-score = 0.99
+[25] 2022 Principal Component Analysis (PCA) + K-Nearest 
+Neighbor (KNN)
+NSL-KDD
+Bot-IoT
+X √ NSL-KDD acc = 99.10%
+DR = 98.4%
+FAR = 2.7%
+Bot-IoT
+Acc = 98.2
+DR = 97.6%,
+FAR = 2.9%
+[26] 2022 Principal Component Analysis (PCA) + 
+Deep neural network (DNN)
+DS2OS X √ Acc. = 96.8%
+Precision = 96.3%
+Recall = 96%
+F1-score = 96.6%
+
+Vol.:(0123456789)
+Discover Applied Sciences           (2024) 6:483  | https://doi.org/10.1007/s42452-024-06165-w 
+ Research
+Table 1  (continued)
+Ref. no Publishing year Techniques Considered Dataset Heterogenous 
+data
+Streaming data Performance
+[27] 2022 KNN-ADWIN
+ + Variance threshold + select-k-best features
+IoTID20 CICIDS2017 X √ IoTID20
+Acc = 98.88% Precision = 98.88% 
+recall = 99.94%
+F1-score = 99.41%
+CICIDS2017
+Acc = 99.32% Precision = 98.31% 
+recall = 97.59%
+F1-score = 97.95%
+[28] 2023 Federated Learning (FL) + Energy Flow Classifier 
+(EFC) + 
+Deep auto-encoder (DAE)
+UNSW-NB15
+CICIDS-2018
+ToN_IoT
+Bot-IoT
+√ X UNSW-NB15
+Acc. = 0.97
+Recall = 0.99
+Precision = 0.50
+F1-score = 0.73
+CICIDS-2018
+Acc. = 0.98
+Recall = 0.88
+Precision = 0.91
+F1-score = 0.90
+[29] 2023 Extended GPC
+(OSELM) + (FA-OSELM) + (KP-OSELM)
+KDD Cup 99 CICIDS-2017 CICIDS-2018
+ISCX ‘12
+X √ CICIDS-2018
+Acc. = 0.971
+F1-score = 0.968
+AUC = 0.974
+[30] 2023 Bidirectional Long Short-Term Memory (BiL-
+STM) + Explainable Artificial Intelligence (XAI)
+NSL-KDD √ X Acc = 98.4%,
+Precision = 95.8% specificity = 95.9%
+recall = 97.2%
+F1-score = 95.1%
+[31] 2023 Singular Value Decomposition (SVD) + 
+Synthetic Minority over-sampling (SMOTE)
+mphasis>ToN_IoT X X Acc. = 99.99% Detection Error
+Rate = 0.001%
+[32] 2024 Deep neural network (DNN) + Deep auto-encoder 
+(DAE) + Hyperparameter optimization (HPO)
+DS2OS √ X Acc. = 96.57%
+Precision = 98.48%
+Recall = 98.69%
+F1 score = 0.96
+[33] 2024 Random Forest (RF) + Extreme Gradient Boosting 
+(XGB)
+AMI 2021 X √ Accu. = 91%,
+precision = 93%,
+recall = 93%,
+F1 score = 93%
+
+Vol:.(1234567890)
+Research Discover Applied Sciences           (2024) 6:483  | https://doi.org/10.1007/s42452-024-06165-w
+accounted for in the model for handling abrupt and recurrent CD since information from the past is necessary for events 
+to occur in the future. Considering the significance of CD variation, there is still a research gap that has to be filled in 
+order to develop a method that can both identify and manage CD. On the other hand, most existing IDSs cannot handle 
+heterogenous data collected from several references because the feature dimensions and attack types of data gathered 
+from various devices/clients may exhibit inconsistencies due to system changes or variations in device functionalities. 
+In addition, another issue facing current IDSs is their inability to generalize across many scenarios. This gap is related to 
+the difficulties of applying generalizations across various networks or dealing with network modifications.
+This work aims to introduce a novel intrusion detection system that uses an optimized iForest methodology to handle 
+heterogeneous and streaming data efficiently while improving security and privacy within the IIoT networking infra-
+structure. It is inspired by the previously mentioned cutting-edge techniques.
+3  Methodology
+Devices in IIoT networks have a high vulnerability to network intrusions because of the open nature of the deployment 
+environment of these types of networks and the poor security control protocol operation ability brought on by con-
+strained computing capabilities. This section describes the methodology used in this study to assess how well the propose 
+OIFIDS approach generalizes across diverse networks and handles the heterogenous and streaming data. It starts with a 
+brief description of three datasets that depict various networks: known as heterogeneous networks in our context. Next, 
+a detailed elaboration of how the suggested approach handles the heterogenous and streaming data and enhances the 
+generalization among those heterogeneous networks by an experimental method.
+3.1  Datasets
+Below is a quick explanation of the datasets NSL-KDD, CICIDS-2018, and UNSW-NB15 that were utilized in this work to 
+assess OIFIDS performance. Table 2 compares the three datasets.
+3.1.1  NSL‑KDD dataset
+KDD99, a popular dataset for cyber security research, was created in 1999 [34]. The KDD99 method has weaknesses 
+that need be addressed, such as overt repetition and unnecessarily high record counts in the test and train datasets, 
+which make them difficult to manage. To overcome the previously identified shortcomings, NSL-KDD [35] presented a 
+more modern adaptation. Since 2009, the NSL-KDD dataset has been recognized as the new gold standard for cyber 
+security research. 22,544 entries from KDDTest + are in the testing dataset, while 125,973 records from KDDTrain + are 
+in the training dataset. The 41 features in each record are categorized into four main feature groups: content features, 
+connection-based traffic features, basic features, and time-based traffic features.
+3.1.2  UNSW‑NB15 dataset
+A dataset that accurately represents intrusions that happen in actual terrestrial network environments is represented 
+by the UNSW-NB15 dataset [36]. The two main csv files in this dataset are the training set and testing set files. With 45 
+features, it has labels for normal (56,000 records) and nine different types of attacks: worms (130 records), backdoors 
+(1,746), exploits (33,393 records), fuzzers (18,184 records), generic (40,000 records), reconnaissance (10,491 records), DoS 
+(12,264 records), shellcode (1,133 records), and analysis (2000 records).
+Table 2  Datasets used to train 
+and test the proposed system # instances
+(train + test)
+# features Attributes Attacks
+Binary Categorical Numerical
+CICIDS-2018 2,400,000 + 1,436,730 80 12 3 65 7 types
+UNSW-NB15 175,341 + 82,332 45 2 3 37 9 types
+NSL-KDD 125,973 + 22,544 41 6 3 32 38 types
+
+Vol.:(0123456789)
+Discover Applied Sciences           (2024) 6:483  | https://doi.org/10.1007/s42452-024-06165-w 
+ Research
+3.1.3  CICIDS 2018 dataset
+With an emphasis on network-based anomaly detectors, the Canadian team developed a systematic way for gathering 
+data in order to assess, test, and analyze intrusion detection systems. The CICIDS 2018 dataset [37] has one category 
+of normal traffic labeled as 0 and seven categories of anomalous attack traffic labeled as 1: brute-force, internal net -
+work intrusion, heartbleed, botnet, DoS, DDoS, and web attacks, are all examples of cyber-attacks. The data includes 
+a target machine with 420 computers and 30 servers, an attack machine with 50 hosts, and 5 target machine sectors. 
+For each machine that was acquired, the dataset includes system logs and network traffic, together with 79 attributes 
+that were extracted from the traffic. About 16,000,000 instances were gathered for ten days. There is a class imbal-
+ance in this multi-class dataset, with attack (anomalous) traffic making up about 17% of the occurrences. A subset 
+of 3,836,730 of 16,000,000 records were utilized in Experiment 1.
+3.2  Proposed system
+Intrusion Detection System (IDS) [40– 46] is a sophisticated tool that may assist enterprises in identifying illegal net -
+work access. It can detect suspicious activity and inform the system administrator by analyzing the network traffic. 
+Researchers use machine learning techniques to propose various IDSs to detect intrusions in IIoT networks. Nonethe -
+less, IDSs continue to face difficulties due to the vast volume of IIoT data that contains duplicate and irrelevant infor -
+mation which increases the algorithm’s computational and space complexity as well as limiting the system’s ability to 
+detect abnormal network traffic besides the challenges of dealing with heterogenous and streaming data. In order to 
+choose the pertinent features and attain improved attack detection performance, this study suggests an efficient IDS 
+based on both iForest, which detects anomalies using the idea of isolation rather than distance or density metrics, and 
+the ERHHO optimization algorithm which deleting irrelevant features and reduces the data dimensionality and hence 
+overcomes the shortage of iForest. The proposed approach uses subsampling as a technique to effectively handle 
+swamping and masking effects in addition to achieving low linear time complexity and little memory consumption 
+which makes it a proper technique for dealing with large scale datasets and handling heterogenous and streaming 
+data. When dealing with streaming data in IIoT systems, the feature ranges and class distributions are all dynamic 
+factors that could alter dramatically over time. In online data stream analytics, data pre-processing should therefore 
+be dynamic processes that require constant updating upon drift detection, as opposed to the static process found 
+in typical ML based IDSs. So, the proposed OIFIDS system utilizes a concept drift detector to effectively detect and 
+adapt drift. The characteristics of the proposed optimized iForest IDS (OIFIDS) are:
+1. The new model can quickly find the optimal split point for a given property by exploiting the ERHHO heuristic search-
+ing method.
+2. The well-balanced iTree produced by the recommended method differs greatly from the extremely imbalanced 
+isolation tree produced by the conventional iForest.
+3. Compared to iForest, the new model builds the forest with fewer isolation trees.
+The four key steps of the proposed OIFIDS system are depicted in the system block diagram (Fig.  1) and system flowchart  
+(Fig. 2), and are described as follows:
+Fig. 1  Block diagram of the 
+suggested OIFIDS
+Traffic classification 
+(Normal/Anomaly) 
+Training 
+dataset 
+Trained 
+OIFIDS 
+Testing 
+dataset Trained OIFIDS 
+Dataset 
+Isolation Forest ERHHO 
+Preprocessing  
+ERHHO 
+Concept 
+drift 
+Detector
+
+Vol:.(1234567890)
+Research Discover Applied Sciences           (2024) 6:483  | https://doi.org/10.1007/s42452-024-06165-w
+3.2.1  Preprocessing step
+- Eliminate records that contain "Infinity, " "NaN, " or missing data and convert time stamps to Unix epoch numeric values 
+( seconds from January 1, 1970).
+- Remove any column from the dataset that contains more than 50 percent of the dataset’s missing values.
+- Normalize the dataset to improve convergence accuracy and speed while reducing the effect of the data dimension.
+- Since target encoding [47] performs well with isolation forest, it is chosen to handle categorical features. While reduc-
+ing the feature space, it may effectively extract the useful information from categorical data. Target encoding replaces 
+each categorical value with the target variable’s mean.
+- Split the considered dataset into two random subsets with the 80/20 rule; training subset and testing subset.
+3.2.2  Optimization using ERHHO
+In the high-dimensional feature collection, some features might be redundant or unnecessary. The computational processes 
+may take longer as a result of the presence of these features. It might also impair IDS’s overall performance and accuracy. The 
+ERHHO technique, an enhanced variant of the Harris Hawks Optimization (HHO) method [38], is used to address global opti-
+mization problems and acquire a subset of pertinent and ideal features in order to construct effective IDS in order to address 
+Fig. 2  Flowchart of the pro-
+posed OIFIDS approach
+
+
+Vol.:(0123456789)
+Discover Applied Sciences           (2024) 6:483  | https://doi.org/10.1007/s42452-024-06165-w 
+ Research
+the aforementioned problem. It suggested using a random walk technique to enhance HHO’s exploitation capabilities by 
+utilizing an exploration factor and helping the search agent jump out of the local optimal, a tent chaotic map to increase the 
+diversity of the initialization population during the initialization stage, and an exploration factor to optimize parameters to 
+boost exploration ability [39]. Algorithm 1 is a population-based optimization method that consists of four steps: exploitation, 
+exploration, and transformation of exploration, along with the Random walk Strategy.
+The training data is subjected to the ERHHO method in order to identify the most pertinent characteristics that minimize 
+the dimensionality of the dataset and mitigate the impact of both iForest randomization and the concept drift of streaming 
+data. Create the random population Xi (i = 1, 2,…, N), where N  is the number of instances in the dataset. By modifying the 
+initial positions with (1), the deviation of the initialization population is decreased.
+Where a is set to 0.7, X i indicates the hawks’ current position, and Xi+1 reflects the hawks’ next position after chaotic 
+mapping.
+a. Transformation of Exploration and Exploitation which determines if it will undergo exploration or one of the exploita-
+tion strategies by calculating the escape energy as follows: 
+ 
+(1)Xi+1 =
+/braceleft.s4Xi
+a if X i < a
+1−Xi
+1−a if X i ≥ a
+(2)E1 = 2(1− t
+T )
+(3)E = E0E1
+Fig. 2  (continued)
+
+Vol:.(1234567890)
+Research Discover Applied Sciences           (2024) 6:483  | https://doi.org/10.1007/s42452-024-06165-w
+E0 is the prey initial energy which equals to 2rand − 1. It varies between -1 and 1. T is the maximum number of iterations, 
+rand is a random number in the interval [0, 1], and variable t is the current iteration.
+b. Exploration (E > 1) in which Hawks fly at random areas dependent on other members’ or rabbit placements. By adjusting 
+the initial position of hawks, the chaotic map’s characteristics and randomness can significantly improve performance. In this 
+case r2 and r3 represent the step length. The larger r2 and r3 values, the faster the hawks.  r2 and r3 are updated by exploration 
+factor (ef). ef maintain randomness of the step length. It expands the step length range from LB (lower limit of variables) in 
+the range (0, 1) to UB (upper limit of variables) of range (− b/2, b/2).
+(4)Xm(t) = 1
+N
+/uni2211.s1N
+i=1 Xi (t)
+(5)ef =( b × rand − b
+2 )× cos(/u1D70B
+2 ×
+/parenleft.s2t
+T
+/parenright.s22
+)
+Fig. 2  (continued)
+
+Vol.:(0123456789)
+Discover Applied Sciences           (2024) 6:483  | https://doi.org/10.1007/s42452-024-06165-w 
+ Research
+where b is set 2, Xrand varies between 0 and 1, and Xm(t) represents the average position of the current hawks’ population. 
+The random numbers q, r 2, and r3 are in the interval (0, 1). If a drift is detected in streaming data, values of r 2 and r3 are 
+changed randomly to reselect another set of features.
+c. Exploitation (E < 1) where hawks attack the prey by employing four pursuit methods as well as the prey’s escape 
+behavior. Successful capture needs both the potential of escape (r) and escaping energy (E).
+If r ≥ 0.5 & |E|≥ 0.5
+In the case of Soft besiege, the prey has enough energy but is unable to flee.
+where ΔX (t) is the difference between the prey and hawk positions at iteration t, J = 2(1-rand) is the rabbit’s random jump 
+strength throughout the escape phase, and Xrabbit(t) represents the strength of the jump.
+If r ≥ 0.5 & |E|< 0.5
+In the case of a hard besiege, the prey has limited fleeing energy and fails to escape.
+If r < 0.5 & |E|≥ 0.5
+Apply Soft besiege with progressive rapid dives where Hawks hunt through a smarter soft encirclement termed as 
+soft round up by using progressive rapid dives.
+Where k is the problem’s dimension, S is a one-dimensional random vector 1 × k, and LF is the Levy Flight function 
+computed by (12).
+where /u1D6FD is the Lévy distribution index /u1D6FD∈[ 0,2] , u and v  are random distribution vectors of dimension 1 ×k , and Γ is 
+gamma function. The next Hawks positions are calculated as follows:
+where the fitness function (F) can be calculated by (20).
+(6)X(t + 1)=
+/braceleft.s3Xrand (t)− ef /uni007C.x/uni007C.xXrand (t)− 2r2X(t)/uni007C.x/uni007C.xq > 0.5/parenleft.s1
+Xrabbit (t)− Xm(t)
+/parenright.s1− ef
+/parenleft.s1LB + r3(UB − LB)
+/parenright.s1q ≤ 0.5
+(7)X (t + 1)=Δ X(t)− E/uni007C.varJXrabbit (t)− X(t)/uni007C.var
+(8)ΔX (t)= Xrabbit (t)− X(t)
+(9)X (t + 1)=X rabbit (t)− E /uni007C.var
+(10)Y = Xrabbit (t)− E/uni007C.x/uni007C.xJX rabbit (t)− X(t)/uni007C.x/uni007C.x
+(11)Z = Y + SLF(k)
+(12)LF(k) = 0.01 × u × /u1D70E
+/uni007C.varv/uni007C.var1∕/u1D6FD
+(13)/u1D70E=
+⎛
+⎜
+⎜
+⎜⎝
+Γ(1 + /u1D6FD)× sin /u1D70B/u1D6FD
+2
+Γ
+�
+1 + /u1D6FD
+2
+�
+× /u1D6FD× 2/u1D6FD−1∕2
+⎞
+⎟
+⎟
+⎟⎠
+1∕/u1D6FD
+, Γ(z)= /uni222B.dsp
+∞
+0
+tz−1 e−t dt
+(14)X(t + 1) =
+/braceleft.s3Y if F (Y) < F(X(t))
+Z if F (Z) < F(X(t))
+
+Vol:.(1234567890)
+Research Discover Applied Sciences           (2024) 6:483  | https://doi.org/10.1007/s42452-024-06165-w
+If r < 0.5 and |E|< 0.5
+Apply Hard round Up with progressive rapid dives. When the prey’s energy is depleted, a hard besiege with progres-
+sive rapid dives is launched.
+If F(Xi(t)) = F(Xi−1 (t)) then apply Random walk strategy
+When the value of fitness equals the previous iteration, the random walk algorithm is used. It gradually decreases with 
+iterations to guarantee that the deviation is significant in the early iterations so that we have greater possibilities of jump-
+ing out of local optima and low in the latter iterations so that the optimal result can be reached.
+where Xm(i) is the new position after random walk, i  is no. of iterations, and c  is equal to 6. After applying the greedy 
+strategy, the next position is calculated by (19).
+3.2.3  Calculating fitness function step
+Fitness is used as an indicator for optimization; after each iteration, the fitness value of the possible alternatives is computed; 
+the victim is chosen to be the feasible choice with the highest fitness in the population as a whole; and the best possible 
+individual information is obtained. In order to minimize time complexity, the fitness function should be as basic as feasible. 
+Furthermore, it should reduce the number of features used as well as the mistake rate.
+where the symbols for true negative, true positive, false negative, and false positive, respectively, are TN, TP , FN, and FP. 
+∝max is the maximum value of ∝ , t is the number of optimization iterations, and MaxT is the maximum number of itera-
+tions. When the fitness is lower, the selected feature subset is optimal.
+(15)Y = Xrabbit (t)− E/uni007C.varJXrabbit (t)− Xm(t)/uni007C.var
+(16)Z=Y+S
+(17)X (t + 1)=
+/braceleft.s3Y if F (Y) < F(X(t))
+Z if F (Z) < F(X(t)
+(18)Xm(i)= X (i)+( c × rand − c
+2 )×cos( /u1D70B
+2 ×
+/parenleft.s2t
+T
+/parenright.s22
+)×(X(i)− Xrabbit )
+(19)X(t + 1) =
+/braceleft.s3Xm(t + 1) F/parenleft.s1Xm(t + 1)
+/parenright.s1< F(X(t + 1))
+X (t + 1) F(Xm(t + 1)) ≥ F(X(t + 1))
+F =∝ (t)× No.of selected features
+Total no .of features +(1−∝ (t))× Error rate
+Error
+(20)∝ (t)=∝ max × t
+MaxT
+
+Vol.:(0123456789)
+Discover Applied Sciences           (2024) 6:483  | https://doi.org/10.1007/s42452-024-06165-w 
+ Research
+Algorithm 1    ERHHO Algorithm
+INPUT:
+Data: Training dataset 
+N: Population size 
+MaxT: max. no. of iterations  
+Eo: initial energy  
+OUTPUT:
+Xbest: Target position  
+start algorithm
+1: Initialize positions of the population randomly  ( =1,2,3,4,… ) 
+2: for i=1 to N
+3:        update the hawk position i using (1) 
+4:  end for
+5: While t≤ MaxT
+6: if the position goes out of the search space boundary then
+            return it 
+ endif 
+7:     Calculate the fitness of each search agent by (20)
+8:     Update Xbest
+9: for i = 1 to N
+10:         Calculate the escaping energy (E) using (2) & (3) 
+11: if |E|≥1 then                                                                               //phase of exploration
+12:           Set step length r2, r3 values                                                             
+13:           Update the position of i(t) using (4) to (6) 
+14: end if
+15: if |E|<1 then                                                                               //phase of exploitation 
+16: if r≥0.5 and |E|≥0.5 then
+17:                    Case1: Soft round Up 
+18:               Update the position of i(t) using (7) & (8)
+19: else r≥0.5 and |E|<0.5 then
+20:     Case2: Hard round Up 
+21:               Update the position of i(t) using (9) 
+22: else r<0.5 and |E|≥0.5 then  
+23:                      Case3: Soft round Up with progressive rapid dives 
+24:                 Update the position of i(t) using (10) to (14) 
+25:           else r<0.5 and |E|<0.5 then  
+26:                       Case4: hard round Up with progressive rapid dives 
+27:                 Update the position of i(t) using (15) to (17) 
+28: end if
+29: if F( i(t)) == F( i(t-1)) then
+30:                     Apply random walk strategy 
+31:               Update the position of Xwalk i(t) using (18) 
+32: end if
+33:             if F(Xwalk i(t))<F(Xi(t)) then
+34:                      Apply greedy strategy 
+35:               Update the position of  using (19) 
+36: end if
+37: end if
+38:  end for 
+39: t = t + 1 
+40: end while
+41: Return Xbest
+42: end algorithm
+
+Vol:.(1234567890)
+Research Discover Applied Sciences           (2024) 6:483  | https://doi.org/10.1007/s42452-024-06165-w
+3.3  Classifying the optimal dataset using iForest (IF)
+As shown in Fig.  3, after processing the dataset with ERHHO to reduce its dimensionality by selecting the most 
+relevant attributes, the resulted dataset is sampled and used to build multiple iTrees (Algorithm 3) which form the 
+iForest to find abnormalities. The normal vector and the intercept point are the only two random pieces of data that 
+must be determined for the IF algorithm at the branching nodes. Preparing the sampled dataset, creating iTrees, and 
+identifying anomalies by figuring out each node’s path length are the next steps.
+1. Define the max. no. of trees (t ), choose Ψ  (subsampling size) data points at random from the training dataset, 
+and add them to the sampled training subset X* ( Algorithm 2).
+2. From the training dataset X* that was sampled, construct an isolation tree (Algorithm 3) as follows:
+ i. Choose an attribute at random from the list of available attributes.
+ ii. At random, choose the attribute’s split point (the attribute’s value).
+ iii.  Split X* into the two subsets Xleft and Xright by comparing the related features of the data points with the split point 
+(p).
+ iv. The recursive technique ends when the set can no longer be split or when the height of the recursion tree reaches 
+ log2(Ψ ): average predicted tree height. This restriction is justified by the isolation tree’s disinterest in data points 
+with heights above the average.
+ v. Follow the same procedure for X left and X right. The choice of the split point is now limited by the position in the 
+recursion tree.
+ vi. Use this method again, sample X for t iterations, to obtain t isolation trees.
+Fig. 3  Flowchart of iForest; 
+a building iForest, b build-
+ing iTrees, and c path length 
+calculation (testing phase)
+
+
+Vol.:(0123456789)
+Discover Applied Sciences           (2024) 6:483  | https://doi.org/10.1007/s42452-024-06165-w 
+ Research
+3. The attribute and intercept points from each iTree are received (Algorithm 3) and the appropriate test condition 
+is used to start the recursion for calculating the path length of a point (depth of each branch); the number of edges 
+traversed by a point on an iTree from the root node until the traversal ends at an external node is used to calculate 
+the path length (Algorithm 4). The path length is used as an indicator for the degree of isolation susceptibility using 
+formula (21): short paths indicate high susceptibility, while lengthy paths indicate low susceptibility.
+where the path length between each data x and the root node is hx, and the average of all hx is E(hx). H(k) is the harmonic 
+number calculated by ln(k) + /u1D709 ; where /u1D709  equal to 0.5772156649 (Euler’s constant). S(x,n) is the anomalous value of data 
+x in the n samples of a dataset with N data instances and has a range of [0, 1] . The closer to one you get, the more likely 
+an outlier is. The closer to 0, the more likely it is normal.
+S(x, n) = 2− E(h(x))
+c(n)
+(21)c(n)= 2H(n − 1)−
+/parenleft.s32(n − 1)
+n
+/parenright.s3
+, H(k)= ln(k)+ /u1D709
+Fig. 3  (continued)
+
+Vol:.(1234567890)
+Research Discover Applied Sciences           (2024) 6:483  | https://doi.org/10.1007/s42452-024-06165-w
+Algorithm 2    EiForest Algorithm
+Algorithm 3  iTree  Algorithm 
+
+Vol.:(0123456789)
+Discover Applied Sciences           (2024) 6:483  | https://doi.org/10.1007/s42452-024-06165-w 
+ Research
+Algorithm 4  PathLength
+3.3.1  Handling concept drift
+In the suggested OIFIDS system, concept drift is detected by the combined use of ADWIN and EDDM [48]. Concept drift was 
+detected by EDDM by tracking changes in the model’s performance, while ADWIN found drift by comparing the means of 
+the two successive data frames. In the event of concept drift, the learning models are updated based on the new concept 
+samples within a time window by the dynamic ERHHO features selection algorithm; the value of ERHHO step length r2 and 
+r3 will be modified and hence other set of features are selected to overcome the concept drift.
+4  Performance analysis
+The main objective of this section is to evaluate and compare the performance of the suggested intrusion detection system. 
+It begins with the subject matter and choice of performance measures, then provides the detection systems’ testing metrics, 
+and concludes with the experiment results.
+4.1  Performance metrics
+On data with imbalanced classes, anomaly detection is a binary classification problem. As a result, it is possible to analyze 
+the effectiveness of the suggested OIFIDS using the confusion matrices-based metrics.
+Confusion matrix: is a 2 × 2 matrix in the following form:(22)
+The amount of anomalous data points that the detector correctly identifies as True Positives (TP), the amount of normal 
+data points that the detector mistakenly identifies as False Positives (FP), the amount of anomalous data points that the detec-
+tor correctly identifies as True Negatives (TN), and the amount of anomalous data points that the detector correctly identifies 
+as False Negatives (FN) are all given. Due to the large anticipated difference between classes, certain standard categorization 
+techniques are meaningless (anomalous and normal data points).
+The system accuracy (ACC) can be measured as:
+(22)
+/bracketleft.s3TP FP
+FN TN
+/bracketright.s3
+
+Vol:.(1234567890)
+Research Discover Applied Sciences           (2024) 6:483  | https://doi.org/10.1007/s42452-024-06165-w
+Equations (24) and (25) are used to compute the recall (also referred to as sensitivity or True Positive Rate; TPR) and 
+false positive rate (FPR), respectively.
+F1-score: creates a single statistic by combining false positive and recall indicators.
+Where Precision equal to
+Then F1-score is calculated as
+The measurement of the area under the Receiver Operating Characteristics (ROC) curve is called Area Under Curve, or 
+AUC. The ROC can be obtained by simply displaying the 2-D points with coordinates specified by the x-axis (FPR), y-axis 
+(recall), for various threshold levels, and employing the trapezoidal rule. This idea holds that anomaly detectors with 
+greater AUC are better (it indicates that higher recall is obtained with a smaller rise in FPR).
+4.2  System settings
+Using Matlab 2020b on a MacBook Pro laptop, the following experiments were carried out to assess the performance 
+of the suggested OIFIDS system (Core i7turbo 8th Gen, 4.1GHZ, and 32GB RAM) using three datasets; NSL-KDD, UNSW-
+NB15, and CICIDS-2018. To prove its ability of handling heterogeneous data, mphasis>it was applied to different types 
+of datasets: with only numerical features and with both numerical and categorical features.
+4.2.1  Settings of iForest algorithm
+The number of trees was set to be 100 trees/forest; Most of the time, path lengths converge well before t  = 100. For the 
+experiments we conducted, the default number for subsample size was ψ  = 256. With regard to the size of datasets, the 
+maximum value of /u1D70E = 512 has been selected and maximum depth is set to D = 13.
+4.2.2  Settings of ERHHO algorithm
+Duplicate data in the dataset was eliminated, categorical attributes are transformed, and linear features are normalized 
+to the [0, 1] range as a part of datasets preprocessing. Variables β, a, b, and c  are set to 1.5, 0.7, 2, and 6 respectively. The 
+population size was set at (N  = 30) and the maximum Decision Tree (DT) depth was set to 4. Maximum iterations were 
+set at 500 (ERHHO converges at about 500 iterations).
+(23)Accuracy = TP + TN
+TP + TN + FP + FN
+(24)Recall = TP + FP
+TP + FN
+(25)FPR = FP
+FP + TN = 1 − Speciﬁcity
+(26)F1 − score = 2 × Precision ∗ Recall
+Precision + Recall
+(27)Precision = TP
+TP + FP
+(28)F1 − score = 2 × (1 − FPR).Recall
+(1− FPR)+Recall
+
+Vol.:(0123456789)
+Discover Applied Sciences           (2024) 6:483  | https://doi.org/10.1007/s42452-024-06165-w 
+ Research
+5  Results and discussion
+To assess the system’s performance and demonstrate that it can handle both heterogeneous and streaming data, three 
+different datasets are employed. The first experiment examines the proposed system’s general performance when applied 
+to the three distinct datasets and evaluates its performance against that of other four IDSs. The second experiment exam-
+ines the suggested system’s capability to handle heterogeneous data while using both the AUC as a performance metric. 
+The third experiment demonstrates the suggested system’s effectiveness in detecting anomalies in streaming data.
+5.1  Experiment 1: Performance analysis and comparison on NSL‑KDD, UNSW‑NB15, and CICIDS‑2018
+5.1.1  Applying OIFIDS to NSL‑KDD dataset
+Figure 4 displays the measured performance metrics of the proposed system when used to detect anomalies in NSL-KDD 
+dataset. The accuracy, precision, recall, F1-score, and FPR of the OIFIDS system were 95.6%, 98.5%, and 95.8%, respectively. 
+The suggested system’s ROC curve is shown in Fig. 5, which highlights the system’s high performance. Table 3 and Fig. 6 
+Fig. 4  Performance analysis of 
+applying OIFIDS considering 
+NSL-KDD
+Fig. 5  ROC curve of OIFIDS 
+considering NSL-KDD
+Table 3  Performance 
+comparison of OIFIDS and 
+other IDSs on NSL-KDD 
+dataset
+IDS #Features Accuracy Precision Recall F1-score FPR
+AE + IF [51] 12 95.4% 94.81% 97.25% 96.01% 5.15%
+Optimized GRU [49] 6 82.47% 96.23% 72.02% 82.38% 3.73%
+iForest 41 91% 94.4% 79% 86% 2.7%
+GWO + SVM [50] 10 89.18% 95% 82% 78.8% 4.5%
+OIFIDS 8 95.6% 98.5% 95.8% 93.2% 3.6%
+
+Vol:.(1234567890)
+Research Discover Applied Sciences           (2024) 6:483  | https://doi.org/10.1007/s42452-024-06165-w
+display a performance comparison between the OIFIDS system and other IDSs. Even though only 8 features were used, 
+the feature dimensionality was dramatically decreased to around 20% of its original value, but OIFIDS classification accu-
+racy was still greater than iForest’s without feature selection. The most accurate OIFIDS system significantly decreased 
+33 redundant features, outperformed the iForest in terms of recall and f1-score, and outperformed the optimized GRU 
+system and the iForest in terms of accuracy by 2.5% and 4.6%, respectively. The OIFIDS system is the most accurate of 
+all, as shown in Table 3, with only around one-fifth of the original dimensionality of the dataset picked. It is obvious from 
+the table that iForest and AE + IF [51] compare favorably.
+Fig. 6  Performance compari-
+son of OIFIDS and other IDSs 
+using NSL-KDD dataset
+Fig. 7  Analysis of the OIFIDS 
+performance considering 
+UNSW-NB15 dataset
+Fig. 8  ROC curve of the 
+proposed OIFIDS considering 
+UNSW-NB15 dataset
+
+
+Vol.:(0123456789)
+Discover Applied Sciences           (2024) 6:483  | https://doi.org/10.1007/s42452-024-06165-w 
+ Research
+5.1.2  Applying OIFIDS to UNSW‑NB15 dataset
+The performance analysis of OIFIDS’s when used with the UNSW-NB15 dataset is shown in Fig. 7. OIFIDS achieved 94.8% 
+accuracy, 98% Precision, 93.2% Recall, 95.5% F1-score, and FPR of 2.4%. The OIFIDS system’s ROC curve, shown in Fig. 8, 
+indicates its effectiveness. Table 4 and Fig. 9 display performance comparison of OIFIDS and other IDSs on UNSW-NB15 
+dataset. Optimized tree structures in OIFIDS enable bias reduction and learning from data improves performance to the 
+point where OIFIDS even outperforms the deep detector. This is a result of the optimized GRU’s reduced classification 
+performance on the test dataset caused by the UNSW-NB15 dataset’s training set being less than half as large as the test 
+set. All assessment metrics showed a considerable improvement in the remaining IDSs that used the feature selection 
+optimization strategy; the suggested OIFIDS obtained the highest accuracy while employing 16 characteristics. The 
+optimized GRU performs poorly in terms of classification on the test dataset since the training data in the UNSW-NB15 
+dataset is less than half the size of the test dataset. The remaining IDSs that applied the feature selection optimization 
+algorithm showed appreciable gains in all assessment metrics taken into account, with the proposed OIFIDS earning the 
+greatest accuracy despite utilizing 16 features only. OIFIDS achieved 4.5% increase in classification accuracy compared 
+to optimized GRU, and 2.4% accuracy higher than INB–PCA. However, both iForest and XGBoost + DT achieved better 
+FPR than OIFIDS.
+Table 4  Performance 
+comparison of OIFIDS and 
+other IDSs using UNSW-NB15 
+dataset
+IDS # Selected 
+features
+Accuracy Precision Recall F1-score FPR
+XGBoost + DT [54] 19 90.85% 80.33% 98.38% 88.45% 1.8%
+Optimized GRU [49] 20 90.3% 96.3% 88.5% 92.2% 6%
+INB–PCA [52] 12 mphasis>92.48% 81.95% 95.35% 88.1% 3.9%
+iForest 42 84.2% 99.4% 78% 87.4% 1.5%
+OIFIDS 16 94.8% 98% 93.2% 95.5% 2.4%
+Fig. 9  Performance compari-
+son of OIFIDS and other IDSs 
+on UNSW-NB15 dataset
+Fig. 10  Results of applying 
+OIFIDS to CICIDS-2018 dataset
+
+
+Vol:.(1234567890)
+Research Discover Applied Sciences           (2024) 6:483  | https://doi.org/10.1007/s42452-024-06165-w
+5.1.3  Applying OIFIDS to CICIDS‑2018 dataset
+The anomaly detection results of OIFIDS on CICIDS-2018 dataset are illustrated in Fig. 10 using a confusion matrix, which 
+is a two-by-two matrix made up of the results that the binary classifier produced in terms of overall accuracy, precision, 
+sensitivity, and False Positive Rate (FPR). The OIFIDS system measured 0.99 accuracy, 0.987 precision, 100% recall, 0.994 
+F1-score, and 0.96 specificity (FPR = 3.8%). The RoC curve of the suggested system is shown in Fig.  11, which illustrates 
+its superior performance. The performance of OIFIDS in comparison to other IDSs used with the CICIDS-2018 dataset is 
+shown in Table 5 and Fig. 12. Analyzing the performance of OIFIDS with only 13 features has the highest accuracy but 
+also high FAR, as seen in the table. Compared to OIFIDS, the iForest has high feature dimensionality (80 features were 
+considered), with 4% loss in accuracy. The 80 features training set is a time-consuming and resource-intensive process. 
+iForest, optimized GRU [49], and XGBoost [53] have better FPR than OIFIDS. Compared to the optimized GRU [49], OIFIDS 
+model used in this study has worse FPR, higher feature dimensionality by 2.5%, and higher accuracy by 4.8%.
+Fig. 11  AUC of applying the 
+proposed OIFIDS to CIC-
+IDS-2018 dataset
+Table 5  Performance 
+comparison of OIFIDS and 
+other IDSs using CICIDS-2018 
+dataset
+IDS # Selected 
+features
+Accuracy Precision Recall F1-score FPR
+WoA [50] 6 94% 98.3% 93.4% 95.6% 4.7%
+Optimized GRU [49] 11 94.2% 99.5% 92.5% 95.9% 1.2%
+iForest 80 95% 99.8% 92.6% 96% 0.42%
+XGBoost [53] 18 96% 99% 79.6% 88.25% 2.7%
+OIFIDS 13 99% 98.7% 99.9% 99.4% 3.8%
+Fig. 12  Performance compari-
+son of OIFIDS and other IDSs 
+using CICIDS-2018 dataset
+
+
+Vol.:(0123456789)
+Discover Applied Sciences           (2024) 6:483  | https://doi.org/10.1007/s42452-024-06165-w 
+ Research
+5.2  Experiment 2: evaluation on heterogeneous data
+Different IoT devices typically collect heterogeneous data, which makes training IDS models more difficult. To address the 
+heterogeneity issues among different clients, OIFIDS is suggested in this study and evaluated on three different datasets 
+from heterogenous networks. Area Under the Precision Recall (AUC-PR) score is used to test the overall performance of 
+the proposed approach. Table 6 displays the experiment’s results of AUC values; the detection performance of the model 
+is improved when the AUC value increases. When categorical features are included in the dataset, the classic iForest’s 
+performance declines, but the proposed OIFIDS performs better as expected. It consistently beats the baseline approach 
+on the UNSW-NB15 dataset. However, the OIFIDS performance on the dataset with only numerical features performs 
+somewhat higher than with all features. The experiment’s results support our prediction that it can handle heterogeneous 
+data. Furthermore, the experimental results show that the proposed OIFIDS consistently outperforms other IDSs with 
+the highest average AUC. OIFIDS is higher than the second-best method by 8% and 2.4% for NSL-KDD and CICIDS-2018 
+respectively. Table 6 demonstrates OIFIDS as the most trustworthy technique, with the best performance across most 
+datasets. The average AUC-ROC score for OIFIDS is the highest of all the examined IDSs.
+5.3  Experiment 3: Evaluation on streaming data
+The numerical attributes in the training data were standardized as a part of the preparation of the data. The mean and 
+standard deviation of the training data were used to normalize a streaming data incoming instance. One-hot encoding, 
+which turns each category into a vector corresponding to its categorical value, is used to handle categorical attributes. 
+The changing data behaviors were simulated in order to assess how well the proposed system can address the concept 
+drift problem. It was first trained on data just using the SMTP protocol, and then tested on data using SMTP protocol 
+followed by HTTP protocol. Concept drift to happen as the dataset’s network protocol changes. The experiment results 
+are displayed in Table 7 with AUC values presented as the assessment metric. Surprisingly, the proposed OIFIDS works 
+admirably without upgrading on the dataset for the NSL-KDD. The NSL-KDD dataset’s data distributions were unaffected 
+by the protocol change. When compared to the other IDSs, the proposed one performs the best. It performs incredibly 
+well on the UNSW-NB15 dataset compared to other IDSs. The results demonstrate that the OIFIDS could adjust to chang-
+ing data distributions while the other models, which were initially created to detect abnormalities in static datasets, are 
+unable to deal with idea drift. iForest performs badly across the majority of datasets and has the lowest average AUC 
+score. The AUC values demonstrate the robustness with which the proposed OIFIDS outperforms the competition.
+Table 6  AUC results 
+comparison using 
+heterogeneous data
+IDS NSL-KDD UNSW-NB15 CICIDS-2018
+Ensemble [55] 0.8733 0.9277 0.97
+Optimized GRU [49] 0.8871 0.8941 0.95
+iForest 0.8975 0.852 0.94
+MSANA [27] 0.894 0.893 0.968
+Proposed OIFIDS 0.9781 0.9153 0.994
+Table 7  AUC results on 
+streaming data Streaming data (HTTP + SMTP)
+NSL-KDD dataset CICIDS2018 dataset UNSW-
+NB15 
+dataset
+iForest 0.9046 0.939 0.725
+Ensemble [55] 0.9303 0.953 0.7840
+MSANA [27] 0.929 0.965 0.916
+Proposed OIFIDS 0.948 0.97 0.922
+
+Vol:.(1234567890)
+Research Discover Applied Sciences           (2024) 6:483  | https://doi.org/10.1007/s42452-024-06165-w
+5.4  Calculating computational complexity 
+5.4.1  Time complexity of iForest:
+To build an iTree with a depth of  log2(N), if the training dataset consists of k features and N instances (samples), the neces-
+sary computations are kN ×  (log2(N) +  log2(N/2) + ⋅ ⋅ ⋅ + 1). The time complexity is therefore O(kN[log2(N)]2).
+5.4.2  Time complexity of ERHHO:
+The total computing complexity of the ERHHO algorithm is O(2  × k × N × T). It consists of three essential components: 
+Initialization, position updating, and fitness evaluation.
+• The initialization phase’s computational complexity is O(k × N), where k stands for the number of populations and N 
+for the issue dimensions.
+• It takes O(k) to perform fitness evaluation.
+• The computing complexity of a random walk method to avoid entering local optimum regions is O(2 × k × N × T).
+5.5  The OIFIDS’s generalizability
+One of the challenges facing most ML/DL-based IDSs is their inability to generalize across multiple settings. Put differently, 
+systems which are trained using particular network data typically don’t work well on other networks. The consequence 
+of the suggested OIFIDS is a workable strategy for generalization over heterogenous networks. To prove its superiority, 
+it was evaluated using the NSL-KDD, UNSW-NB15, and CICIDS-2018 datasets. These datasets provide a large variety of 
+factors that mimic both real-world daily routines and simulated attack behaviors. The generalizability of the suggested 
+OIFIDS method was clearly demonstrated by looking over and analyzing each dataset separately. It is easier to evaluate 
+the generalizability of the detection model when there are 14 additional attack types in the NSL-KDD test set compared 
+to the training set’s 24; the test set has 38 attack types. Moreover, the proposed system was able to handle many datasets 
+efficiently. This demonstrates its ability of handling heterogeneous data.
+6  Conclusion and future work
+Threats posing a risk to Industrial Internet of Things (IIoT) systems could compromise their security, disrupt their regular 
+operations, or damage critical infrastructure. Dealing with heterogeneous and flowing data in IIoT networks is necessary 
+for developing effective cybersecurity strategies. When it comes to detecting anomalies in heterogeneous and stream-
+ing data, iForest outperforms other techniques. Isolation forest is based mostly on randomization, it is unclear how to 
+select the best feature and where it’s possible to find the optimal split point on an attribute especially while develop -
+ing the isolation tree. This may degrade its detection performance. Therefore, optimizing iForest makes it possible to 
+identify the best split points that correlate to the attributes that are most easily separable and hence enhances the 
+detection precision, accuracy, F1-score, FPR, and recall. In order to lessen the detrimental effects of data heterogeneity 
+on various devices, such as poor model prediction ability and sluggish model convergence speed, this study presents 
+an efficient Optimized iForest based Intrusion Detection System (OIFIDS) to overcome the effect of iForest randomiza-
+tion and enhances the detection performance in heterogenous and streaming data. Although neural networks are 
+more resistant to the impacts of redundant (non-informative) features than is iForest, the performance gap between 
+them can be closed by employing the ERHHO optimization algorithm. According to the experimental results, OIFIDS’s 
+detection accuracy converges quickly with a small number of trees; great detection performance and high efficiency can 
+be attained with just a tiny subsampling size. The proposed method regularly outperforms state-of-the-art detection 
+approaches, including deep learning-based ones, as demonstrated by rigorous evaluations and many benchmarking 
+datasets. Furthermore, the OIFIDS finds odd patterns in the data better than deep learning models. It can also adjust 
+to changing data behaviors (concept drift). The proposed system is able to handle both heterogeneous and streaming 
+data on the considered datasets and delivers results that were comparable to the cutting-edge baseline technique in 
+
+Vol.:(0123456789)
+Discover Applied Sciences           (2024) 6:483  | https://doi.org/10.1007/s42452-024-06165-w 
+ Research
+addition to its capability of generalizing across diverse networks. Three current datasets from various network contexts 
+serve as our representation of the diverse networks in our analysis.
+7  The key features of the proposed OIFIDS are listed below in brief:
+– detects anomalies without the need to compute density or distance. In all distance-based and density-based tech-
+niques, this significantly reduces the processing overhead.
+– requires little memory and has a constant linear time complexity.
+– Has the ability to handle exceptionally big datasets and high dimensional problems with irrelevant features.
+– Continuously learns without retaining all previous data points and detections.
+– Automatically operates without the requirement for manual parameter adjustment.
+– Incorporates earlier data point information with the present detection.
+– Lowers the overall number of false positives and false negatives.
+– Reduces the time required to do the detection.
+Although IForest algorithm is clearly superior to other algorithms due to its low time complexity, optimizing it with 
+ERHHO algorithm may slightly increase the computational time. In addition to analyzing the proposed method in a cross-
+device context and considering the combination of zero-trust architecture and distributed intrusion detection system 
+implementation, our future study will concentrate on how to circumvent the issue of high search computation time.
+Author contribution Conceptualization, A.B. and S.A.; methodology, S.A.; software, A.B. and S.A.; validation, S.A.; formal analysis, A.B.; resources, 
+S.A.; data curation, S.A.; writing original draft preparation, S.A.; writing review and editing, A.B.; visualization, S.A.; supervision, A.B.; project 
+administration, S.A.; funding acquisition, A.B. All authors have read and agreed to the published version of the manuscript.
+Funding This study is supported via funding from Prince sattam bin Abdulaziz University project number (PSAU/2023/R/1445).
+Data availability The data used to support the findings of this study are available from the corresponding author upon request.
+Declarations 
+Ethics approval and consent to participate We hereby declare that the presented manuscript is our own work and that we have cited all sources 
+of information in accordance with the Guideline for adhering to ethical principles.
+Competing interests The authors declare no competing interests.
+Open Access  This article is licensed under a Creative Commons Attribution-NonCommercial-NoDerivatives 4.0 International License, which 
+permits any non-commercial use, sharing, distribution and reproduction in any medium or format, as long as you give appropriate credit to 
+the original author(s) and the source, provide a link to the Creative Commons licence, and indicate if you modified the licensed material. You 
+do not have permission under this licence to share adapted material derived from this article or parts of it. The images or other third party 
+material in this article are included in the article’s Creative Commons licence, unless indicated otherwise in a credit line to the material. If 
+material is not included in the article’s Creative Commons licence and your intended use is not permitted by statutory regulation or exceeds 
+the permitted use, you will need to obtain permission directly from the copyright holder. To view a copy of this licence, visit http:// creat iveco 
+mmons. org/ licen ses/ by- nc- nd/4. 0/.
+References
+ 1. Philipp B, et al. A computer science perspective on digital transformation in production. ACM Trans Internet of Things. 2022;3(2):1–32. 
+https:// doi. org/ 10. 1145/ 35022 65.
+ 2. Watters A. Top 30+ IoT Statistics and Facts You Should Know for 2023. Comptia community. 2023. https:// conne ct. compt ia. org/ blog/ 
+top- inter net- of- things- stats- facts
+ 3. Folino F, Folino G, Guarascio M, Pisani FS, Pontieri L. On learning effective ensembles of deep neural networks for intrusion detection. Inf 
+Fusion. 2021;72:48–69. https:// doi. org/ 10. 1016/j. inffus. 2021. 02. 007.
+ 4. Agrawal S, et al. Federated learning for intrusion detection system: concepts, challenges and future directions. Comput Commun. 
+2022;195:346–61. https:// doi. org/ 10. 1016/j. comcom. 2022. 09. 012.
+
+Vol:.(1234567890)
+Research Discover Applied Sciences           (2024) 6:483  | https://doi.org/10.1007/s42452-024-06165-w
+ 5. Adnan A, Muhammed A, Abd Ghani AA, Abdullah A, Hakim F. An intrusion detection system for the internet of things based on machine 
+learning: review and challenges. Symmetry. 2021;13:1011. https:// doi. org/ 10. 3390/ sym13 061011.
+ 6. Hariri S, Kind MC, Brunner RJ. Extended isolation forest. IEEE Trans Knowl Data Eng. 2018. https:// doi. org/ 10. 1109/ TKDE. 2019. 29476 76.
+ 7. Zhang X, Dou W, He Q, Zhou R, Leckie C, Kotagiri R, Salcic Z. Lshiforest: A generic framework for fast tree isolation-based ensemble anomaly 
+analysis. IEEE 33rd International Conference on Data Engineering (ICDE). 2017; 983–994. https:// doi. org/ 10. 1109/ ICDE. 2017. 145
+ 8. Xiang H. et al. OptIForest: Optimal Isolation Forest for Anomaly Detection. International Joint Conference on Artificial Intelligence (IJCAI-
+23). 2023. https:// doi. org/ 10. 48550/ arXiv. 2306. 12703
+ 9. Salloum SA, Alshurideh M, Elnagar A, Shaalan K. Machine learning and deep learning techniques for cybersecurity: a review. International 
+conference on artificial intelligence and computer vision. 2020; 50–7. https:// doi. org/ 10. 1007/ 978-3- 030- 44289-7_5
+ 10. Czeczot G, Rojek I, Mikołajewski D, Sangho B. AI in IIoT management of cybersecurity for industry 4.0 and industry 5.0 purposes. Electron-
+ics. 2023;12:3800. https:// doi. org/ 10. 3390/ elect ronic s1218 3800.
+ 11. Mehmood E, et  al. DHSDJArch: An Efficient Design of Distributed Heterogeneous Stream-Disk Join Architecture. IEEE Access. 
+2023;11:63565–78. https:// doi. org/ 10. 1109/ ACCESS. 2023. 32882 84.
+ 12. Tallam RM, Habetler TG, Harley RG. Self-commissioning training algorithms for neural networks with applications to electric machine 
+fault diagnostics. IEEE Trans Power Electron. 2002;17(6):1089–95. https:// doi. org/ 10. 1109/ TPEL. 2002. 805611.
+ 13. Davy M, Desobry F, Gretton A, Doncarli C. An online support vector machine for abnormal events detection. Signal Process. 
+2006;86(8):2009–25. https:// doi. org/ 10. 1016/j. sigpro. 2005. 09. 027.
+ 14. Subramaniam S, Palpanas T, Papadopoulos D, Kalogeraki V, Gunopulos D. Online outlier detection in sensor data using non-parametric 
+models. Proceedings of the 32nd international conference on Very large data bases. 2006; 187–198. http:// www. vldb. org/ conf/ 2006/ 
+p187- subra maniam. pdf
+ 15. Ahmad S, et al. Unsupervised real-time anomaly detection for streaming data. Neurocomputing. 2017;262:134–47. https:// doi. org/ 10.  
+1016/j. neucom. 2017. 04. 070.
+ 16. Hawkins S, He H, Williams G, Baxter R. Outlier detection using replicator neural networks. DaWaK. 2002;2454(1):170–80. https:// doi. org/ 
+10. 1007/3- 540- 46145-0_ 17.
+ 17. Zhai S, Cheng Y, Lu W, Zhang Z. Deep structured energy-based models for anomaly detection. International Conference on Machine 
+Learning. 2016; 1100–1109. https:// doi. org/ 10. 48550/ arXiv. 1605. 07717
+ 18. Zhou C, Paffenroth RC. Anomaly detection with robust deep autoencoders. Proceedings of the 23rd ACM SIGKDD International Confer -
+ence on Knowledge Discovery and Data Mining. 2017; 665–674. https:// doi. org/ 10. 1145/ 30979 83. 30980 52
+ 19. Zong B, Song Q, Min MR, Cheng W, Lumezanu C, Cho D, Chen H. Deep autoencoding gaussian mixture model for unsupervised anomaly 
+detection. International Conference on Learning Representations (ICLR). 2018. https:// openr eview. net/ forum? id= BJJLH bb0-
+ 20. Awotunde JB, Chakraborty C, Adeniyi AE. Intrusion detection in industrial internet of things network-based on deep learning model with 
+rule-based feature selection. Wirel Commun Mob Comput. 2021;2021:1–17.
+ 21. Huma ZE, Latif S, Ahmad J, Idrees Z, Ibrar A, Zou Z, Alqahtani F, Baothman F. A hybrid deep random neural network for cyberattack detec-
+tion in the Industrial Internet of Things. IEEE Access. 2021;9:55595–605.
+ 22. Yang L, Shami A. A lightweight concept drift detection and adaptation framework for IoT data streams. IEEE Internet Things Mag. 
+2021;4:96–101. https:// doi. org/ 10. 1109/ IOTM. 0001. 21000 12.
+ 23. Sharipuddin A, et al. Intrusion detection with deep learning on internet of things heterogeneous network. IAES Int J Artif Intell. 2021; 
+10(3):735–742. https:// doi. org/ 10. 11591/ ijai. v10. i3. pp735- 742
+ 24. Mendonca RV, Silva JC, Rosa RL, Saadi M, Rodriguez DZ, Farouk A. A lightweight intelligent intrusion detection system for industrial 
+internet of things using deep learning algorithms. Exp Syst. 2022;39(5):12917.
+ 25. Guezzaz A, Benkirane S, Mohyeddine M, Attou H, Douiba M. A lightweight hybrid intrusion detection framework using machine learning 
+for edge-based IIoT security. Int Arab J Inf Technol. 2022;19(5):822–30.
+ 26. Wahab OA. Intrusion detection in the iot under data and concept drifts: online deep learning approach. IEEE Internet Things J. 
+2022;9:19706–16. https:// doi. org/ 10. 1109/ JIOT. 2022. 31670 05.
+ 27. Yang L, Shami A. A Multi-Stage Automated Online Network Data Stream Analytics Framework for IIoT Systems. IEEE Trans. 2022; 19:2107–
+2116.  https:// doi. org/ 10. 1109/ TII. 2022. 32120 03
+ 28. Bertoli GC, Junior LA, Saotome O, Santos AL. Generalizing intrusion detection for heterogeneous networks: a stacked-unsupervised 
+federated learning approach. Comput Secur. 2023;127: 103106. https:// doi. org/ 10. 1016/j. cose. 2023. 103106.
+ 29. Shyaa MA, Zainol Z, Abdullah R, Anbar M, Alzubaidi L, Santamaría J. Enhanced intrusion detection with data stream classification and 
+concept drift guided by the incremental learning genetic programming combiner. Sensors. 2023;23:3736. https:// doi. org/ 10. 3390/ s2307 
+3736.
+ 30. Sivamohan S, Sridhar S. An optimized model for network intrusion detection systems in industry 4.0 using xai based bi-lstm framework. 
+Neural Comput Appl. 2023;35:11459–75. https:// doi. org/ 10. 1007/ s00521- 023- 08319-0.
+ 31. Soliman S, Oudah W, Aljuhani A. Deep learning-based intrusion detection approach for securing industrial Internet of Things. Alex Eng 
+J. 2023;81:371–83. https:// doi. org/ 10. 1016/j. aej. 2023. 09. 023.
+ 32. Sinha R, Thakur P , Gupta S, et al. Development of lightweight intrusion model in Industrial Internet of Things using deep learning tech-
+nique. Discov Appl Sci. 2024;6:346. https:// doi. org/ 10. 1007/ s42452- 024- 06044-4.
+ 33. Hussain S, Aslam W, Mehmood A, Choi GS, Ashraf I. A machine learning based framework for IoT devices identification using web traffic. 
+PeerJ Comput. 2024. https:// doi. org/ 10. 7717/ peerj- cs. 1834.
+ 34. http:// kdd. ics. uci. edu/ datab ases/ kddcu p99/ kddcu p99. html (last accessed Nov. 2, 2023)
+ 35. https:// www. unb. ca/ cic/ datas ets/ nsl. html (last accessed Nov. 2, 2023)
+ 36. https:// resea rch. unsw. edu. au/ proje cts/ unsw- nb15- datas et (last accessed Dec. 10, 2023)
+ 37. https:// www. unb. ca/ cic/ datas ets/ ids- 2018. html (last accessed Dec. 10, 2023)
+ 38. Heidari AA, et al. Harris hawks optimization: algorithm and applications. Futur Gener Comput Syst. 2019;97:849–72. https:// doi. org/ 10. 
+1016/j. future. 2019. 02. 028.
+
+Vol.:(0123456789)
+Discover Applied Sciences           (2024) 6:483  | https://doi.org/10.1007/s42452-024-06165-w 
+ Research
+ 39. Song M, et al. Modified Harris hawks optimization algorithm with exploration factor and random walk strategy. Comput Intell Neurosci. 
+2022. https:// doi. org/ 10. 1155/ 2022/ 46736 65.
+ 40. Elsaid SA, et al. Cybersecurity: design and implementation of an intrusion detection and prevention system. Commun Comput Inform 
+Sci. 2019;1097:1. https:// doi. org/ 10. 1007/ 978-3- 030- 36365-9_3.
+ 41. Elsaid SA, Albatati NS. An optimized collaborative intrusion detection system for wireless sensor networks. Soft Comput. 2020;24:12553–67. 
+https:// doi. org/ 10. 1007/ s00500- 020- 04695-0.
+ 42. Magdy ME, Matter AM, Hussin S, Hassan D, Elsaid SA. A Comparative Study of Intrusion Detection Systems Applied To NSL-KDD Dataset. 
+Egypt Int J Eng Sci Technol. 2023; 43 (2):88–98. https:// doi. org/ 10. 21608/ EIJEST. 2022. 137441. 1156
+ 43. Magdy ME, Matter AM, Hussin S, Hassan D, Elsaid SA. Anomaly-based intrusion detection system based on Feature selection and Majority 
+Voting. Indon J Electr Eng Comput Sci. 2023;1: 30:3. https:// doi. org/ 10. 11591/ ijeecs. v30. i3. pp1699- 1706
+ 44. Elsayed R, Hamada R, Hammoudeh M, Abdalla M, Elsaid SA. A hierarchical deep learning-based intrusion detection architecture for 
+clustered Internet of Things. J Sens Actuator Netw. 2023;12(1):3. https:// doi. org/ 10. 3390/ jsan1 20100 03.
+ 45. Elsayed R, Hamada R, Abdalla M, Elsaid SA. Securing IoT and SDN Systems Using Deep-Learning Based Automatic Intrusion Detection. 
+Ain Shams Eng J. 2023;14:7. https:// doi. org/ 10. 1016/j. asej. 2023. 102211.
+ 46. Azar AT, Shehab E, Mattar AM, Hameed IA, Elsaid SA. Deep Learning based Hybrid Intrusion Detection Systems to Protect Satellite net -
+works. J Netw Syst Manag. 2023;31:82. https:// doi. org/ 10. 1007/ s10922- 023- 09767-8.
+ 47. Zumel A, Nina B, Mount J. Ytreat: a data.frame Processor for Predictive Modeling. J Open-Source Software. 2018; 3:23. https:// doi. org/ 10. 
+48550/ arXiv. 1611. 09477
+ 48. Baena-Garc´ıa M, et al. Early Drift Detection Method. 4th ECML PKDD Int. Work.Knowl. Discov. from Data Streams. 2006; 6: 77–86.
+ 49. Xiao Y, Kang C, Yu H, Fan T, Zhang H. Anomalous network traffic detection method based on an elevated harris hawks optimization method 
+and gated recurrent unit classifier. Sensors. 2022;22(19):7548. https:// doi. org/ 10. 3390/ s2219 7548.
+ 50. Alamiedy TA, Anbar M, Alqattan ZN, Alzubi QM. Anomaly based intrusion detection system using multi-objective grey wolf optimisation 
+algorithm. J Ambient Intell Hum Comput. 2020;11:3735–56. https:// doi. org/ 10. 1007/ s12652- 019- 01569-8.
+ 51. Kishwar S, Jabeen S. Intrusion detection based on autoencoder and isolation forest in fog computing. IEEE Access. 2020;8:167059–68. 
+https:// doi. org/ 10. 1109/ ACCESS. 2020. 30228 55.
+ 52. Manimurugan S. IoT-fog-cloud model for anomaly detection using improved naïve bayes and principal component analysis. J Ambient 
+Intell Human Comput. 2021;1:1–10. https:// doi. org/ 10. 1007/ s12652- 020- 02723-3.
+ 53. Ayyadevara VK. Gradient boosting machine. In: Pro Machine Learning Algorithms. Berkeley, CA: Apress. 2018. https:// doi. org/ 10. 1007/ 
+978-1- 4842- 3564-5_6
+ 54. Kasongo SM, Sun Y. Performance analysis of intrusion detection systems using a feature selection method on the UNSW-NB15 Dataset. 
+J Big Data. 2020;7:105. https:// doi. org/ 10. 1186/ s40537- 020- 00379-6.
+ 55. Chen J, Sathe S, Aggarwal C, Turaga D. Outlier detection with autoencoder ensembles. Proceedings of the 2017 SIAM International Con-
+ference on Data Mining. 2017; 90–98. https:// doi. org/ 10. 1137/1. 97816 11974 973. 11
+Publisher’s Note Springer Nature remains neutral with regard to jurisdictional claims in published maps and institutional affiliations.

@@ -1,0 +1,1312 @@
+Journal of Computer Virology and Hacking Techniques (2025) 21:9
+https://doi.org/10.1007/s11416-025-00549-1
+RESEARCH
+A method for smart grid intrusion detection through explainable deep
+learning
+Giovanni Ciaramella 1,2 · Fabio Martinelli 3 · Antonella Santone 4 · Francesco Mercaldo 2,4
+Received: 2 October 2024 / Accepted: 26 March 2025 / Published online: 5 May 2025
+© The Author(s) 2025
+Abstract
+Over the years, cyber-attacks have increased drastically, and their execution changed with time. One of the targets of cyber
+criminals is trying to obtain sensitive information from mobile, cloud, or generally IoT devices. To avoid those risks, different
+countermeasures have been developed and implemented. For instance, the IEC 60870-5-104 protocol was developed to deﬁne
+the systems used for remote control in electrical engineering and power system automation applications. Starting from these
+considerations, in this paper, we propose an intrusion detector based on explainable Deep Learning (DL) that is able to
+detect possible attacks. In a nutshell, we consider several DL models, i.e., AlexNet, DenseNet, EfﬁcientNet, Inception, LeNet,
+MobileNet, ResNet50, Standard CNN, VGG16, and VGG19 to understand whether a network trace (stored in a PCAP ﬁle) is
+related to an attack. Moreover, to explain of the model attack prediction, we resort to two different Class Activation Mapping
+algorithms available in the literature: Grad-CAM++ and Score-CAM. As the last step, we also calculated the IF/IM-SSIM
+index to strengthen the robustness of the top-performing model and evaluate the similarity between the two CAM algorithms.
+Experimental results show the effectiveness of the proposed method, and we obtained an accuracy equal to 0.900 with the
+DenseNet. In conclusion, we applied the exact steps to a new dataset to conﬁrm that the proposed methodology is scalable
+and applicable to other datasets and achieved promising results.
+Keywords Smart grid · Deep learning · Intrusion · Security
+1 Introduction
+During the last few years, the number of cyber-attacks has
+drastically increased. As a matter of fact, companies have
+become targets for cyber-criminals, and only a small number
+B Giovanni Ciaramella
+giovanni.ciaramella@iit.cnr.it;
+giovanni.ciaramella@imtlucca.it
+Fabio Martinelli
+fabio.martinelli@icar.cnr.it
+Antonella Santone
+antonella.santone@unimol.it
+Francesco Mercaldo
+francesco.mercaldo@unimol.it
+1 IMT School for Advanced Studies Lucca, Lucca, Italy
+2 Institute for Informatics and Telematics, National Research
+Council of Italy, Pisa, Italy
+3 Institute for High Performance Computing and Networking,
+Rende, Italy
+4 University of Molise, Campobasso, Italy
+of them are ready to combat them. One of the most impor-
+tant aspects of awareness is the human factor, which is a real
+danger for companies. As declared in a report published in
+2023 by Infosecurity Magazine 1, phishing encounters have
+increased every quarter since Q2 2020, and the number of
+employees who click on malicious links also rose from 1.6%
+in 2020 to 11.8% in 2022. One of the possible consequences
+of a phishing attack could be the introduction of ransomware
+in the companies’ environment. With this type of malware,
+attackers get access to sensitive information to demand a
+ransom, and all data may be published if the latter is not deliv-
+ered within a speciﬁc time frame. As reported by Cybercrime
+Magazine
+2, in the enterprise sector, one ransomware assault
+occurred every 11 seconds in 2021, and the frequency of these
+attacks on governments, corporations, individuals, and gad-
+gets is predicted to increase over the next ﬁve years, reaching
+every two seconds in 2031. The spread of mobile, cloud, and
+1 https://www.infosecurity-magazine.com/news/record-number-of-
+mobile-phishing/
+2 https://cybersecurityventures.com/global-ransomware-damage-
+costs-predicted-to-reach-20-billion-usd-by-2021/
+123
+
+9 Page 2 of 20 G. Ciaramella et al.
+IoT (Internet of Things) devices has also increased the type of
+attacks that can be executed. In particular, regarding the IoT,
+thanks to the innovation, different beneﬁts have been added
+in the Industrial Internet of Things (IIoT) area. The main dif-
+ference between IoT and IIoT is the application context: the
+ﬁrst refers to a broad network of interconnected devices and
+sensors that communicate and share data over the internet,
+not limited to any speciﬁc industry. At the same time, the
+IIoT concentrates on the application of IoT technologies in
+the industrial environment. Security is critical in the Indus-
+trial IoT due to the enormous amount of sensitive data that
+can be retrieved fraudulently, such as industrial processes
+and economic factors [ 1]. Over the years, researchers and
+experts in this ﬁeld have introduced various countermeasures,
+including real-time monitoring, pervasive control, and self-
+healing, to address the challenges and enhance the resilience
+of systems. While these methods offer some protection, they
+often lack robustness and fail to provide explainable mod-
+els that can explain the reasoning behind their decisions
+Additionally, many traditional methods struggle to adapt to
+emerging and evolving threats, making them less effective
+in dynamic, high-stakes environments This highlights the
+need for advanced solutions that enhance security and offer
+transparency and adaptability, ensuring that detection sys-
+tems can reliably respond to new and unknown threats. In
+detail, one of the most common regulations introduced in the
+industrial ﬁeld is the IEC 60870-5-104 protocol. The
+latter guarantees safe and secure communication between
+critical systems used in electricity grids like smart grids and
+industrial healthcare systems. The concept smart-grid was
+introduced in 2007 to solve one of the biggest problems of
+the new millennium: environmental problems In detail, the
+term smart grid stems from the requirement to supply power
+to a speciﬁed spot in an intelligent and automated manner [2].
+Its importance and wide deployment make the smart grid one
+of the cyberattacks conducted by cybercriminals. The latter
+can perform a different type of attack like Denial of Service
+(DoS), Distributed DoS (DDoS), and general tempering of
+critical data in sensors to damage the principal elements of the
+cybersecurity i.e., Conﬁdentiality, Integrity, and Availability
+(CIA) [3].
+In this paper we propose an intrusion detector based on
+Deep Learning (DL) to avoid the possible threat above men-
+tioned. For this purpose, we train and evaluate different DL
+architectures (i.e., AlexNet, DenseNet, EfﬁcientNet, Incep-
+tion, LeNet, MobileNet, ResNet50, Standard CNN, VGG16,
+and VGG19) , employing two datasets published on the
+web composed of PCAP (Packet Capture) ﬁles. In detail,
+the ﬁrst employed dataset , named "IEC 60870-5-104 Intru-
+sion Detection Dataset", was generated by simulating using
+the IEC TestServer and validated with two real Remote Ter-
+minal Unit (RTU) devices. The second dataset, called "TII
+SSRC 23", contains less data if compared to the ﬁrst one and
+was used to verify the scalability of the proposed method.
+Both datasets are composed of captured packet that we con-
+verted into images using a Python script written by the
+authors. At the end of the training and test phases, we also
+applied two different CAM algorithmsi.e., GradCAM++ and
+ScoreCAM to highlight which areas of an image are most dis-
+tinctive for model prediction. In addition, we also computed
+the similarity between the obtained images by employing
+the IF/IM-SSIM (Integrated Framework for Image Quality
+Assessment) index. The main contribution of this manuscript
+lies in leveraging explainability to develop a model that
+provides clear explanations for classifying a sample into a
+speciﬁc category. Additionally, to enhance the robustness of
+the best-performing model and assess the similarity between
+the two CAM algorithms, we evaluated the index using the
+IF/IM-SSIM index on RGB images. To the best of our knowl-
+edge, this article is the ﬁrst to propose a smart grid anomaly
+detection method that also considers robustness.
+The paper proceeds as follows: in the next section we
+report the current state-of-art literature about the intrusion
+detection in the IIoT ﬁeld. The steps of the method employed
+are introduced in Sect. 3, while Sect. 4 presents the results
+of the experimental analysis. Finally, in the last section, con-
+clusion and future research plan are presented.
+2 Related work
+The technological advances allowed the identiﬁcation of
+multiple mitigations to different possible attacks that mali-
+cious users can exploit to perform malicious actions. In
+Sect. 2.1, we provide an overview of research papers pub-
+lished in the Smart Grid Security ﬁeld, while in Sect. 2.2,
+we review the studies published in the IIoT ﬁeld. In Table
+1, we discuss a schematic literature review to facilitate com-
+parisons with papers featuring diverse studies, methods, and
+results.
+2.1 Smart grid security
+In [ 4], authors presented Secure and PrivatE smArt gRid
+(SPEAR) architecture, which forms a comprehensive solu-
+tion to safeguard the Smart Grid against cyber threats,
+ensuring the conﬁdentiality, integrity, and availability of grid
+operations and data. In detail, Grammatikis et al. deﬁned
+the technical information and speciﬁcations of the proposed
+architecture considering the relevant privacy issues and the
+EU legislation. Moreover, researchers emphasize the need
+for robust security measures due to smart grids’ increasing
+complexity and vulnerability.
+Authors in [5] present an architecture to achieve the secu-
+rity and resilience of Smart Grids using Software-Deﬁned
+Networking (SDN), which is capable of addressing both
+123
+
+A method for smart grid intrusion detection through explainable deep learning Page 3 of 20 9
+Table 1 State-of-the-art comparison in the ﬁeld of intrusion detection
+Reference Y ear D.C. Technology XAI IF/IM-SSIM ACC.
+Niu et al. [ 7] 2019 Raw Data Machine Learning No No >0.900
+El el at. [ 8] 2019 Raw Data Machine Learning No No 0.995
+Song et al. [ 9] 2021 Raw Data Machine Learning, Genetic Algorithm No No 0.892
+Khan et al. [ 10] 2021 Raw Data Hybrid No No 0.978, 0.969
+Radoglou et al. [ 11] 2021 Raw Data Machine Learning No No 0.817, 0.813
+A l a n ie ta l .[12] 2022 Raw Data Machine Learning No No 0.996
+AlHaddad et al. [ 13] 2023 Raw Data Hybrid No No 0.998
+Herzalla et al. [ 14] 2023 Raw Data Machine Learning No No >0.997
+Khan et al. [ 15] 2024 Raw Data Machine Learning Y es No 0.992
+Hore et al. [ 16] 2024 Raw Data Trasnsfer Learning No No 0.985
+Du et al. [ 17] 2025 Raw Data Machine Learning Y es No >0.75
+Gulzar et al. [ 18] 2025 Raw Data Hybrid No No 0.998
+Our Method 2025 Images Deep Learning Y es Y es 0.900, 1.000
+D.C. Dataset Composition, XAI Explanability, ACC Accuracy
+cybersecurity and fault tolerance. The proposed architecture,
+in particular, comprises of a centralized control layer where
+SDN controllers efﬁciently manage data ﬂow and network
+policies. Data forwarding based on the instructions from
+the controllers takes place at the data layer represented by
+SDN switches and communication infrastructure beneath it.
+Lastly, at its topmost section, the application layer houses
+tools for real-time monitoring, security, and resilience that
+enable the grid to detect threats, isolate faults and initiate
+automated self-healing processes.
+In [ 6], researchers proposed an integrated platform to
+improve the security and resilience of smart grids. The
+ELECTRON framework monitors risks dynamically by
+continuously assessing, in real-time, possible threats and
+responding to them. This is an asset certiﬁcation for grid com-
+ponent veriﬁcation and trust, federated intrusion detection for
+collaborative threat detection, and SDN mitigation for cyber
+response capabilities. The platform also enables proactive
+islanding to effectively isolate network sections and mitigate
+threats, creating secure nanogrids or microgrids. Moreover,
+it emphasizes cybersecurity training programs and certiﬁca-
+tions that can be used to boost the competence levels of grid
+personnel.
+2.2 Intrusion detection
+Researchers in [ 7] presented a framework to detect injected
+data in a smart grid. In their study, researchers meticu-
+lously utilized a Convolutional Neural Network (CNN) and
+a Long Short-Term Memory (LSTM) network, achieving
+an impressive accuracy exceeding 0.900. This robust per-
+formance convincingly demonstrates the applicability and
+effectiveness of Deep Learning techniques within intrusion
+detection. We didn’t use the LSTM network differently from
+them, but we focused on the different state-of-the-art Deep
+Learning architectures, applying the best two different CAM
+algorithms.
+In [ 8], researchers illustrate a Machine Learning-based
+intrusion detection system able to prevent with an accuracy
+of 0.995 possible cyber-attacks in the smart-grid ﬁeld. In
+detail, the authors employed a dataset (148,481 samples)
+composed of scanning, buffer overﬂow, denial of service, and
+other attacks. Distinct from them, even though we reached
+a lower accuracy value, we also proposed using of explain-
+ability, aiming to understand which areas of the images are
+more relevant to obtain a certain prediction. In addition, we
+employed the IF/IM-SSIM index to calculate the similarity
+index between the CAM algorithms.
+Authors in [ 9] proposed a novel intrusion detection
+method that combines XGBoost and LSTM. To optimize
+the methodology, Song et al. introduced a Bayesian-based
+method to optimize the parameters of XGBoost and a
+crossover scheme in a genetic algorithm (GA) to reduce
+the impact of falling into a local optimum of Bayesian opti-
+mization. Different from them, which utilized a big dataset
+composed of 140,000 samples, obtaining 0.892 in accuracy,
+we employed a small dataset with an accuracy value of 0.870.
+In [ 10] proposed a method to detect cyberattacks in
+power networks, ensuring data privacy. In detail, the pro-
+cess detects malicious behaviors to prevent or mitigate
+damage and identiﬁes speciﬁc attack types, achieving inter-
+esting results in accuracy. Moreover, the presented method
+ensures data integrity and conﬁdentiality, addressing con-
+cerns about sharing sensitive information during detection.
+Different from them, in our proposed method, we obtained
+images from a PCAP ﬁle using a Python tool written by
+123
+
+9 Page 4 of 20 G. Ciaramella et al.
+the author. Furthermore, we trained, evaluated, and tested
+several state-of-the-art architectures. We applied two CAM
+algorithms for the best-performing model to understand the
+reasoning behind speciﬁc predictions better. Additionally, we
+calculated the index using the IF/IM-SSIM index to ensure
+robustness and reliability.
+Researchers in [11] introduced an intrusion detector focus-
+ing their attention on the IEC 60 870-5-104 protocol.
+In addition, they also provide a quantitative threat model,
+which relies on Attack Defence Trees and Common Vulner-
+ability Scoring System v3.1. The dataset employed in this
+research article is the same used in our method but with
+several differences. Unlike them, we converted the PCAP
+ﬁles into images using a Python script we wrote to train
+and test several Deep Learning models. Moreover, differ-
+ent from Radoglou-Grammatikis et al., we decided to use a
+diverse classiﬁcation i.e., "attack" and "warning" proposing
+the usage of explainability to identify the most interesting
+areas for the classiﬁcation. In conclusion, the researchers in
+this study found that the Decision Tree Classiﬁer yielded the
+highest accuracy, with values of 0.817 and 0.831. However,
+when utilizing a different dataset composition and employing
+novel techniques such as converting PCAP ﬁles into images,
+a notably higher accuracy of 0.870 was attained.
+Authors in [12] presented a machine-learning-based frame-
+work to detect intrusion, achieving a higher accuracy value of
+0.996. The dataset employed by Alaniet al. contains 461,043
+records extracted from network ﬂow features (300,000
+benign and 161,043 malicious ﬂows). Moreover, they used
+several machine-learning classiﬁers such as Random Forest,
+Logistic Regression, Decision Tree, and Gaussian Naive-
+Bayes. Differently from them, we converted raw ﬁles (with
+PCAP extension) employing a Python script written by the
+authors. Due to the small data, we needed to generate syn-
+thetic images (using augmentation), reaching an accuracy
+value of 0.900. Furthermore, to demonstrate that the proposed
+methodcan be applied to other datasets, we re-executed the
+same steps over another small dataset, obtaining good accu-
+racy values over ten different Deep Learning architectures.
+In [13], authors presented an intrusion detection for smart-
+grid to avoid DoS attacks. In detail, researchers employed a
+hybrid deep-learning approach using two different datasets
+i.e., Intrusion Detection System dataset from the Canadian
+Institute for Cybersecurity and a custom dataset generated
+using the Omnet++ simulator. The experiments performed
+reached an optimal accuracy rate of 0.998. Distinct from
+them, our study utilized a distinct dataset encompassing the
+DoS attack and the MITM attack. Moreover, the dataset
+employed in AlHaddad et al. was composed of 50,000
+divided into DoS attacks and legal trafﬁc. In our case, we
+reached a lower accuracy due to the dataset limitation i.e.,
+2,000 samples divided into 1,000 for DoS and MITM attacks
+and 1,000 for legitimate commands that can also be employed
+to exploit attacks.
+In [ 14], the authors introduced the TII-SSRC-23 dataset
+that we employed in this manuscript to show that the
+methodology proposed can be applied to multiple datasets
+composed of PCAP ﬁles. In that research article, Herzalla
+et al. conducted an in-depth analysis to identify critical fea-
+tures for intrusion detection tasks. Moreover, they employed
+a machine-learning approach to effectuate binary and mul-
+ticlass classiﬁcation, achieving interesting results. Unlike
+them, in our paper, we propose only binary classiﬁcation
+using a Deep Learning technique. Furthermore, we converted
+the raw data into images, applying the augmentation tech-
+nique to obtain more samples to train and test ten different
+state-of-the-art architectures.
+Khan et al. in [15] proposed a method SRU-based solution
+to dynamically aggregate behaviors or contributions from
+multiple collaborators, ensuring ﬂexibility and adaptability
+in varying collaboration scenarios. Moreover, the authors
+proposed explainability to understand which features are
+more discriminative for a certain prediction. As a result, the
+proposed method achieved interesting results in accuracy,
+demonstrating strong performance in collaborative environ-
+ments, making it suitable for real-world applications. Unlike
+them, we employed a dataset of PCAP ﬁles converted into
+images. Moreover, once we identiﬁed the best model, we
+applied explainability but highlighted areas of images that
+allowed the model to perform a certain prediction.
+Researchers in [16] presented a method for network intru-
+sion detection using a transfer learning technique using a
+combination of neurons and layers to improve the frame-
+work’s robustness. In detail, they employed several public
+datasets composed of PCAP ﬁles. Moreover, the authors
+extracted the ﬁles using a method already in the state-of-
+the-art. As a result, they achieved interesting results, where
+Hore et al. achieved an accuracy value of 0.985 in detecting
+various attacks. Different from the, we converted raw data
+i.e., PCAP ﬁles into images employing a Python script writ-
+ten by the authors. Moreover, we also took into consideration
+the robustness of the models. For this reason, as the ﬁrst step,
+we applied two different CAM algorithms, and then we eval-
+uated the robustness by calculating the IF/IM-SSIM index.
+In [ 17], researchers presented a method for intrusion
+detection based on machine learning. In detail, they employed
+the Random Forest classiﬁer to perform experiments using
+PCAP ﬁles. Moreover, once the training and test phases were
+concluded, they also performed explainability to identify the
+features most distinct for a certain prediction. Unlike them,
+we employed a deep learning approach, converting raw data
+into images using a Python script written by the authors.
+Moreover, to identify the best model, we performed several
+experiments leveraging different architectures that belong to
+the state-of-the-art. After completing the training, validation,
+123
+
+A method for smart grid intrusion detection through explainable deep learning Page 5 of 20 9
+and test phases, we applied two CAM algorithms to identify
+the areas of the images most relevant for making speciﬁc
+predictions. To further validate the robustness of the model,
+we also calculated the IF/IM-SSIM index.
+In [ 18], researchers presented a hybrid learning model
+named DeepCLG to identify intrusion in network systems.
+In detail, they combined the Convolutional Neural Network,
+the Long Short-Term Memory, and the Gated Recurrent Unit
+with the Capsule Network using two state-of-the-art datasets,
+achieving interesting results in accuracy and Matthew’s Cor-
+relation Coefﬁcient. Unlike them, only CNNs comparing
+nine different architectures available in the literature have
+been trained using images retrieved from raw data. The latter
+phase was possible thanks to a Python script written by the
+authors. Moreover, we also applied explainability using two
+different Class Activation Maps algorithms and then calcu-
+lated IF/IM-SSIM for robustness.
+As emerges from the state-of-the-art discussion, the pro-
+posed method represents the only contribution in current
+literature aimed at proposing explainability in smart grid
+anomaly detection by also considering robustness; as a matter
+of fact, the adoption of several CAM algorithms enable the
+computing of the index, aimed to assess if different CAMs
+highlight the same area on PCAP ﬁles.
+3 The method
+This Section provides an overview of the proposed method
+to identify attacks and warnings to exploit dangerous actions
+against the smart grid. In the proposed method, we converted
+PCAP ﬁles belonging to the attack and possible attacks. After
+this phase, we trained and tested ten Convolutional Neural
+Networks to classify the images obtained and to identify the
+areas of the image responsible for a speciﬁc prediction using
+two different CAM algorithms. As a ﬁnal step, we re-ran all
+the steps using a different dataset to validate the process and
+conﬁrm the scalability of the approach. Figure 1 illustrates
+the proposed method.
+3.1 Network analysis and image generation
+We experiment with a datasets composed of PCAP ﬁles i.e.,
+ﬁles generated by Wireshark 3 network analysis tool con-
+taining captured network data. Each PCAP ﬁle has been
+subsequently converted into image. In Listing 1 we report
+the pseudo-code of the script we developed for image gen-
+eration starting from PCAP ﬁles: it allows to obtain four
+images from each ﬁle submitted ensuring that the ﬁle’s data
+size matches a speciﬁc target size. In case of smaller size,
+3 https://www.wireshark.org/
+it pads it with zeros, otherwise it trims the data to the tar-
+get size. As next step, the reshaped data is divided into four
+equal quadrants (top-left, top-right, bottom-left, and bottom-
+right). Each quadrant is converted into an RGB image and
+then saved.
+for each file in folder_files:
+if file ends with ".pcap":
+if file_size < image_size * image_size * 4:
+pad data with zeros to reach image_size * image_size * 4
+trim data to exactly image_size * image_size * 4 elements
+reshape data to image_size x image_size x 4
+height, width, channels = shape of data
+new_height = height - (height % 2)
+new_width = width - (width % 2)
+crop data array to new_height x new_width x channels
+half_height = new_height // 2
+half_width = new_width // 2
+part1 = data[:half_height, :half_width, :]
+part2 = data[:half_height, half_width:, :]
+part3 = data[half_height:, :half_width, :]
+part4 = data[half_height:, half_width:, :]
+create PIL image from each part using color_mode
+save each image
+end if
+end if
+end for
+Listing 1: Script in pseudo-code employed to create a set of
+four images from a each PCAP ﬁle
+Using this approach, which generates four images from a
+single PCAP ﬁle, we were able to partially address the chal-
+lenge of the limited number of PCAP ﬁle samples and the
+insufﬁcient number of packets shared during communica-
+tion. Speciﬁcally, after obtaining the data and storing it in a
+Python array, the array was divided into four parts, and an
+image was generated for each of these sub-arrays. Figure 2
+presents three samples from the IEC 60870-5-104 Intrusion
+Detection Dataset, while Fig. 3 shows one sample from each
+class in the TII-SSRC-23 dataset.
+3.2 Dataset
+In machine learning, the adoption of a good dataset results
+is necessary to obtain good outcomes. In this paper, we
+employed a set of data provided on the web about intru-
+sion detection named "IEC 60870-5-104 Intrusion Detection
+Dataset"
+4. The original dataset compries several PCAP and
+CSV of three main labels: DoS attacks, MITM attacks,
+and a set of legitimate commands employed fraudulently.
+These attacks were simulated using IEC TestServer and vali-
+dated with two actual Remote Terminal Unit (RTU) devices,
+4 https://zenodo.org/records/7108614
+123
+
+9 Page 6 of 20 G. Ciaramella et al.
+Fig. 1 The proposed method for
+intrusion detection
+Fig. 2 Samples of three
+different types of samples
+obtained after the conversion of
+PCAP ﬁles belonging to the IEC
+60870-5-104 Intrusion
+Detection Dataset
+highlighting the signiﬁcance of testing and validating in a
+controlled environment. The International Electrotechnical
+Commission (IEC) standards ensure compatibility and reli-
+ability in industrial control systems, while RTUs are critical
+in monitoring and controlling various processes within these
+systems. To conﬁrm the truthfulness of the methodology
+proposed, we also employed a second dataset named "TII-
+SSRC-23" which is reachable online
+5. The latter comprises
+of eight trafﬁc types (audio, background, text, video, brute-
+force, DoS, information gathering, botnet) and 32 subtypes
+across both benign and malicious categories.
+5 https://www.kaggle.com/datasets/daniaherzalla/tii-ssrc-23
+3.3 Experiments
+In this Section, we overview of the architecture we employed.
+In Paragraph 3.3.1, we provide a detailed overview of the
+various architectures utilized, highlighting the speciﬁc hyper-
+parameters employed. Additionally, in Paragraph 3.3.2,w e
+present the explainability algorithms adopted to understand
+the methods used.
+3.3.1 Classiﬁcation
+Once we had acquired the ﬁnal dataset, we conducted
+several experiments to obtain the optimal model to dis-
+123
+
+A method for smart grid intrusion detection through explainable deep learning Page 7 of 20 9
+Fig. 3 Samples of two different
+types of samples obtained after
+the conversion of PCAP ﬁles
+belonging to the TII-SSRC-23
+dataset
+tinguish attacks and possible attacks. To achieve the lat-
+ter, we employed ten distinct Deep Learning architectures
+i.e., AlexNet, DenseNet, EfﬁcientNet, Inception, LeNet,
+MobileNet, ResNet50, Standard CNN, VGG16, and VGG19.
+Below, an overview of each architecture employed is fur-
+nished:
+• AlexNet: In [19], authors presented an architecture com-
+posed of eight layers. In detail, ﬁve consist of the
+combination of max pooling and fully connected lay-
+ers, while the remaining three and the output layer use a
+Relu activation. The latter was employed to increase the
+training process speed to avoid the gradient fading away
+from the problem and have high calculation efﬁciency.
+• DenseNet: was introduced in 2018 and stands for
+Densely Connected Convolutional Networks. This archi-
+tecture links each layer to every other layer in a feed-
+forward fashion and is employed in different ﬁelds
+like image classiﬁcation, object detection, and seman-
+tic segmentation. Over the years, have been released
+several versions of this architecture i.e., DenseNet-121,
+DenseNet-169, DenseNet-201, and DenseNet-264. The
+main difference between these versions is the number of
+layers and parameters.
+• EfﬁcientNet: designed by Google in [ 20], this archi-
+tecture achieves high-performance accuracy with sig-
+niﬁcantly fewer parameters and FLOPs. EfﬁcientNet is
+widely adopted in ﬁelds like image classiﬁcation, object
+detection, and transfer learning tasks. The architecture
+introduces a novel scaling method, known as compound
+scaling, to uniformly scale network dimensions, leading
+to better accuracy and efﬁciency.
+• Inception: Inception v3 is a Convolutional Neural Net-
+work architecture introduced by researchers at Google in
+2016 [ 21]. Several ﬁelds, such as image classiﬁcation,
+object detection, and feature extraction adopt Inception
+architecture. Moreover, it uses Inception modules for
+capturing features at different scales, employs factorized
+convolutions for efﬁciency, includes auxiliary classiﬁers
+to aid training stability, incorporates batch normalization
+for faster training, and is often used in transfer learning
+with pre-trained models on large datasets like ImageNet.
+• LeNet: This architecture was presented for the ﬁrst time
+in 1998 in [ 22] and represents one of the earliest Con-
+volutional Neural Networks. The latter was developed to
+classify handwritten digits while currently employed to
+perform simple tasks. This network consists of two con-
+volution layers, two sub-sampling levels, two fully linked
+layers, and an output layer with a Gaussian connection.
+• MobileNet: is based on depthwise separable convolu-
+tions, with a single ﬁlter applied to each input channel,
+and was Google introduced in 2017 [ 23]. This intro-
+duction helped solve several problems, such as the
+computation and model size. In detail, the input is split
+into two layers: one is aimed to ﬁlter and separate, while
+the second allows the creation of a linear combination of
+the output of the depthwise layer.
+• ResNet50: was introduced in 2016 by the research group
+of Microsoft [ 24]. ResNet50, where 50 is the number
+of layers that compose it, consists of a stack of residual
+blocks, each containing multiple convolutional layers. In
+addition, this architecture includes global average pool-
+ing and fully connected layers for classiﬁcation. The main
+innovation proposed by ResNet50 is the introduction of
+residual learning i.e., a technique to train deep neural
+networks.
+• Standard CNN : Different Convolutional Neural Net-
+works have been presented in the state-of-the-art since
+their introduction. All of them are based on the same prin-
+ciple of the convolution ﬁlter called kernel. The latter is
+123
+
+9 Page 8 of 20 G. Ciaramella et al.
+applied to the pixel matrix that composes the image on the
+three RGB levels. This architecture is composed of the
+following layers: Convolutional, Maxpooling, Dropout,
+and Dense layers;
+• Visual Geometry Group 16 : Introduced in 2014 [ 25]
+VGG16 (Visual Geometry Group 16) helped to solve
+different classiﬁcation problems in several domains. It
+comprises of several convolution layers, each one with
+a 3x3 ﬁlter and Maxpool layers considering a 2x2 ﬁlter.
+The last model comprises of 2 fully connected ( Dense)
+layers with a softmax activation to perform the classiﬁ-
+cation task.
+• Visual Geometry Group 19 : The VGG19 architecture
+is the boosted version of VGG16 in terms of layers.
+Although the previous version was composed of 16 lay-
+ers (two of them fully connected), in this version, Oxford
+researchers introduced a network composed of 19 layers:
+sixteen convolutional layers and three fully connected
+ones.
+Table2 shows the best hyper-parameters used to obtain the
+best results in terms of loss and accuracy on the A dataset.
+Moreover, we also employed the same hyper-parameters to
+train the B Dataset to compare the outcomes acquired. In
+detail, we decided to use a not-too-small number of epochs
+to close the smaller amount of samples. The image size of
+110x3 pixels was maintained uniformly across all experi-
+ments, simplifying the outcomes’ comparison. Regarding the
+batch size and learning rate, we employed only two variants:
+30 and 64 for the batch size, while 0.0001 and 0.0003
+for the learning rate.
+3.3.2 Explainability
+In the ﬁnal stage of the proposed method, we employed two
+distinct Class Activation Mapping algorithms i.e., Gradient-
+weighted Class Activation Mapping (Grad-CAM) and Score-
+weighted Class Activation Mapping (Score-CAM).
+Selvaraju et al. introduced the Grad-CAM algorithm in
+[26], which uses gradients of the output class concern-
+ing convolutional feature maps to understand how each
+feature map contributes to the model’s prediction. Grad-
+CAM computes the gradients of the target class concerning
+the feature maps from the last convolutional layer. These
+gradients indicate the importance of each feature map in
+predicting the target class. By averaging these gradients
+across the feature maps, weights are assigned to each fea-
+ture map channel. A weighted sum of the feature maps is
+then computed, followed by a ReLU operation to retain only
+positive contributions, resulting in a heatmap highlighting
+the regions most important for the model’s decision. The
+other CAM algorithm employed is Score-weighted Class
+Activation Mapping, introduced in 2020 [27]. This algorithm
+represents an improvement of Grad-CAM and allows for
+addressing some limitations, particularly the reliance on gra-
+dients. In fact, Score-CAM generates class activation maps
+by leveraging the output scores of a CNN rather than gradi-
+ents. Moreover, the weighted feature maps are combined to
+highlight regions important for the prediction without relying
+on gradients. Despite Gradient-weighted Class Activation
+Mapping, Score-CAM is more expensive, requiring multi-
+ple forward passes for each feature map.
+In conclusion, we also applied the IF/IM-SSIM index to
+compare images by providing a score that indicates their
+similarity using the algorithm proposed by Wang et al. in
+[28] named Structural Similarity Index Measure (SSIM)
+algorithm. In detail, we calculated Information Fidelity
+(IF-SSIM) using the same CAM algorithm. Moreover, to
+compare and provide robustness, we calculated the IM-SSIM
+by comparing both Class Activation Map algorithms. For
+reproducibility purposes, Listing 2 reports the pseudocode
+of the code used.
+from skimage.metrics import structural_similarity as calculate_ssim
+Function sub_ifssim(list combs, Lock lock, list avg_fam):
+For each (h1, h2) in combs:
+Load heatmaps, resize if needed, compute SSIM
+Lock and update avg_fam
+Function IFIM_SSIM(arguments args):
+Validate and retrieve model folders
+Print "IF-SSIM per model and class"
+For each folder:
+For each class:
+Retrieve heatmaps, limit to 50 if needed
+Compute pairwise SSIM in parallel
+Print average SSIM score
+Print "IM-SSIM per model comparison"
+For each model pair:
+Validate shared classes
+Select base model (fewer samples)
+For each class in base model:
+Retrieve heatmaps from both models
+Compute SSIM for matching samples
+Print final SSIM scoreListing 2: Script in pseudo-code employed to calculate
+IF/IM-SSIM index.
+4 Results
+In this section, we illustrate the results obtained after the test
+phase. In detail, Sect. 4.1 shows the outcomes of the models
+obtained, while the results obtained after the CAM algo-
+rithms in Sect. 4.2 are discussed. The experiments reported
+in this research article have been executed using the follow-
+ing hardware and software characteristics: Intel Xeon Gold
+6140M CPU at 2.30GHz, 64GB RAM, and Ubuntu 22.04.01
+LTS distro as Operating System. For replication purposes, we
+provide the link to the software used to conduct the experi-
+ments reported in this section: https://github.com/vigimella/
+tami
+123
+
+A method for smart grid intrusion detection through explainable deep learning Page 9 of 20 9
+Table 2 Hyperparamters
+adopted to train models Model Epochs Image size Batch size Learning rate Dataset A Dataset B
+Execution time
+HH:MM:SS HH:MM:SS
+AlexNet 35 110x3 32 0.0001 00:09:10 00:02:53
+DenseNet 35 110x3 32 0.0003 00:40:30 00:12:17
+EfﬁcientNet 35 110x3 64 0.0001 00:17:23 00:05:53
+Inception 35 110x3 64 0.0001 00:24:42 00:08:15
+LeNet 20 110x3 32 0.0001 00:01:43 00:00:39
+MobileNet 35 110x3 32 0.0003 00:10:04 00:02:54
+ResNet50 30 110x3 32 0.0003 00:34:26 00:08:52
+Standard CNN 40 110x3 64 0.0001 00:08:02 00:02:06
+VGG16 40 110x3 64 0.0001 01:18:37 00:15:57
+VGG19 40 110x3 32 0.0001 01:30:27 00:15:09
+4.1 Results obtained after experiments execution
+A crucial step in executing experiments is to obtain a dataset.
+As discussed in Sects. 3.1 and 3.2, we employed two differ-
+ent public datasets available online. Both are composed of
+PCAP ﬁles that we converted into images using a Python
+script written by the authors. The latter is shown in List-
+ing 1 and described in Sect. 3.1. Although we retrieved four
+different pictures from each ﬁle, latter’s number remained
+small. Speciﬁcally, on the ﬁrst dataset (in this manuscript
+labeled as Dataset A), we obtained 548 samples catego-
+rized as "attack" and 440 labeled as "warning". In detail,
+the ﬁrst class comprises two authentic attacks reproduced
+by the researchers in [ 11], namely DoS and MitM. On the
+other hand, the "warning" class comprises potential attacks
+executed through legitimate commands such as read, reset,
+and others. The second dataset (labeled as "Dataset B") was
+composed of two classes named "benign" and "malicious". In
+detail, the ﬁrst consists of six PCAP ﬁles retrieved from fair
+commands mimicking typical network interactions across
+various data types, including video, audio, text, and back-
+ground trafﬁc. The class "malicious" is composed of 27
+PCAP ﬁles belonging to malicious trafﬁc, replicating four
+types of network threats: Denial of Service (DoS) attacks,
+brute-force attacks, information-gathering tactics, and bot-
+net trafﬁc, with a speciﬁc emphasis on the Mirai botnet.
+Due to the small amount of data in total, we also decided to
+employ a technique widely used in artiﬁcial intelligence to
+increase the number of sample i.e., augmentation. The latter
+was used only during the training of the different architec-
+ture taken into account, and in particular, only the horizontal
+and vertical ﬂipping for each image was applied so as not to
+remove any signiﬁcant bit. Thanks to the samples generated,
+we created a well-balanced Dataset A with 1,000 images
+for each category. The "attack" class comprised 548 original
+samples and 452 samples obtained through augmentation,
+while the "warning" class consisted of 440 original sam-
+ples and 560 augmented samples. Unfortunately, the second
+dataset employed was composed of less number of elements.
+Therefore, we increased the total number of samples to 377
+using the augmentation technique. Speciﬁcally, the "benign"
+class comprised 65 samples, while the "malign" class com-
+prised 312 samples. Identiﬁed the two best models for each
+dataset, we evaluated their performances four distinct met-
+rics: Accuracy, Precision, Recall, F-Measure, Speciﬁcity, and
+Matthews Correlation Coefﬁcient.
+The Accuracy represents the fraction of the model able to
+correctly detect the right treatment stages, and it is computed
+as the sum of true positives and negatives divided all the
+evaluated models:
+Accuracy = tp + tn
+tp + fn + fp + tn
+where tn indicates the number of true negatives. The preci-
+sion has been computed as the proportion of the examples that
+truly belong to class X among all those which were assigned
+to the class. It is the ratio of the number of relevant records
+retrieved to the total number of irrelevant and relevant records
+retrieved:
+Precision = tp
+tp + fp
+where tp indicates the number of true positives and fp
+indicates the number of false positives.
+The recall has been computed as the proportion of exam-
+ples that were assigned to class X, among all the examples
+that truly belong to the class, i.e., how much part of the class
+was captured. It is the ratio of the number of relevant records
+retrieved to the total number of relevant records:
+Recall = tp
+tp ∗ fn
+123
+
+9 Page 10 of 20 G. Ciaramella et al.
+Fig. 4 Distribution of Samples
+in Training, V alidation, and Test
+Datasets
+Table 3 Detailed composition
+of datasets for model
+development and evaluation
+Attack Warning
+Training V alidation Test Training V alidation Test
+Dataset A
+Warning – – – 800 100 100
+DoS 323 90 90 – – –
+MitM 25 10 10 – – –
+Augmented samples 452 0 0 560 0 0
+Total 800 100 100 800 100 100
+Benign Malicious
+Training V alidation Test Training V alidation Test
+Dataset B
+Original Samples 10 6 6 42 31 31
+Augmented Samples 43 0 0 208 0 0
+Total 53 6 6 250 31 31
+where tp indicates the number of true positives and fn
+indicates the number of false negatives.
+The F-Measure is a measure of a test’s accuracy. This score
+can be interpreted as a weighted average of the precision and
+recall:
+F-measure = 2 ∗ Precision ∗ Recall
+Precision + Recall
+The speciﬁcity measures the proportion of actual negative
+instances that are correctly predicted as negative.
+Speciﬁcity = tn
+tn + fp
+The Matthews Correlation Coefﬁcient (MCC) measures
+the quality of binary classiﬁcations, considering all four
+outcomes of the confusion matrix: True Positives, True Neg-
+atives, False Positives, and False Negatives. As a result, it
+provides a value in the range between -1 and 1, where 1 indi-
+cates a perfect prediction, 0 is a random prediction, and -1 is
+a perfect incorrect prediction.
+MCC = tp ∗tn − fp ∗ fn
+√ (tp + fp )(tp + fn )(tn + fp )(tn + fn )
+For both datasets created, we employed the same dataset
+splitting i.e., 80-10-10 division (training, validation, and test-
+ing). In this situation, the equilibrium attained by balancing
+the number of samples played a pivotal role. On the ﬁrst
+dataset, we employed 800 images for the architecture train-
+ing, assigning 800 for the training set, 100 for validation,
+and an additional 100 for testing. In detail, during the train-
+123
+
+A method for smart grid intrusion detection through explainable deep learning Page 11 of 20 9
+Table 4 Results obtained after
+test set execution Dataset Model Loss Accuracy Precision Recall F-Measure AUC
+Dataset A 1.226 0.780 0.780 0.780 0.780 0.835
+Dataset B AlexNet 2.562 0.838 0.838 0.838 0.838 0.838
+Dataset A 0.459 0.900 0.900 0.900 0.900 0.947
+Dataset B DenseNet 0 1 1 1 1 1
+Dataset A 0.960 0.635 0.635 0.635 0.635 0.689
+Dataset B EfﬁcientNet 2.532 0.162 0.162 0.162 0.162 0.270
+Dataset A 0.568 0.870 0.870 0.870 0.870 0.916
+Dataset B Inception 0.606 0.946 0.946 0.946 0.946 0.993
+Dataset A 0.693 0.500 0.500 0.500 0.500 0.500
+Dataset B LeNet 0.439 0.838 0.838 0.838 0.838 0.920
+Dataset A 1.532 0.850 0.850 0.850 0.850 0.885
+Dataset B MobileNet 0.005 1 1 1 1 1
+Dataset A 0.822 0.845 0.845 0.845 0.845 0.887
+Dataset B ResNet50 16.379 0.838 0.838 0.838 0.838 0.838
+Dataset A 0.575 0.780 0.780 0.780 0.780 0.867
+Dataset B Standard CNN 0.053 0.973 0.973 0.973 0.973 0.999
+Dataset A 1.298 0.835 0.835 0.835 0.835 0.877
+Dataset B VGG16 0 1 1 1 1 1
+Dataset A 0.693 0.500 0.500 0.500 0.500 0.500
+Dataset B VGG19 0.447 0.838 0.838 0.838 0.838 0.838
+Fig. 5 The accuracy achieved in
+each epoch throughout the
+training and validation stages of
+the DenseNet architecture
+123
+
+9 Page 12 of 20 G. Ciaramella et al.
+Fig. 6 The loss achieved in
+each epoch throughout the
+training and validation stages of
+the DenseNet architecture
+ing phase, the attacks category included 348 original samples
+and 452 augmented samples, whereas the warning class fea-
+tured 240 original samples and 560 augmented samples. In
+Dataset B, we used 303 samples for training, 37 for valida-
+tion, and 37 for testing. The benign samples were divided as
+follows: 53 for training, 7 for validation, and 7 for testing.
+The "malicious" training set consisted of 250 samples, with
+31 samples each for validation and testing. Figure4 illustrates
+the number of samples across the training, validation, and test
+phases for each dataset used. Meanwhile, Table 3 provides
+a more detailed composition of the dataset. Speciﬁcally, it
+reports the number of samples in each phase (training, vali-
+dation, and test), the original sample count for each class, and
+the number of samples generated through data augmentation.
+4.1.1 Results and discussion related to dataset A
+As shown in Table 4, the DenseNet architecture reached the
+best results regarding accuracy and precision (0.900) and a
+loss value of 0.459. Moreover, to obtain that outcome, we
+employed a batch size of 32, 35 epochs, a learning rate of
+0.0003, and an image size of 110x3. Once we retrieved the
+ﬁnal results, we also evaluated the accuracy and loss stages
+during the training and validation phases shown in Figs. 5
+and 6.
+Speciﬁcally, Fig. 5 illustrates the accuracy trend, while
+Fig. 6 depicts the corresponding loss values. In these ﬁgures,
+to provide detailed information, the accuracy/loss values
+attained during training are represented by a red line, while
+the accuracy/loss achieved at each epoch during validation is
+depicted in blue. As can be denoted, the values observed dur-
+ing the training and validation stages exhibit are closer. That
+Fig. 7 Confusion matrix obtained after the testing phase of DenseNet
+means the model has adapted to the dataset, even though
+a substantial portion of the training set comprises samples
+generated through augmentation techniques.
+The confusion matrix, displayed in Fig. 7, presents a
+comprehensive understanding of the classiﬁcation model’s
+efﬁcacy across two distinct classes, namely “attack” and
+“warning”. For the ﬁrst class, the model accomplished 90
+True Positives (TP) and 10 False Negatives (FN), reaching
+an accuracy, precision, recall, F1 score, and an Area Under
+the Curve (AUC) value of 0.900. Regarding the class labeled
+“warning”, the model obtained identical results for each met-
+ric described before. In detail, the model effectively identiﬁed
+123
+
+A method for smart grid intrusion detection through explainable deep learning Page 13 of 20 9
+Fig. 8 The accuracy achieved in
+each epoch throughout the
+training and validation stages of
+the MobileNet architecture
+90 warning samples as True Positive and 10 False Nega-
+tive. Regarding the speciﬁcity, this metric achieved a value
+of 0.900, indicating a high ability of the model to reject neg-
+ative cases correctly. The Matthews Correlation Coefﬁcient,
+which achieved a value of 0.8, suggests the model is perform-
+ing very well overall, with a good balance between correctly
+predicting positive and negative instances. In conclusion,
+other models exhibited lower accuracy values than the model
+described above. Notably, VGG19 and LeNet architectures
+displayed the least favorable outcomes, recording an accu-
+racy value of 0.500.
+4.1.2 Results and discussion related to dataset B
+For the second dataset, “Dataset B”, the MobileNet architec-
+ture achieved the best outcomes. As reported in Table 2,w e
+reached the highest results ( i.e., 1). We employed the same
+hyper-parameters utilized on Dataset A for a more effective
+comparison. In detail, the model was trained on 20 epochs,
+using 32 batch size and a learning rate of 0.0003. Due to the
+small composition of the dataset (377 samples), several archi-
+tectures reached an accuracy value of 1, but most of these had
+overﬁtting. In Deep Learning, this phenomenon occurs when
+a model learns the training data too well, capturing noise and
+details that do not generalize to new, unseen data, resulting in
+poor performance on test datasets. The MobileNet architec-
+ture exhibited slight overﬁtting for a few epochs. As shown in
+Fig. 8, the accuracy trend has been similar for all 35 epochs.
+Furthermore, there is a smooth trend between the training
+(red) and validation (blue) phases in Fig. 9, depicting the
+loss trend. In this case, the trend is different compared to the
+accuracy. Speciﬁcally, the training trend (in red) is lower than
+the validation trend (in blue).
+Figure 10 shows the confusion matrix obtained after the
+test phase on Dataset B. The model achieved perfect scores
+across all metrics for both classes benign and malicious .I n
+detail, it correctly identiﬁed 6 benign samples and 31 that
+belong to a malicious class without any misclassiﬁcations
+on the evaluated samples. The speciﬁcity and MCC met-
+rics reached a value of 1 indicating perfect performances of
+the model. Other models trained and tested achieved values
+slightly lower than perfect in accuracy and precision but con-
+sistently above the threshold of 0.800.
+4.2 CAM application
+Once we identiﬁed the best architectures to obtain a well-
+trained model on the two datasets proposed, we applied two
+different CAM algorithms to the latter as the next step. In
+detail, as explained in Section 3.3.2,w eu s e dG r a d - C A M + +
+and Score-CAM to understand which areas are of more inter-
+est for classiﬁcation purposes. Explainability in deep learning
+has increased trust signiﬁcantly in recent years, enhanced
+model debugging, and provided actionable insights. In detail,
+the usage of this methodology takes on signiﬁcance in critical
+areas like cybersecurity, where it is possible to interpret the
+model, making it more reliable, understandable, and adapt-
+able to evolving threats. Moreover, we also compared the
+123
+
+9 Page 14 of 20 G. Ciaramella et al.
+Fig. 9 The loss achieved in
+each epoch throughout the
+training and validation stages of
+the MobileNet architecture
+Fig. 10 Confusion matrix obtained after the testing phase of MobileNet
+heatmaps obtained by employing the IF/IM-SSIM index.
+After implementing CAM, we retrieved a series of PNG
+images with the activation map overlaid onto the original
+image. These heatmaps are color-coded to represent three
+different levels of signiﬁcance: yellow, green, and blue. More
+precisely, blue-shaded regions signify lesser relevance to the
+model. Conversely, the model demonstrates interest in the
+yellow-highlighted portions of the image. Meanwhile, green
+areas serve to emphasize central regions.
+4.2.1 Discussion related to dataset A
+On Dataset A, the results obtained from the CAM algo-
+rithms provide us with an idea of the possible areas most
+important for the classiﬁcation. In detail, the accuracy
+achieved a value of 100% in most of the samples under
+analysis. Figures 11 and 12 illustrate the application of Grad-
+CAM++ and Score-CAM on a sample ( UOWM-IEC104
+Dataset-m-sp-na-1-DoS-iecserver1) correspond-
+ing to a DoS attack. Both algorithms highlight the same areas
+of the image (in the center), and the classiﬁcation reached a
+high accuracy level of 100%.
+Figures 13 and 14 demonstrate the application of Class
+Activation Mapping algorithms on samples categorized
+within the “warning” family target. In detail, the images
+reported are referred to as the samplesUOWM-IEC104-Dat
+aset-c-sc-na-1-attacker3-iec104, and also, in
+this case, both algorithms achieve the same accuracy but
+highlight similar areas. As is possible to denote in Fig. 13,
+the Score-CAM algorithm emphasizes the center and the
+left-top zone of the image with a shade to the right, while
+the Grad-CAM++ highlights only the center and the left-top
+zone analyzing a minor part of the image.
+Concluded the execution of both CAM algorithms, we
+employed the IF/IM-SSIM index to check the similitude
+of their similitude. This methodology actively assesses the
+resemblance between images generated by CAM algorithms,
+focusing on the identiﬁed regions. The results indicate that
+for samples categorized under the “warning” class, the Score-
+CAM algorithm yielded a similarity index of 0.806, while
+Grad-CAM++ achieved a lower score of 0.552 for the
+same class. Similarly, for samples labeled as “attack,” the
+123
+
+A method for smart grid intrusion detection through explainable deep learning Page 15 of 20 9
+Fig. 11 Result of applying Grad-CAM++ algorithm on "attack" sample ( UOWM-IEC104 Dataset-m-sp-na-1-DoS-iecserver1 )
+Fig. 12 Result of applying Score-CAM algorithm on "attack" sample ( UOWM-IEC104 Dataset-m-sp-na-1-DoS-iecserver1 )
+Fig. 13 Result of applying Score-CAM algorithm on “warning” samples ( UOWM-IEC104-Dataset-c-sc-na-1-attacker3-iec104)
+Score-CAM algorithm obtained a higher score of 0.816 than
+Grad-CAM++, with a score of 0.608. After calculating the
+score for both classes in each CAM algorithm employed, we
+also calculated the score to compare Score-CAM and Grad-
+CAM++. Following this phase, it is evident that the similarity
+is notably higher for the “attack” class (0.839) than for the
+“warning” class (0.808). The resultsof two CAM algorithms
+suggest more similarity related to the “attack” class than the
+“warning” class.
+4.2.2 Discussion related to dataset B
+Concluded the experiments on Dataset B, we also applied
+Grad-CAM++ and Score-CAM using the best model trained
+123
+
+9 Page 16 of 20 G. Ciaramella et al.
+Fig. 14 Result of applying Grad-CAM++ algorithm on “warning” samples (UOWM-IEC104-Dataset-c-sc-na-1-attacker3-iec104)
+and test i.e., using the MobileNet architecture. Also, in this
+case, both CAM algorithms achieved an accuracy value of
+100% on the malicious class, highlighting similar areas in
+most of the samples under analysis. Figures 15 and 16 show
+the heatmap retrieved using both algorithms on the same
+sample retrieved from a DoS attack. Figure 15 illustrates the
+heatmap generated by the Grad-CAM algorithm, whereas
+Fig. 16 presents the heatmap obtained using the Score-CAM
+algorithm. Although both images share similarities, the Grad-
+CAM heatmap distinctly emphasizes the right side more
+prominently.
+After applying both algorithms to the class labeled as
+“malicious”, we also proceeded to generate heatmaps using
+benign samples. As can be denoted from Figs.17 and 18, both
+algorithms emphasize the same area in the center of the same
+text sample. In detail, Figure 17 shows the heatmap gener-
+ated by the Grad-CAM++ algorithm, while Fig. 18 displays
+the heatmap obtained using the Score-CAM algorithm.
+Even though we achieved a higher accuracy value on
+Dataset B than on Dataset A, the IF-SSIM algorithm obtained
+fewer values. In detail, the Grad-CAM++ algorithm shows
+a lower similarity index for malicious samples (0.266) com-
+pared to benign samples (0.457). This suggests that Grad-
+CAM++ is less effective at preserving the spatial structure
+in malicious samples than in benign samples, impacting the
+reliability of its explanations for identifying malicious con-
+tent. On the other hand, the Score-CAM algorithm reached a
+higher similarity between samples of the same class. In detail,
+the IF-SSIM index shows a similarity index of 0.782 for the
+benign class and 0.365 for the malicious. To conclude the
+comparison between Grad-CAM++ and Score-CAM algo-
+rithms, we also applied the IM-SSIM index. For benign
+samples, the IM-SSIM score of 0.753 suggests a high degree
+of similarity between the Grad-CAM++ and Score-CAM
+heatmaps, indicating both algorithms’ consistent localization
+of important features. However, the IM-SSIM score drops to
+0.503 for malicious samples, reﬂecting a moderate similarity.
+4.3 Time performance analysis
+To understand if the proposed method can be employed as
+real-world intrusion detection, in the follow we discuss the
+time require to predict a possible intrusion. For this Time
+Performance Analysis (TPA), we compute the total time (by
+average) for each step and both datasets we employed. In
+detail, we compute the TPA for the image creation process
+using the following formula:
+TPA image creation = tt
+nsc 1 + tt
+nsc 2
+in which tt stands for total time employed for the execution
+in seconds, nsc1 the number of samples for the ﬁrst class,
+and nsc2 the number of samples for the second class of the
+dataset.
+To calculate the Time Performance Analysis for the train-
+ing, we used a similar formula:
+TPA training phase = tt
+ns
+In this context, tt represents the total time (in seconds)
+required for execution, while ns refers to the number of sam-
+ples in both classes of the dataset, including those in the
+training and validation sets.
+Regarding the TPA calculation for test phase, and gen-
+eration of heatmaps using the CAM algorithms, and IF/IM-
+SSIM we used the same formula:
+TPA test, Grad-CAM++, Score-CAM, IF/IM-SSIM = tt
+nsc
+123
+
+A method for smart grid intrusion detection through explainable deep learning Page 17 of 20 9
+Fig. 15 Result of applying Grad-CAM++ algorithm on “malicious” samples ( psh-tcp-dos)
+Fig. 16 Result of applying Score-CAM algorithm on “malicious” samples ( psh-tcp-dos)
+Fig. 17 Result of applying Grad-CAM++ algorithm on “benign” samples ( text)
+Table 5 Average time (in seconds) for each phase of the proposed model, along with the total average time required to generate the results reported
+in this article, for both datasets
+Image Generation Training Test Grad-CAM++ Score-CAM IF/IM-SSIM Total
+Dataset A 0.21s 1.35s 0.15s 12.08s 13.90s 0.09s 27.78s
+Dataset B 3.05s 0.51s 0.15s 2.10s 3,48s 0.07s 9.36s
+123
+
+9 Page 18 of 20 G. Ciaramella et al.
+Fig. 18 Result of applying Score-CAM algorithm on “benign” samples ( text)
+In which, tt denotes the total execution time (in seconds),
+while ns refers to the number of samples from both classes
+in the dataset, speciﬁcally those belonging to the test set.
+The TPA related to the image creation process required
+an average of 0.21s for 137 attacks and 110 warning sam-
+ples. In contrast, for Dataset B, the TPA was 3.05s for 26
+malicious and 6 benign samples. The exact process was repli-
+cated to identify the TPA during training; in the ﬁrst case,
+it took 1.35s on 1,800 total samples, including augmented
+ones. Meanwhile, “Dataset B” has a TPA 0.15s for 340 sam-
+ples. Regarding the test, Grad-CAM++, Score-CAM, and
+IF/IM-SSIM, we considered the same amount of samples,
+200 for “Dataset A ” and 39 for “Dataset B”. Regarding the
+ﬁrst dataset, the test Time Performance Analysis (TPA) was
+0.15s. Speciﬁcally, the TPA for Grad-CAM was 12.08s, for
+Score-CAM it was 13.90s, and for IF/IM-SSIM, it was 0.09s.
+On the other hand, for “Dataset B”, due to the smaller amount
+of data, we achieved TPA values of 0.15s, 2.10s, 3.48s, and
+0.07s for Grad-CAM, Score-CAM, IF/IM-SSIM, and the
+overall test, respectively. Table5 presents the results for both
+datasets, detailing the average time for each phase of the
+proposed model. It also includes the average time spent to
+generate the results we reported, providing a comprehensive
+overview of the model’s performance across different stages
+without considering the augmentation phase.
+5 Conclusion and future work
+In this paper, we proposed an intrusion detector based
+on Deep Learning that can to distinguish network attacks
+like Denial of Service and Man in the Middle and legiti-
+mate commands that can also be used to perform malicious
+actions. In detail, we employed a dataset retrieved on the
+web composed of PCAP ﬁles that we converted into images
+using a Python script written by the authors. Due to the
+small amount of images obtained, we decided to apply the
+augmentation technique to retrieve more samples in the
+training and validation phases. Concluded the dataset compo-
+sition, we trained and tested ten state-of-the-art architectures
+such as AlexNet, DenseNet, EfﬁcientNet, Inception, LeNet,
+MobileNet, ResNet50, Standard CNN, VGG16, and VGG19
+using different hyper-parameters. After concluding the train-
+ing, validation, and test phases, we achieved the best accuracy
+results (0.900) with the model trained using DenseNet. As
+the next step, we employed two different CAM algorithms
+(Grad-CAM++ and Score-CAM). These algorithms allowed
+us to highlight which areas of an image are most distinc-
+tive during the classiﬁcation. Moreover, to provide a more
+comprehensive evaluation of perceived image distortion, we
+also calculated the similarity between the pictures obtained
+by employing the IF/IM-SSIM index. As the last step, we
+reproduced the same methodology on a new dataset, getting
+promising results. In detail, we re-executed the CNNs train-
+ing employing the same hyper-parameters used on the ﬁrst
+dataset training. The outcomes demonstrated the ﬂexibility
+of the proposed approach, suggesting that it can be utilized
+among different datasets composed of PCAP ﬁles.
+In future work, we will compare the results obtained using
+different architecture, for instance Recurrent Neural Net-
+works. Additionally, we will evaluate the robustness of the
+proposed method with images generated using Generative
+Adversarial Networks. Moreover, we also working on the
+identiﬁcation of different threats in the smart-grid environ-
+ment through the usage of the network.
+Acknowledgements This work has been partially supported by EU
+DUCA, EU CyberSecPro, SYNAPSE, PTR 22-24 P2.01 (Cybersecu-
+rity) and SERICS (PE00000014) under the MUR National Recovery
+and Resilience Plan funded by the EU - NextGenerationEU projects,
+by MUR - REASONING: foRmal mEthods for computAtional analy-
+Sis for diagnOsis and progNosis in imagING - PRIN, e-DAI (Digital
+ecosystem for integrated analysis of heterogeneous health data related
+to high-impact diseases: innovative model of care and research), Health
+Operational Plan, FSC 2014-2020, PRIN-MUR-Ministry of Health, the
+National Plan for NRRP Complementary Investments D
+∧ 3 4 Health:
+123
+
+A method for smart grid intrusion detection through explainable deep learning Page 19 of 20 9
+Digital Driven Diagnostics, prognostics and therapeutics for sustain-
+able Health care, Progetto MolisCTe, Ministero delle Imprese e del
+Made in Italy, Italy, CUP: D33B22000060001, FORESEEN: FOR-
+mal mEthodS for attack dEtEction in autonomous driviNg systems
+CUP N.P2022WY AEW and ALOHA: a framework for monitoring
+the physical and psychological health status of the Worker through
+Object detection and federated machine learning, Call for Collaborative
+Research BRiC -2024, INAIL.
+Funding Open access funding provided by IIT - PISA within the CRUI-
+CARE Agreement.
+Open Access This article is licensed under a Creative Commons
+Attribution 4.0 International License, which permits use, sharing, adap-
+tation, distribution and reproduction in any medium or format, as
+long as you give appropriate credit to the original author(s) and the
+source, provide a link to the Creative Commons licence, and indi-
+cate if changes were made. The images or other third party material
+in this article are included in the article’s Creative Commons licence,
+unless indicated otherwise in a credit line to the material. If material
+is not included in the article’s Creative Commons licence and your
+intended use is not permitted by statutory regulation or exceeds the
+permitted use, you will need to obtain permission directly from the copy-
+right holder. To view a copy of this licence, visit http://creativecomm
+ons.org/licenses/by/4.0/.
+References
+1. Alvisi, L., Bianchi, J., Tibidó, S., Zucca, M.V .: Weaponiz-
+ing disinformation against critical infrastructures. arXiv preprint
+arXiv:2406.08963 (2024)
+2. Ciaramella, G., Martinelli, F., Mercaldo, F., Santone, A.: Explain-
+able deep learning for smart grid stability detection. In: 2023 IEEE
+International Conference on Big Data (BigData), pp. 6131–6137
+(2023). https://doi.org/10.1109/BigData59044.2023.10386170
+3. Gunduz, M.Z., Das, R.: Analysis of cyber-attacks on smart grid
+applications. In: 2018 International Conference on Artiﬁcial Intel-
+ligence and Data Processing (IDAP), pp. 1–5 (2018). https://doi.
+org/10.1109/IDAP .2018.8620728
+4. Grammatikis, P .R., Sarigiannidis, P ., Iturbe, E., Rios, E., Sari-
+giannidis, A., Nikolis, O., Ioannidis, D., Machamint, V ., Tzifas,
+M., Giannakoulias, A., et al.: Secure and private smart grid: The
+spear architecture. In: 2020 6th IEEE Conference on Network Soft-
+warization (NetSoft), pp. 450–456 (2020). IEEE
+5. Grammatikis, P .R., Sarigiannidis, P ., Dalamagkas, C., Spyridis, Y .,
+Lagkas, T., Efstathopoulos, G., Sesis, A., Pavon, I.L., Burgos, R.T.,
+Diaz, R., et al.: Sdn-based resilient smart grid: The sdn-microsense
+architecture. Digital 1(4), 173–187 (2021)
+6. Radoglou-Grammatikis, P ., Liatiﬁs, A., Dalamagkas, C., Lekidis,
+A., V oulgaridis, K., Lagkas, T., Fotos, N., Menesidou, S.-A.,
+Krousarlis, T., Alcazar, P .R., et al.: Electron: An architectural
+framework for securing the smart electrical grid with federated
+detection, dynamic risk assessment and self-healing. In: Pro-
+ceedings of the 18th International Conference on Availability,
+Reliability and Security, pp. 1–8 (2023)
+7. Niu, X., Li, J., Sun, J., Tomsovic, K.: Dynamic detection of false
+data injection attack in smart grid using deep learning. In: 2019
+IEEE Power & Energy Society Innovative Smart Grid Technologies
+Conference (ISGT), pp. 1–6. IEEE (2019)
+8. El Mrabet, Z., Ezzari, M., Elghazi, H., El Majd, B.A.: Deep
+learning-based intrusion detection system for advanced metering
+infrastructure. In: Proceedings of the 2nd International Conference
+on Networking, Information Systems & Security, pp. 1–7 (2019)
+9. Song, C., Sun, Y ., Han, G., Rodrigues, J.J.: Intrusion detection
+based on hybrid classiﬁers for smart grid. Comput. Electric. Eng.
+93, 107212 (2021)
+10. Khan, I.A., Pi, D., Khan, N., Khan, Z.U., Hussain, Y ., Nawaz, A.,
+Ali, F.: A privacy-conserving framework based intrusion detec-
+tion method for detecting and recognizing malicious behaviours in
+cyber-physical power networks. Appl. Intell. pp. 1–16 (2021)
+11. Radoglou-Grammatikis, P ., Rompolos, K., Sarigiannidis, P .,
+Argyriou, V ., Lagkas, T., Sarigiannidis, A., Goudos, S., Wan,
+S.: Modeling, detecting, and mitigating threats against industrial
+healthcare systems: a combined software deﬁned networking and
+reinforcement learning approach. IEEE Trans. Industr. Inf. 18(3),
+2041–2052 (2021)
+12. Alani, M.M., Miri, A.: Towards an explainable universal feature
+set for IoT intrusion detection. Sensors 22(15), 5690 (2022)
+13. AlHaddad, U., Basuhail, A., Khemakhem, M., Eassa, F.E., Jambi,
+K.: Ensemble model based on hybrid deep learning for intrusion
+detection in smart grid networks. Sensors (2023). https://doi.org/
+10.3390/s23177464
+14. Herzalla, D., Lunardi, W.T., Andreoni, M.: Tii-ssrc-23 dataset:
+Typological exploration of diverse trafﬁc patterns for intrusion
+detection. IEEE Access (2023). https://doi.org/10.1109/ACCESS.
+2023.3319213
+15. Khan, I.A., Razzak, I., Pi, D., Zia, U., Kamal, S., Hussain, Y .: A
+novel collaborative sru network with dynamic behaviour aggrega-
+tion, reduced communication overhead and explainable features.
+IEEE J. Biomed. Health Inf (2024)
+16. Hore, S., Ghadermazi, J., Shah, A., Bastian, N.D.: A sequential
+deep learning framework for a robust and resilient network intru-
+sion detection system. Comput. Secur. 103928 (2024)
+17. Du, T.: Identifying the origin of cyber attacks using machine learn-
+ing and network trafﬁc analysis. In: ITM Web of Conferences, vol.
+70, p. 01021 (2025). EDP Sciences
+18. Gulzar, Q., Mustafa, K.: Enhancing network security in industrial
+iot environments: a deepclg hybrid learning model for cyberattack
+detection. Int. J. Mach. Learn. Cybern. pp. 1–19 (2025)
+19. Krizhevsky, A., Sutskever, I., Hinton, G.E.: Imagenet classiﬁcation
+with deep convolutional neural networks. Adv. Neural Inf. Process.
+Syst. 25 (2012)
+20. Tan, M., Le, Q.: Efﬁcientnet: Rethinking model scaling for convo-
+lutional neural networks. In: International Conference on Machine
+Learning, pp. 6105–6114 (2019). PMLR
+21. Szegedy, C., V anhoucke, V ., Ioffe, S., Shlens, J., Wojna, Z.:
+Rethinking the inception architecture for computer vision. In: Pro-
+ceedings of the IEEE Conference on Computer Vision and Pattern
+Recognition, pp. 2818–2826 (2016)
+22. LeCun, Y ., Bottou, L., Bengio, Y ., Haffner, P .: Gradient-based
+learning applied to document recognition. Proc. IEEE 86(11),
+2278–2324 (1998)
+23. Howard, A.G., Zhu, M., Chen, B., Kalenichenko, D., Wang, W.,
+Weyand, T., Andreetto, M., Adam, H.: Mobilenets: Efﬁcient con-
+volutional neural networks for mobile vision applications. arXiv
+preprint arXiv:1704.04861 (2017)
+24. He, K., Zhang, X., Ren, S., Sun, J.: Deep residual learning for image
+recognition. In: Proceedings of the IEEE Conference on Computer
+Vision and Pattern Recognition, pp. 770–778 (2016)
+25. Simonyan, K., Zisserman, A.: V ery deep convolutional networks
+for large-scale image recognition. arXiv preprint arXiv:1409.1556
+(2014)
+26. Selvaraju, R.R., Cogswell, M., Das, A., V edantam, R., Parikh, D.,
+Batra, D.: Grad-cam: Visual explanations from deep networks via
+gradient-based localization. In: Proceedings of the IEEE Interna-
+tional Conference on Computer Vision, pp. 618–626 (2017)
+27. Wang, H., Wang, Z., Du, M., Y ang, F., Zhang, Z., Ding, S.,
+Mardziel, P ., Hu, X.: Score-cam: Score-weighted visual explana-
+tions for convolutional neural networks. In: Proceedings of the
+123
+
+9 Page 20 of 20 G. Ciaramella et al.
+IEEE/CVF Conference on Computer Vision and Pattern Recog-
+nition Workshops, pp. 24–25 (2020)
+28. Wang, Z., Bovik, A.C., Sheikh, H.R., Simoncelli, E.P .: Image qual-
+ity assessment: from error visibility to structural similarity. IEEE
+Trans. Image Process. 13(4), 600-612(2004)
+Publisher’s Note Springer Nature remains neutral with regard to juris-
+dictional claims in published maps and institutional afﬁliations.
+123

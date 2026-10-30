@@ -1,0 +1,702 @@
+Engineering, Technology & Applied Science Research  Vol. 16 , No. 5, 20 26 , 39828 -39834  39828   
+ 
+www.etasr.com  Mahajan  et al.: RC -ADAPT: A Resilient and Continuous Adaptive Intrusion Detection Framework for … 
+ 
+RC-ADAPT: A Resilient and Continuous 
+Adaptive Intrusion Detection Framework for 
+CPS 
+ 
+Upasana Mahajan 
+Department of Computer Science and Engineering, Fac ulty of Engineering and Technology (FET), Jain 
+(Deemed-to-be University), Bengaluru, Karnataka, India 
+upasanamahajan1@gmail.com (corresponding author) 
+ 
+J. Somasekar 
+Department of Computer Science and Engineering, Fac ulty of Engineering and Technology (FET), Jain 
+(Deemed-to-be University), Bengaluru, Karnataka, India 
+jsomasekar@gmail.com 
+ 
+Vikram Neerugatti 
+Department of Computer Science and Engineering (IoT ), Faculty of Engineering and Technology (FET), 
+Jain (Deemed-to-be University), Bengaluru, Karnataka, India 
+vikramneerugatti@gmail.com 
+Received: 11 June 2026 | Revised: 6 July 2026 | Acc epted: 8 July 2026 
+Licensed under a CC-BY 4.0 license | Copyright (c) by the authors | DOI: https://doi.org/10.48084/etas r.20521 
+ABSTRACT 
+The rapid expansion of Cyber-Physical Systems (CPS)  and Industrial Internet of Things (IIoT) 
+environments has increased exposure to sophisticate d cyber-attacks, necessitating resilient intrusion 
+detection systems. Existing ML and DL approaches achieve high accuracy but lack adaptability, resilience, 
+and continuous operation under dynamic conditions s uch as concept drift and network disruptions. To 
+address this gap, this work proposes Resilient and Continuous Adaptive Intrusion Detection (RC-ADAPT), 
+a robust IDS framework designed for accurate detect ion and uninterrupted operation. The model 
+integrates a CNN–LSTM-based feature extractor to ca pture spatial–temporal patterns and an Adaptive 
+Gradient Boosting Machine (AGBM) classifier for han dling imbalance and evolving attacks. A resilience 
+evaluation mechanism is introduced to monitor syste m performance using accuracy, stability, and 
+confidence, enabling adaptive responses such as fal lback activation and model updates. Evaluated on th e 
+Edge-IIoTSet dataset, RC-ADAPT achieves 99.9992% accuracy for binary classification and 99.999% for 
+multi-class classification. The proposed framework ensures high accuracy, adaptability, and reliability for 
+CPS security. 
+Keywords-cyber-physical systems; IoT security; deep learning; CNN–BiLSTM; XGBoost; drift detection 
+I.  INTRODUCTION  
+The rapid evolution of CPS and the proliferation of  IIoT 
+technologies have significantly transformed modern 
+infrastructures, enabling intelligent applications in smart 
+manufacturing, healthcare, transportation, and crit ical 
+infrastructure management [1]. However, the increas ing 
+interconnectivity among heterogeneous devices, networks, and 
+control systems has also expanded the attack surface, exposing 
+CPS environments to a wide range of sophisticated c yber 
+threats [2, 3]. Traditional signature-based IDS [4]  are 
+inadequate in such dynamic environments due to their inability 
+to detect unknown or evolving attacks, thereby moti vating the 
+adoption of AI, ML, and DL techniques for securing CPS. 
+Recent advances in AI-driven IDS have demonstrated 
+promising results, where ML-based approaches such a s RF, 
+SVM, and GB have been widely used for network intru sion 
+detection [5-7]. In parallel, DL models including C NN, RNN, 
+LSTM, and AE have shown superior capability in lear ning 
+complex feature representations from high-dimension al IoT 
+traffic data [8-10].  
+Despite these improvements, several critical challe nges 
+persist. Existing IDS models often struggle with sc alability in 
+large-scale CPS environments, exhibit limited adapt ability to 
+concept drift caused by evolving attack patterns, and are prone 
+to performance degradation due to imbalanced data 
+distributions. Moreover, most approaches primarily focus on 
+
+Engineering, Technology & Applied Science Research  Vol. 16 , No. 5, 20 26 , 39828 -39834  39829   
+ 
+www.etasr.com  Mahajan  et al.: RC -ADAPT: A Resilient and Continuous Adaptive Intrusion Detection Framework for … 
+ 
+improving detection accuracy while neglecting syste m 
+resilience, fault tolerance, and continuous operati on under 
+adverse conditions such as network disruptions or r esource 
+constraints. Table I presents a comparative analysis of different 
+recent IDS methodologies. 
+To address these limitations, there is a need for a  resilient 
+and adaptive intrusion detection framework that not  only 
+achieves high detection accuracy but also ensures c ontinuous 
+and reliable operation in dynamic CPS environments.  In this 
+context, this work proposes RC-ADAPT, a novel IDS 
+framework designed to enhance both detection perfor mance 
+and system robustness. The proposed model integrates a CNN–
+LSTM-based feature extraction module with an AGBM 
+classifier. The CNN component captures spatial correlations in 
+IIoT data, while the LSTM learns temporal dependenc ies in 
+sequential traffic patterns. The AGBM classifier fu rther 
+improves detection capability through adaptive learning, class-
+sensitive weighting, and handling of evolving attac k 
+distributions. In addition, RC-ADAPT introduces a r esilience-
+driven CPS architecture that continuously monitors system 
+performance using a composite resilience score and 
+dynamically triggers adaptive mechanisms such as fa llback 
+model activation and incremental retraining. By com bining 
+deep feature learning, adaptive classification, and  resilience-
+aware system design, RC-ADAPT provides a scalable, robust, 
+and efficient IDS solution capable of operating reliably in real-
+time CPS environments.  
+The contributions of this work are as follows:  
+• Proposes a novel RC-ADAPT approach for CPS 
+environments, integrating DL and adaptive boosting to 
+enhance both detection accuracy and system reliability. 
+• Develops a hybrid CNN–LSTM-based feature extraction  
+model to effectively capture spatial correlations a nd 
+temporal dependencies in IIoT data streams, improvi ng 
+representation learning from complex traffic patterns. 
+• Introduces an AGBM classifier with class-sensitive 
+weighting and dynamic learning capability to handle  class 
+imbalance and evolving cyber-attack behaviors. 
+• Designs a resilience-driven evaluation mechanism th at 
+computes a composite resilience score based on accu racy, 
+system stability, and prediction confidence for performance 
+monitoring. 
+• Incorporates a dynamic adaptation strategy, enablin g 
+fallback model activation and incremental retrainin g when 
+performance degradation or drift is detected. 
+• Presents a multi-layer CPS architecture (edge, adap tive 
+control, and cloud coordination layers) to ensure continuous 
+operation, distributed intelligence, and fault tolerance. 
+• Extensive experimentation on the Edge-IIoTSet datas et 
+demonstrates the effectiveness of the proposed fram ework 
+for both binary and multi-class intrusion detection. 
+TABLE I.  COMPARATIVE STUDY OF DIFFERENT IDS APPROACHES IN CP S-IIOT ENVIRONMENTS 
+Ref. Method/Model Key contribution Limitation 
+[2]  Physics -based federated multi -layered DL  Improved federated intrusion detection accuracy  Limited adaptive resilience  
+[3] ML-based DDoS detection in SDN-Edge-IoT Efficie nt DDoS mitigation Centralized dependency 
+[4]  HIDS -IoMT  Intelligent IDS for medical IoT  Limited operational resilience  
+[5]  CBCTL -IDS with transfer learning  Optimized smart agriculture IDS  Weak concept drift handling  
+[6] Explainable federated framework Privacy-preserv ing APT detection Higher computational overhead 
+[7]  KD -BERT  Lightweight transformer -based IDS  Limited continuous adaptation  
+[8] GA-optimized neural network Enhanced IIoT attac k detection Increased training complexity 
+[9]  Hybrid temporal DL  Temporal -aware intrusion analysis  Limited resilience evaluation  
+[10]  Lightweight multi -classification IDS  Reduced computational overhead  Lower adaptability  
+[11]  Hybrid LLM -based IDS  Context -aware intrusion detection  High resource requirements  
+[12]  ResNet50_CNN1D  Improved cyber -risk mitigation  Limited dynamic adaptability  
+[13] TANF  Reliable scalable 6G IoT security Limite d fallback mechanisms 
+[14]  Meta -knowledge adaptive security  Adaptive security provisioning  Complex implementation  
+[15] Hybrid explainable AI IDS Transparent DDoS att ack detection Limited continuous operation support 
+Proposed RS-ADAPT Resilient and continuous adaptive intrusion 
+detection 
+Requires additional computational 
+resources for resilience monitoring and 
+adaptive retraining 
+ 
+II.  METHODOLOGY 
+A.  Architecture 
+The RC-ADAPT architecture, illustrated in Figure 1,  was 
+designed as a resilient and adaptive intrusion dete ction 
+framework that integrates deep feature learning, ad aptive 
+classification, and dynamic resilience management f or CPS 
+environments. The process begins with the Edge-IIoT Set 
+dataset, which contains diverse IIoT traffic patter ns 
+representing both normal and malicious activities. The dataset 
+is first partitioned into training and testing subs ets to ensure 
+proper model generalization and unbiased performanc e 
+evaluation. Following data preparation, the trainin g data is 
+processed through a CNN–LSTM-based feature extracti on 
+module, which effectively captures both spatial and  temporal 
+characteristics of CPS data. The convolutional laye rs extract 
+local feature correlations, while the LSTM componen t models 
+sequential dependencies inherent in IIoT traffic fl ows. This 
+hybrid representation enables the system to learn c omplex 
+behavioral patterns associated with cyber-attacks. The 
+extracted feature representations are subsequently passed to the 
+AGBM classifier, which performs robust classificati on of 
+normal and attack instances. AGBM enhances detectio n 
+capability by handling non-linear relationships and  addressing 
+class imbalance through adaptive learning strategies.  
+
+Engineering, Technology & Applied Science Research  Vol. 16 , No. 5, 20 26 , 39828 -39834  39830   
+ 
+www.etasr.com  Mahajan  et al.: RC -ADAPT: A Resilient and Continuous Adaptive Intrusion Detection Framework for … 
+ 
+A distinguishing component of the RC-ADAPT 
+architecture is the resilience evaluation module, w hich 
+continuously monitors system performance by computi ng a 
+resilience score based on prediction accuracy, conf idence, and 
+system stability. This score is compared against a predefined 
+threshold to assess the reliability of the model in  real-time 
+conditions. When the resilience score falls below the threshold, 
+indicating potential performance degradation due to  concept 
+drift or adversarial behavior, the system triggers adaptive 
+mechanisms such as fallback model activation or mod el 
+updates. Otherwise, normal operation is maintained without 
+interruption. Finally, a performance evaluation module assesses 
+the effectiveness of the proposed framework using s tandard 
+evaluation metrics. This continuous monitoring ensu res both 
+high detection accuracy and sustained system reliab ility. 
+Overall, the RC-ADAPT architecture establishes a unified and 
+resilient design capable of accurate intrusion dete ction while 
+ensuring continuous and adaptive operation in dynam ic CPS 
+environments.  
+ 
+ 
+Fig. 1.  RC-ADAPT architecture. 
+B.  Dataset  
+This work employed the Edge-IIoTSet dataset [1], which is 
+specifically designed for IIoT and CPS security ana lysis. The 
+dataset includes 14 distinct attack types, grouped into five 
+major threat categories, representing realistic cyb er threat 
+scenarios in CPS environments. It consists of heter ogeneous 
+features capturing multiple operational dimensions,  including 
+system logs, network traffic, security alerts, and resource 
+utilization metrics. Initially, the dataset contain s 1176 raw 
+features, which are reduced to 61 significant features through a 
+feature engineering process. These features include  statistical 
+attributes such as flow duration and packet statistics, along with 
+domain-specific indicators such as protocol flags and anomaly 
+scores. Formally, the dataset is defined as   
+, 	
+
+ , 
+where  ∈ ℝ  represents the feature vector,  ∈
+, , … , 
+ denotes the class label,  is the total number of 
+samples,   61  is the number of features, and   15  
+represents the number of classes, including normal and attack 
+categories. The dataset is divided into training an d testing 
+subsets using an 80:20 ratio. 
+ 
+C.  Feature Extraction 
+To effectively capture complex CPS behavior, RC-ADAPT 
+employs a hybrid convolutional–recurrent feature ex traction 
+model, i.e., CNN–LSTM [16]. Given an input feature vector 
+
+ ∈ ℝ, temporal sequences are constructed using a slidin g 
+window of length  , forming  ∈ ℝ . The convolution 
+operation extracts local spatial dependencies using: 
+	   	 ∗ "#	 $ %	   (1) 
+"	  &'	(    (2) 
+where  	 is the convolutional kernel, %	 is a bias term, and 
+&∙	 is the ReLU activation function.  
+LSTM is employed to model temporal dependencies. Fo r 
+each time step, the LSTM computes gates and states using:  
+*+  ,-+ $ .ℎ+# $ %	   (3) 
+0+  ,'-1+ $ .1ℎ+# $ %1(   (4) 
+2+  ,-3+ $ .3ℎ+# $ %3	   (5) 
+4̃+  tanh -:+ $ .:ℎ+# $ %:	  (6) 
+4+  0+⨀4+# $ *+⨀4̃+    (7) 
+ℎ+  2+tanh 4+	    (8) 
+where + ∈ ℝ=  denotes a convolution feature at >, ℎ+  and 4+ 
+denote the hidden and cell states, matrices -∗, .∗ and biases %∗ 
+are learnable parameters, , denotes the sigmoid, and ⨀ denotes 
+element-wise product. The final feature representat ion is 
+obtained as: 
+?  ∑ A+ℎ+
+
++
+    (9) 
+where A+  represents attention weights. Using (9), the final  
+extracted features are passed on to the classifier. 
+D.  Classification 
+The classification component employs AGBM, which is  
+designed for resilience and adaptability. The objective function 
+is defined as: 
+ℒ
++	  ∑ C D,  E
++#	 $ 0+	F $ G0+	
+
+ (10) 
+where  denotes the actual label and  E denotes the predicted 
+label, > denotes the time step, 0+  denotes the new tree,  
+denotes the input, C  denotes the loss (this work used 
+logistic/focal hybrid), and G denotes tree regularization.  
+This work modified instance loss with class-sensiti ve 
+scaling to address class imbalance and evolving attacks by: 
+CH,  E	  AIC,  E	 $ JKL,  E	  (11) 
+where AI  denotes class-weight inversely proportional to 
+smoothed class frequency, KL  denotes focal loss with 
+focusing parameter M, and J balances these two components.  
+A time-decayed weighting approach is applied as: 
+N
+
++	  ON
++#	    (12) 
+where O ∈ 0,1	 ensures higher importance to recent data.  
+
+
+Engineering, Technology & Applied Science Research  Vol. 16 , No. 5, 20 26 , 39828 -39834  39831   
+ 
+www.etasr.com  Mahajan  et al.: RC -ADAPT: A Resilient and Continuous Adaptive Intrusion Detection Framework for … 
+ 
+E.  Resilient CPS Architecture 
+Unlike conventional IDS models, RC-ADAPT introduces a 
+resilience-aware CPS architecture that ensures cont inuous 
+operation under adverse conditions [16]. The proposed resilient 
+CPS architecture is organized into three collaborat ive layers, 
+each designed to ensure continuous operation, adaptability, and 
+fault tolerance under dynamic and adverse condition s. At the 
+edge layer, local resilience is achieved by enablin g real-time 
+intrusion detection directly at IoT or IIoT devices . This layer 
+performs lightweight inference using the trained mo del, 
+ensuring low-latency decision-making without relian ce on 
+centralised infrastructure. To handle unexpected fa ilures or 
+degraded model performance, the edge nodes maintain  locally 
+stored fallback models, which can be immediately ac tivated to 
+ensure uninterrupted operation. This decentralized capability 
+allows the system to sustain detection functionality even during 
+network disruptions or cloud unavailability. The ad aptive 
+control layer acts as an intelligent supervisory mo dule that 
+continuously monitors system health, prediction con fidence, 
+and model performance metrics. It evaluates variati ons in 
+detection accuracy, confidence scores, and data dis tribution to 
+identify potential anomalies or performance degradation. When 
+such deviations exceed predefined thresholds, the layer triggers 
+adaptive mechanisms such as partial retraining, par ameter 
+recalibration, or switching to fallback models. Thi s dynamic 
+control ensures that the system remains robust agai nst concept 
+drift, evolving attack patterns, and environmental uncertainties.  
+The cloud coordination layer provides global intell igence 
+and long-term optimization. It aggregates data and learning 
+updates from distributed edge nodes to perform comprehensive 
+model retraining and refinement. This layer maintains multiple 
+redundant and backup models to enhance system reliability and 
+fault tolerance. Additionally, it distributes updated models back 
+to edge devices, ensuring synchronization and conti nuous 
+improvement across the entire CPS ecosystem. By int egrating 
+distributed learning with centralized coordination,  this layer 
+strengthens the scalability, adaptability, and resi lience of the 
+overall system.  
+Together, these three layers form a cohesive archit ecture 
+that balances real-time responsiveness, adaptive in telligence, 
+and global optimization, thereby ensuring reliable and 
+continuous CPS operation even in the presence of cyber threats 
+and adverse network conditions.  
+In this work, a resilience score is defined as: 
+Q
++  AR + $ JS+ $ MT+    (13) 
+where R+  represents detection accuracy, S+  represents system 
+stability, T+ represents the confidence score, and A, Jand M are 
+weighting parameters. If Q+ < V , a recovery approach is 
+triggered for switching to a backup model, initiati ng partial 
+retraining and reconfiguring system parameters. Thi s ensures 
+fault tolerance, self-adaptation, and continuous se rvice 
+availability. 
+F.  Algorithm 
+The complete process of the RC-ADAPT is given in 
+Algorithm 1.  
+Algorithm 1: RC-ADAPT Resilient Intrusion 
+Detection 
+Input: Dataset , parameters W,  
+   threshold V,  
+Output : Predicted label  
+1: Initialize CNN-LSTM and AGBM models 
+2: Train feature extractor on training  
+   data 
+3: Train classifier with weighted loss 
+4: For each incoming sample 
++ 
+     Extract features ?+ 
+     Predict X+  ,0?+		 
+   End for 
+5: Compute resilience score  
+   Q
++  A R + $ J S+ $ M T+ 
+6: If Q+ < V 
+     Activate fallback model 
+     Update model using recent data 
+   Else 
+     Continue normal operation 
+   End if 
+7: If X
++ > Z 
+     Classify as attack 
+   Else  
+     Normal 
+   End if 
+8: Repeat for streaming data 
+ 
+Initially, the proposed framework begins by initializing the 
+core components of the system, namely the CPS-CNN–L STM 
+feature extraction module and the AGBM classifier. These 
+components together form the backbone of the IDS. In the next 
+step, the feature extraction model is trained using the available 
+training dataset. This stage enables the system to learn 
+meaningful spatial and temporal patterns from the i nput data, 
+transforming raw observations into informative feat ure 
+representations. Following this, the classifier is trained using a 
+weighted loss strategy, which helps in handling class imbalance 
+and improves detection performance across different  attack 
+categories. Once training is completed, the system enters the 
+operational phase, where it processes incoming data samples in 
+real time. For each new input sample, the trained f eature 
+extractor generates a compact feature representatio n, which is 
+then passed to the classifier to obtain a predictio n probability 
+indicating the likelihood of an attack. After obtai ning the 
+prediction, the system evaluates a resilience score  that reflects 
+the current reliability of the model. This score is  computed by 
+combining multiple factors such as prediction accuracy trends, 
+system stability, and confidence levels. The resili ence score 
+serves as an indicator of how well the model is per forming 
+under current conditions. The system then compares this 
+resilience score with a predefined threshold. If th e score falls 
+below the threshold, it indicates potential degrada tion in 
+performance or the presence of concept drift. In such cases, the 
+system activates a fallback model to ensure uninter rupted 
+detection and simultaneously updates or adapts the primary 
+model using recent data. If the resilience score re mains above 
+the threshold, the system continues normal operatio n without 
+
+Engineering, Technology & Applied Science Research  Vol. 16 , No. 5, 20 26 , 39828 -39834  39832   
+ 
+www.etasr.com  Mahajan  et al.: RC -ADAPT: A Resilient and Continuous Adaptive Intrusion Detection Framework for … 
+ 
+any intervention. Finally, based on the predicted p robability, 
+the system classifies the input sample as either an  attack or 
+normal behavior. This entire process is repeated co ntinuously 
+for streaming data, enabling the model to operate i n real time 
+while maintaining robustness, adaptability, and res ilience in 
+dynamic CPS environments. 
+III.  RESULTS AND DISCUSSION 
+The proposed RC-ADAPT was implemented using Python 
+3 within an IoT-edge-enabled environment, where the detection 
+model was deployed at the edge layer for real-time attack 
+prediction. A computing environment with an Intel C ore i7 
+processor and 16 GB of memory was used to conduct 
+experiments to ensure computational efficiency and support for 
+model training and inference. 
+A.  Performance Evaluation Metrics 
+To evaluate the performance of RC-ADAPT, standard 
+metrics such as accuracy, precision, recall, and F1 -score were 
+adopted, as defined in (14)–(17), where [  represents True 
+Positives,   denotes True Negatives, [  refers to False 
+Positives, and   indicates False Negatives.  
+R44\]^4 
+_` 
+_``_`    (14) 
+[]a4*b*2 
+_ 
+_`_     (15) 
+Qa4^CC 
+_ 
+_`     (16) 
+ c S42]a  2 ∙
+_ef:g3∙hf:i 
+_ef:g3`hf:i   (17) 
+B.  Binary Classification 
+RC-ADAPT demonstrated exceptional performance in 
+binary-class intrusion detection on the Edge-IIoTSe t dataset. 
+As shown in Figure 2, RC-ADAPT achieved an overall 
+accuracy of 99.9992%, indicating that nearly all in stances of 
+benign and attack samples were correctly classified . Precision 
+reached 100%, reflecting that all samples predicted  as attacks 
+are truly malicious, while the recall of 99.999% co nfirms that 
+almost all actual attack instances were successfull y identified. 
+The corresponding F-score of 99.9991% highlights th e 
+balanced performance of RC-ADAPT in handling both FPs and 
+FNs.  
+ 
+ 
+Fig. 2.  RC-ADAPT binary-class evaluation results of Edge-II oTSet. 
+C.  Multi-Class Classification 
+RC-ADAPT demonstrated exceptional performance in 
+multi-class intrusion detection on the Edge-IIoTSet dataset. As 
+illustrated in Figure 3, RC-ADAPT achieved an overa ll 
+accuracy of 99.999%, successfully identifying nearl y all 15 
+classes, including benign traffic and various cyber-attack types. 
+The precision of 99.9991% indicates that nearly all  predicted 
+instances for each class are correctly classified, while the recall 
+of 99.9989% confirms that almost all actual instances across all 
+classes are correctly detected. The resulting F-sco re of 
+99.999% highlights the model's balanced capability in 
+minimizing both FPs and FNs, which is particularly important 
+in multi-class scenarios where misclassifications c an be more 
+prevalent. 
+ 
+ 
+Fig. 3.  RC-ADAPT multi-class evaluation results on Edge-IIo TSet. 
+D.  Comparative Study 
+Table II presents a comprehensive comparative analy sis of 
+the proposed RC-ADAPT model with existing ML- and D L-
+based intrusion detection approaches. The performance results 
+reported for the existing methods are taken directl y from their 
+respective published references under their reporte d 
+experimental settings and are included for comparison purposes 
+only, whereas the results of the proposed RC-ADAPT 
+framework are obtained from the implementation and 
+experimental evaluation conducted in this work usin g the 
+Edge-IIoTSet dataset. The cited studies employ diff erent 
+intrusion detection strategies on publicly availabl e benchmark 
+datasets. Specifically, FedMLDL+RIME [2] and the ML-based 
+methods [3] were evaluated on the Edge-IIoTSet data set, 
+HIDS-IoMT [4] was developed for the IoMT environmen t, 
+CBCTL-IDS [5] targeted smart agriculture IoT data, while 
+FDNN [6] and KD-BERT [7] focused on secure intrusio n 
+detection in connected IoT environments.  
+FedMLDL+RIME [2] achieved 98.6% accuracy for 15-
+class classification by leveraging federated learni ng with 
+hyperparameter optimization. However, this approach  incurs 
+computational overhead and relies on SMOTE to address class 
+imbalance. Similarly, classical ML approaches such as KNN, 
+RF, and XGB [3] achieved high accuracy in binary- and multi-
+class classification, with XGB reaching 99.9987% an d 
+99.9981%, respectively. Although effective, these m ethods 
+depend on hand-crafted feature selection, while KNN  exhibits 
+high inference time for large-scale datasets. Hybri d DL 
+methods such as HIDS-IoMT [4] and CBCTL-IDS [5] 
+combined CNN and LSTM to capture spatial-temporal 
+patterns, achieving up to 99.94% binary and 99.9% multi-class 
+accuracy, but lacked robust adaptation to evolving attacks and 
+concept drift. Other advanced approaches, including FDNN [6] 
+and KD-BERT [7], introduced privacy-preserving and 
+transformer-based mechanisms, although at the cost of higher 
+
+
+Engineering, Technology & Applied Science Research  Vol. 16 , No. 5, 20 26 , 39828 -39834  39833   
+ 
+www.etasr.com  Mahajan  et al.: RC -ADAPT: A Resilient and Continuous Adaptive Intrusion Detection Framework for … 
+ 
+computational complexity or limited real-time appli cability. 
+The proposed RC-ADAPT outperforms these methods, 
+achieving 99.9992% binary-class accuracy and 99.999% multi-
+class accuracy. This improvement is attributed to the integrated 
+design combining ET-based feature selection, CNN–LSTM for 
+spatiotemporal feature learning, and XGB for accura te 
+classification. In addition, cross-validation, hype rparameter 
+tuning, and drift detection enhance adaptability to  evolving 
+cyber-attacks while maintaining low-latency perform ance 
+(198.87 s for binary and 199.45 s for multi-class). Furthermore, 
+RC-ADAPT achieves perfect binary precision and near-perfect 
+multi-class precision, minimizing false positives a nd false 
+negatives, thereby providing superior accuracy, robustness, and 
+generalization for intrusion detection in CPS environments. 
+TABLE II.  COMPARATIVE STUDY OF RC-ADAPT WITH EXISTING APPROAC HES. 
+Ref Model Classes Accuracy Precision Recall F-Score  AUC-ROC  Test time 
+[2]  FedMLDL+RIME  15  98.6  98.4  98.4  98.5  - - 
+[3] 
+KNN 
+2 
+99.9985 100 99.997 99.9985 - 3716.06 
+RF  99.9987  100  99.9975  99.9987  - 12.325  
+XGB  99.9987  100  99.9975  99.9987  - 3.5594  
+FFNN 99.9986 99.9996 99.9975 99.9986 - 20.5681 
+KNN  
+15 
+99.9968  99.9968  99.9968  99.9986  - 15461.63  
+RF 99.997 99.997 99.997 99.997 - 10.8406 
+XGB  99.9981  99.9981  99.9981  99.9981  - 11.1828  
+FFNN  99.9963  99.9963  99.9963  99.9963  - 224.1933  
+[4] HIDS-IoMT 2 99.941  99.942  99.9  99.921  - 59.11  
+15  99.939  99.9948  99.952  99.95  - 92.5  
+[5] CBCTL-IDS 15 99.9 99.88 99.9 99.89 - 462 
+[6] FDNN+Without Privacy  15 96.81  96.43  - 97.14  - - 
+FDNN+With Privacy 96.11 96.31 - 96.52 - - 
+Proposed RC-ADAPT 2 99.9992  100  99.999  99.9991  100  198.87  
+15  99.999  99.9991  99.9989  99.999  100  199.45  
+ 
+E.  Discussion 
+The proposed RC-ADAPT framework demonstrates several 
+important advantages for intrusion detection in CPS . By 
+combining CNN–LSTM-based feature learning with AGBM  
+and resilience-aware monitoring, the framework achi eves 
+highly accurate detection in both binary and multi- class attack 
+scenarios. The resilience scoring mechanism continu ously 
+evaluates system performance and helps maintain sta ble 
+operation during failures, network fluctuations, or  adversarial 
+conditions. In addition, the inclusion of fallback edge models 
+ensures uninterrupted intrusion detection even when  the 
+primary model experiences degradation. The adaptive  
+retraining strategy enables the framework to respon d 
+effectively to evolving attack behaviors while reducing the cost 
+of complete retraining. RC-ADAPT also improves mino rity 
+attack detection through class-sensitive weighting,  thereby 
+lowering false negatives. Its lightweight edge infe rence 
+supports real-time CPS applications with low latency, while the 
+multi-layer architecture enhances scalability across distributed 
+environments. Despite these strengths, the framewor k 
+introduces higher computational complexity because of the 
+integration of DL, adaptive boosting, and resilience evaluation 
+modules. This increases processing time and resourc e 
+consumption, particularly in constrained CPS device s. 
+Therefore, future work will focus on reducing compu tational 
+overhead and improving real-time efficiency without  
+compromising detection reliability. 
+IV.  CONCLUSION 
+This work presented RC-ADAPT, a resilient and adapt ive 
+intrusion detection approach designed for CPS and I IoT 
+environments. RC-ADAPT integrates a CNN–LSTM-based 
+feature extraction module with an AGBM classifier t o 
+effectively capture both spatial and temporal patte rns in 
+network traffic and accurately detect cyber-attacks. To address 
+key challenges such as concept drift, class imbalan ce, and 
+dynamic attack behavior, RC-ADAPT incorporates adap tive 
+learning strategies and class-sensitive weighting. A major 
+contribution of this work is the introduction of a resilience-
+driven CPS architecture that continuously monitors system 
+performance through a composite resilience score an d ensures 
+uninterrupted operation by triggering fallback mechanisms and 
+model updates when needed.  
+RC-ADAPT was evaluated on the Edge-IIoTSet dataset [1], 
+demonstrating superior performance in both binary a nd multi-
+class classification. Overall, RC-ADAPT provides a robust, 
+scalable, and reliable IDS solution capable of maintaining high 
+detection accuracy and continuous operation in dyna mic and 
+adversarial CPS environments. The experimental eval uation 
+demonstrated that RC-ADAPT achieved 99.9992% binary -
+class accuracy and 99.999% multi-class accuracy on the Edge-
+IIoTSet dataset, outperforming several recent ML- a nd DL-
+based intrusion detection approaches. The proposed resilience-
+aware architecture further enables continuous opera tion 
+through adaptive retraining and fallback mechanisms  under 
+dynamic network conditions.  
+Future work will focus on reducing computational overhead 
+and validating the framework in real-world distribu ted CPS 
+deployments. In addition, the proposed framework wi ll be 
+extended to support federated and edge-intelligent learning for 
+privacy-preserving intrusion detection across geogr aphically 
+distributed CPS environments. Further research will  also 
+investigate lightweight model compression and explainable AI 
+techniques to improve deployment efficiency, transp arency, 
+and trustworthiness in resource-constrained IIoT devices. 
+ 
+
+Engineering, Technology & Applied Science Research  Vol. 16 , No. 5, 20 26 , 39828 -39834  39834   
+ 
+www.etasr.com  Mahajan  et al.: RC -ADAPT: A Resilient and Continuous Adaptive Intrusion Detection Framework for … 
+ 
+DECLARATION OF COMPETING INTERESTS  
+The authors declare that they have no conflicts of interest.  
+ACKNOWLEDGMENT 
+No external funding was received for this research.  
+However, the authors sincerely thank JAIN (Deemed-t o-be) 
+University for granting them the opportunity to car ry out this 
+research. The encouragement and support provided by  the 
+University greatly contributed to this work.  
+DATA AVAILABILITY 
+The Edge-IIoTSet dataset can be publicly accessed at [17]. 
+REFERENCES 
+[1]  M. A. Ferrag, O. Friha, D. Hamouda, L. Maglaras, an d H. Janicke, 
+"Edge-IIoTset: A New Comprehensive Realistic Cyber Security Dataset 
+of IoT and IIoT Applications for Centralized and Fe derated Learning," 
+IEEE Access , vol. 10, pp. 40281–40306, 2022, 
+https://doi.org/10.1109/ACCESS.2022.3165809. 
+[2]  C. J. Chandnani, V. Agarwal, S. C. Kulkarni, A. Are n, D. G. B. Amali, 
+and K. Srinivasan, "A Physics-Based Hyper Parameter  Optimized 
+Federated Multi-Layered Deep Learning Model for Int rusion Detection 
+in IoT Networks," IEEE Access , vol. 13, pp. 21992–22010, 2025, 
+https://doi.org/10.1109/ACCESS.2025.3535952. 
+[3]  H. M. Belachew, M. Y. Beyene, A. B. Desta, B. T. Al emu, S. S. Musa, 
+and A. J. Muhammed, "Design a Robust DDoS Attack De tection and 
+Mitigation Scheme in SDN-Edge-IoT by Leveraging Mac hine 
+Learning," IEEE Access , vol. 13, pp. 10194–10214, 2025, 
+https://doi.org/10.1109/ACCESS.2025.3526692. 
+[4]  A. Berguiga, A. Harchay, and A. Massaoudi, "HIDS-Io MT: A Deep 
+Learning-Based Intelligent Intrusion Detection Syst em for the Internet of 
+Medical Things," IEEE Access , vol. 13, pp. 32863–32882, 2025, 
+https://doi.org/10.1109/ACCESS.2025.3543127. 
+[5]  H. Zhou, H. Zou, P. Zhou, Y. Shen, D. Li, and W. Li , "CBCTL-IDS: A 
+Transfer Learning-Based Intrusion Detection System Optimized With 
+the Black Kite Algorithm for IoT-Enabled Smart Agri culture," IEEE 
+Access , vol. 13, pp. 46601–46615, 2025, 
+https://doi.org/10.1109/ACCESS.2025.3550800. 
+[6]  G. K. S. Kumar, K. K. Prakasha, B. Muniyal, and M. Rajarajan, 
+"Explainable Federated Framework for Enhanced Secur ity and Privacy 
+in Connected Vehicles Against Advanced Persistent T hreats," IEEE 
+Open Journal of Vehicular Technology , vol. 6, pp. 1438–1463, 2025, 
+https://doi.org/10.1109/OJVT.2025.3576366. 
+[7]  Z. Cao, X. Liu, Z. Zhou, L. Ding, and W. Shang, "KD -BERT: A 
+Lightweight Knowledge Distillation Bidirectional En coder 
+Representations from Transformers for IoT Network I ntrusion 
+Detection," IEEE Transactions on Industrial Informatics , vol. 21, no. 11, 
+pp. 8475–8483, Nov. 2025, https://doi.org/10.1109/T II.2025.3582375. 
+[8]  H. Alblooshi and K. O. Akpinar, "IIoT Attack Detect ion Using Genetic 
+Algorithm-Optimized Neural Networks," IEEE Access , vol. 14, pp. 
+75398–75408, 2026, https://doi.org/10.1109/ACCESS.2 026.3678188. 
+[9]  G. Guo, F. Qamar, S. H. A. Kazmi, F. M. Ali, and I.  Ali, "A hybrid deep 
+learning approach with temporal awareness for intel ligent intrusion 
+detection in 6G-enabled IIoT networks," Scientific Reports , vol. 16, no. 
+1, Mar. 2026, Art. no. 13474, https://doi.org/10.10 38/s41598-026-
+43058-x. 
+[10]  W. Gao, M. Wang, Y. Pei, F. Li, and C. Wang, "A Lig htweight Multi-
+Classification Intrusion Detection Model for Edge I oT Networks," 
+Electronics , vol. 15, no. 5, Feb. 2026, Art. no. 938, 
+https://doi.org/10.3390/electronics15050938. 
+[11]  M. Algarni, M. Y. Dahab, A. A. Alsulami, B. Alturki , and R. Alsini, 
+"Toward a Hybrid Intrusion Detection Framework for IIoT Using a 
+Large Language Model," Sensors , vol. 26, no. 4, Feb. 2026, Art. no. 
+1231, https://doi.org/10.3390/s26041231. 
+[12]  H. ZainEldin, S. A. Gamel, and F. M. Talaat, "Mitig ating cyber risks in 
+IoT environments using ResNet50_CNN1D and Edge-IIoT set insights," 
+Cluster Computing , vol. 29, no. 4, May 2026, Art. no. 257, 
+https://doi.org/10.1007/s10586-026-06114-9. 
+[13]  K. A. Awan et al. , "TANF—Trustworthy Adaptive Neural Framework 
+for Reliable and Scalable 6G Internet of Things," IEEE Internet of 
+Things Journal , vol. 13, no. 5, pp. 7730–7737, Mar. 2026, 
+https://doi.org/10.1109/JIOT.2025.3554707. 
+[14]  Z. Wei, B. Li, R. Zhang, X. Shen, and L. Song, "A M eta-Knowledge-
+Driven Approach for Adaptive Security Provisioning in Industrial IoT," 
+IEEE Internet of Things Journal , vol. 13, no. 5, pp. 8482–8495, Mar. 
+2026, https://doi.org/10.1109/JIOT.2025.3642118. 
+[15]  M. F. Saiyed and I. Al-Anbagi, "A Hybrid Explainabl e AI for DDoS 
+Attacks Detection in Industrial IoT Networks," IEEE Internet of Things 
+Journal , vol. 13, no. 7, pp. 12958–12973, Apr. 2026, 
+https://doi.org/10.1109/JIOT.2026.3653260. 
+[16]  U. Mahajan, J. Somasekar, and V. Neerugatti, "Smart CPS-ADAPT: An 
+Intrusion Detection System for Cyber-Physical Syste ms," Journal of 
+Artificial Intelligence and Technology , Apr. 2026, 
+https://doi.org/10.37965/jait.2026.1135. 
+[17]  M. A. F. Ferrag, O. F. Friha, D. H. Hamouda, L. M. Maglaras, and H. J. 
+Janicke, "Edge-IIoTset: A New Comprehensive Realist ic Cyber Security 
+Dataset of IoT and IIoT Applications: Centralized a nd Federated 
+Learning." IEEE DataPort, https://doi.org/10.21227/ MBC1-1H68. 
+ 

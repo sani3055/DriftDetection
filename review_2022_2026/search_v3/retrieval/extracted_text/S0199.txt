@@ -1,0 +1,597 @@
+echT PressScience
+Doi:10.32604/cmc.2025.068958
+ARTICLE
+AdvancesinMachineLearningforExplainableIntrusionDetectionUsing
+ImbalanceDatasetsinCybersecuritywithHarrisHawksOptimization
+AmjadRehman1,*,T a n z i l aS a b a1, MonaM.Jamjoom 2, ShahaAl-Otaibi3 andMuhammadI.Khan 1
+1ArtificialIntelligence&DataAnalyticsLab,CCIS,PrinceSultanUniversity,Riyadh,11586,SaudiArabia
+2DepartmentofComputerSciences,CollegeofComputerandInform ationSciences,PrincessNourahbintAbdulrahmanUniversity,
+Riyadh,11671,SaudiArabia
+3Department of Information Systems, College of Computer and Information Sciences, Princess Nourah bint Abdulrahman
+University,Riyadh,11671,SaudiArabia
+*CorrespondingAuthor:AmjadRehman.Email:arkhan@psu.edu.sa
+Received:10June2025;Accepted:12September2025;Published:10November2025
+ABSTRACT: Modernintrusiondetectionsystems(MIDS)facepersistentchallengesincopingwiththerapidevolution
+of cyber threats, high-volume network traffic, and imbalanced datasets. Traditional models often lack the robustness
+and explainability required to detect novel and sophisticated attacks effectively. This study introduces an advanced,
+explainable machine learning framework for multi-class IDS using the KDD99 and IDS datasets, which reflects
+real-world network behavior through a blend of normal and diverse attack classes. The methodology begins with
+sophisticated data preprocessing, incorporating both RobustScaler and QuantileTransformer to address outliers and
+skewed feature distributions, ensuring standardized and model-ready inputs. Critical dimensionality reduction is
+achieved via the Harris Hawks Optimization (HHO) algorithm—a nature-inspired metaheuristic modeled on hawks’
+hunting strategies. HHO efficiently identifies the most informative features by optimizing a fitness function based
+on classification performance. Following feature selection, the SMOTE is applied to the training data to resolve class
+imbalance by synthetically augmenting underrepresented attack types. The stacked architecture is then employed,
+combining the strengths of XGBoost, SVM, and RF as base learners. This layered approach improves prediction
+robustnessandgeneralizationbybalancingbiasandvarianceacrossdiverseclassifiers.Themodelwasevaluatedusing
+standard classification metrics: precision, recall, F1-score, and overall accuracy. The best overall performance was
+recorded with an accuracy of 99.44% for UNSW-NB15, demonstrating the model’s effectiveness. After balancing, the
+model demonstrated a clear improvement in detecting the attacks. We tested the model on four datasets to show the
+effectiveness of the proposed approach and performed the ablation study to check the effect of each parameter. Also,
+the proposed model is computationaly efficient. To support transparency and trust in decision-making, explainable
+AI(XAI)techniquesareincorporatedthatprovidesbothglobalandlocalinsightintofeaturecontributions,andoffers
+intuitive visualizations for individual predictions. This makes it suitable for practical deployment in cybersecurity
+environmentsthatdemandbothprecisionandaccountability.
+KEYWORDS:Intrusiondetection;XAI;machinelearning;ensemblemethod;cybersecurity;imbalancedata
+1I n t r o d u c t i o n
+An intrusion detection system is the privacy, confidentiality, or integrity of computer resources. As
+cyber threats become more sophisticated and complex, IDSs are increasingly important for detecting
+unauthorized access, misuse, or anomalies in the network environment [1]. IDSs are generally divided
+Copyright©2025TheAuthors. PublishedbyTechSciencePress.
+This work is licensed under a Creative Commons Attribution 4.0 International License, which permits
+unrestricteduse,distribution,andreproductioninan ymedium,providedtheoriginalworkisproperlycited.
+
+2 ComputMaterContin. 2026;86(1)
+into two main types: sequence-based detection and parameter-based detection. Intrusion detection relies
+on known attack patterns to detect attacks but cannot address zero-day attacks. Anomaly-based IDSs can
+identifydeviationsfromnormalbehaviorandarepowerfulindetectingunknownthreats[ 2].However,the
+large size of network data, the need for real-time processing, and the complexity of interpreting ML results
+pose significant challenges to effective use. Therefore, detection should not only be designed to identify
+known and emerging threats but also provide transparency and scalability. Intrusion detection serves as
+the primary defense against a variety of attacks in the context of cybersecurity. From malware to advanced
+threats and insider threats [3], the proliferation of cloud computing, the Internet of Things (IoT), and 5G
+networks has increased the attack surface, making networks more vulnerable. Today’s email campaigns are
+multifacetedandautomatedandchallengetraditionalsecurityprotocols.Itisessentialtobeawareofavariety
+of malicious behaviors, including denial of service (DoS) attacks, privilege escalation, and command and
+control (C2) attacks [4]. Attackers are also using techniques such as masking, blocking, and tunneling to
+evadedetection.Thesenewthreatmodelsrequireintelligentrecognizersthatcanlearnfromsmalldata,adapt
+overtime,anddetecthiddenpatterns.
+Intrusiondetectionhasbeenanessentialcomponentofnetworksecurityforaconsiderableamountof
+time.Itsprimaryfunctionistoidentifyindividualswhoaregainingunauthorizedaccesstoprotectedprivate
+networks.Theabilitytoquicklydiscoversecuritypolicy breaches,invasions,orattackswithinanetwork or
+host system is precisely what an intrusion detection system, often known as IDS, is capable of doing. Prior
+totheinvestigationofdeeplearningtechniquessuchasCNN,LSTM,andauto-encoders,theprimaryfocus
+of the research was on the incorporation of traditional machine learning models, such as decision trees,
+and support vector machines, into IDS that were already in operation. There are still significant difficulties
+connected with putting these insights into practice in actual systems, despite the fact that they are quite
+effectiveinidentifyingproblems[ 5,6].
+AI and ML can boost IDS efficiency and effectiveness. In vital applications like national security,
+finance, and healthcare, these models must be accurate and intelligible to be successful and dependable.
+ClassimbalanceisamajorissueinML-basedIDSdevelopment.Thetotalclassificationoutperformstheideal
+classificationonavailabledatasets[ 7].Weakperformancemightresultfromquickclassificationsthatoperate
+well on most datasets (malicious incursions) but not on small datasets (attacks). Many public IDS datasets
+are obsolete, erroneous, or don’t cover all attack paths. Interpretation difficulties matter too. Cyber security
+researchersfinditchallengingtocomprehendtheunderlyingprinciplesofmanymachinelearningmodels,
+particularlydeeplearningframeworks,whicharesometimesreferredtoas“blackboxes.”Thelackofclarity
+might limit their practical use, particularly in circumstances requiring simplicity and dependability [8].
+Scalability,dataintegrationproblems,andtherequirementtocontinuouslyadjusttonewattacktechniques
+are additional significant challenges. Complexity makes it hard to balance performance, scalability, and
+resource efficiency in IDS systems. Numerous systems need scalability while avoiding false positives and
+operating expenses, particularly in crucial locations like data centers and cloud infrastructure [9,10].
+Contributionsofthisstudyinclude:
+• This study proposes an explainable intrusion detection system using a stacked ensemble of machine
+learningclassifiersviarandomforestmeta-learners.
+• The study deployed advanced preprocessing strategies to clean the IDS data, including incorporating a
+robustscalerandquantiletransformer.
+• ThenovelmodifiedHarrisHawksoptimisationalgorithmisusedtoselectthebestandrelevantfeatures
+fo rin trusio ndetectio n.
+• The dataset is heavily imbalanced; we used synthetic minority oversampling technique (SMOTE) to
+addresstheissueofclassimbalanceonlyontrainingdata.
+
+ComputMaterContin. 2026;86(1) 3
+• We use the XAI techniques to create intuitive visualisations for individual predictions. This advantage
+makes it suitable for practical deployment in cybersecurity environments that demand both precision
+andaccountability.
+Theremainingpartisorganizedasfollows: Section2 presentstheliteraturesurvey, Section3 describes
+the proposed methodology,Section4 explains the results and discussion, and finallySection5 ends with
+aconclusion.
+2L i t e r a t u r eR e v i e w
+The authors used deep learning (DL) techniques at the payload level in an HPC environment was
+commendable. On top of that, they recommended an excellent CNN-LSTM model based on SFL. AI-IDS
+havetheabilitytodistinguishbetween typicalandsuspiciousHTTPtraffic,acapabilitythatwaspreviously
+unavailable in prior signature-based NIDS [11]. The datasets used for training and testing the model,
+NSL-KDD and UNSW-NB 15, are easily accessible. The DNN model was trained using the same dataset,
+followedbytheConvolutionNeuralNetwork(CNN)model.Theanalysisofbothdatasetsindicatedthatthe
+deeplearning(DL)modelperformedbetter[ 12].
+TheKDDCup99datasetwasemployedtoinvestigateandassessanAIintrusiondetectionsystemthat
+was constructed on DNN. In response to the dynamic nature of network hazards, they implemented this
+measure. The model demonstrated exceptional performance when employed for intrusion detection [13].
+ThisstudysuggestedtheimplementationofIDSthroughtheuseofMLtechniques,includingsupportvector
+machines (SVMs), random forests, and decision trees. After training these models and implementing an
+ensembleapproachvoteclassifier,theyattainedasuccessrateof96.25%[ 14].Theobjectiveoftheresearch[ 15]
+was to create a deep learning system that can identify instances of social media infiltration by categorizing
+serverdatausingSVM.
+TheBigDataHierarchicalDeepLearningSystemwasoneofthesystemsthattheauthorsproposed[ 16].
+This method may be capable of detecting intrusive attacks more frequently than previous methods that
+were dependent on a singular learning model. They concluded by comparing the relative efficacy of our
+state-of-the-art models to the most recent models on the CIC-IDS2017 dataset [17]. Additionally, they
+implemented the classification and regression tree model to ascertain the features’ importance. When the
+authors’ CNN-based approach was paired with channel attention, it obtained an outstanding accuracy rate
+on the NSL-KDD dataset. When compared to alternative approaches, such as adaptive algorithms, hybrid
+auto-encoderscombiningCNN,MCNN,andANN,andensemblelearningutilizingCNN,RBM,andANN,
+their solution considerably enhances the performance of intrusion detection [18]. Two improved intrusion
+detection systems (IDSs) based on DL and Grey Wolf Optimization (GWO) were the subject of another
+investigation.Bydecreasingdimensionalityandimprovingdetectionaccuracy,thesesystemsaimtoimprove
+feature selection. To test the suggested systems, they used the NSL-KDD and UNSW-NB15 datasets, which
+are typical of modern network settings[19].
+TheauthorshaddiscussedtheideaofXAItoenhancetrustmanagementbyexaminingthedecisiontree
+modelinthefieldofIDS.InIDS,Theyemployedstraightforwarddecisiontreealgorithmsthatmimichuman
+decision-makingbydividingtheoveralloptionintonu meroussmalleronesandarethuseasiertounderstand
+and work with [20].Th ea u th o r su sedNIDSa sas ta n da r dt oco m pa r etw odir ect edMLm eth od s,SVMa n d
+Deep Neural Networks. They used the NSL-KDD dataset to test the suggested method for this reason. The
+test results indicate that DCNN was more accurate than SVM [21]. To address the issue of unequal data,
+authors employed a cutting-edge generative model to generate highly convincing false data and assess the
+trainingprocess.OntheNSL-KDDdataset,theproposedmodelsachievedanaccuracyofupto93.2%;onthe
+UNSW-NB15 dataset, it was 87%; and the minor classes performed quite well [22]. The authors suggested a
+
+4 ComputMaterContin. 2026;86(1)
+novelapproachtodetectingDDoSassaultsbycombiningvariousformsofmachinelearning.Byintegrating
+SVMwithK-means-groupedRadialBasisFunctionNet works,theirapproachenhancesspottingspeedand
+accuracy. They had the most success while testingwith the CICDDoS2019 and CICIDS2017 datasets [23].
+The authors concluded by applying the suggested framework to two benchmark datasets, UNSW-NB15 and
+NSL-KDD99, which display different network properties and attack scenarios [24]. The summary of the
+structuredcomparativeanalysisisshownin Table 1.
+Table 1:Summaryofstructuredcomparativeanalysis
+Study Algorithms Datasets Evaluation
+metrics
+XAI Limitations
+[11]C N N +LSTM CSIC-2010,
+CICIDS2017
+Precision,F-score,
+Accuracy,
+Specificity
+Yes Moststudiesrelyon
+outdated or synthetic
+datasets
+[12] CNN NSL-KDD,
+UNSW-NB15
+Accuracy Yes LackofInterpretability,
+and Computational
+Complexityand
+ScalabilityChallenges.
+[13] DNN KDD99 Accuracy,
+DetectionRate,
+False Alarm Rate
+No Outdated dataset, Class
+Imbalance, No Model
+Interpretability
+[14] DT,RF,SVM CICIDS2017 Precision,F-score,
+Accuracy, recall
+Yes Theperformancemay
+notgeneralizewellto
+other datasets.
+[15] DAG-SVM CSE-CIC-IDS
+2018
+Precision,F-score,
+Accuracy, recall
+No Overfitting risk and No
+explanationprovided
+withXAI
+[16] BDHDLS CICIDS2017 Acc,tpr, fpr No OverfittingriskandNo
+explanationprovided
+withXAI
+[17] Ensemble CIC-IDS2017,
+KDD99
+Precision,F-score,
+Accuracy, recall
+No Interpretability relied
+only on CART, not
+advancedpost-hoc
+explainerslikeLIMEor
+SHAP
+3P r o p o s e dM e t h o d o l o g y
+Preprocessing that is thorough and smart is the first step in building an effective machine learning
+pipeline.Inthisstudy,preprocessingwascarefullyplannedtodealwithboththemanyformsofdataandthe
+statistical problems that the dataset posed. The dataset has both numbers and categories, which is common
+indatasetsfornetworkinfiltration.Categoricalpropertieslikeprotocol_type,service,andflagareimportant
+for understanding how a network works, but they need to be changed into a form that machine learning
+algorithmscanunderstand.LabelEncodingwasusedoneachcategoricalvariabletoturnthemintointeger
+labels that stand for different categories while keeping things simple and easy to understand. The proposed
+workflowisillustratedinAlgorithm1.
+
+ComputMaterContin. 2026;86(1) 5
+Algorithm1: HHO-basedfeatureselectionandstackedensembleforIDS
+Data:Rawdataset D∈Rn×(m+1) with mfeaturesandlabelcolumn
+Result:Trainedstackedensemblemodelandevaluationmetrics
+1Preprocessing:;
+2EncodecategoricalfeaturesusingLabelEncoder;
+3A p plyRob ustScaler:X(r)= X−Median(X)
+IQR(X) ;
+4ApplyQuantileTransformer: X(q)= Q(X(r))toGaussiandistribution;
+5FeatureSelectionviaHHO: ;
+6Initialize P={ F1, F2,..., FN}, Fi∈{0,1}m;
+7for t←1to T do
+8C o m p u t e e s c a p eE=2E0(1−t
+T);
+9 if∣E∣≥1then
+10 Update position using soft or surprise pounce rule;
+11 else
+12 Updateusinghardrabbitescapemodel;
+13 end
+14 F
+i←I(Fi>0.5);
+15 Evaluatefitness: F(F)= 1−AccuracyRF(XF, y);
+16end
+17Selectbestfeaturemask F∗;
+18DataPreparation:;
+19 Split dataset:(Xtrain , Xtest, ytrain , ytest);
+20ApplyRandomOverSamplerontrainingset;
+21ModelTraining(StackedEnsemble): ;
+22Trainbaseclassifiers:XGBoost,SVM,RandomForeston Xtrain;
+23Obtainout-of-foldpredictionsformeta-learner;
+24 Train meta-model (Random Forest) on predictions;
+25Evaluation:;
+26Predict ˆy on Xtest;
+27ComputeAccuracy,Precision,Recall,F1-score;
+InEq.(1), f indicatesthefunction, Cforclass, Zsetofintegers, li integerlabeland ci categoricalvalue.
+f∶C→Z, f(ci)= li (1)
+In the real world, network data is generally complicated, with big outliers and uneven distributions,
+especially when it comes to things like byte counts or connection times. We used two complex scaling
+a p p r oacheso nea ftertheo thertodealwi ththesep r ob lem s.First,Rob ustScalerwasusedtolessentheeff ect
+of outliers. InEq.(2), x
+scaled
+i represents the scaled value,xi original value andQ1, Q2, Q3 are first, median
+andthirdquartile.
+xscaled
+i = xi−Q2
+Q3−Q1
+(2)
+Thisscalerchangesthedatadependingontheinterquartilerange(IQR),whichistherangebetweenthe
+25th and 75th percentiles. RobustScaler keeps the central tendency of the data while lowering the effect of
+
+6 ComputMaterContin. 2026;86(1)
+outliers. InEq.(3), n indicates the total number of samples or data,1x j≤x represents the indicator function,
+and Fn(x)empiricalcumulativedistributionfunctionvalue.
+Fn(x)= 1
+n
+n
+∑
+j=1
+1x j≤x (3)
+Thisisdifferentfromtypicalnormalisationalgorithm s,whichcanbesubstantia llydistortedbyextreme
+results. After then, QuantileTransformer was used to change the data distribution even more. This trans-
+formerchangesthedistributionofeachfeaturesothatitfollowsanormalorGaussiandistribution.Thiskind
+ofmodificationisespeciallyusefulformodelsthatassumefeaturesareregularlydistributed.Italsospeedsup
+andimprovestheaccuracyoftrainingthatcomesafterit.Theproposedmethodologyispresentedin Fig.1.
+Afterscalingandtransformingthedata,thenextimportantstepistochoosethebestfeatures.Weused
+theHarrisHawksOptimization(HHO)method,whichisbasedontheintelligenthuntingbehaviorofHarris
+hawks, to improve performance and make the calculations easier. This program mimics several stages of
+predator-prey interaction. It changes its strategy on the fly to either search the space broadly or use known
+goodanswers.Inourcase,eachpossiblesolution(or“hawk”)isabinarystringthatshowswhichfeaturesto
+include.Alightweightmodel,likearandomforest,trainedonthechosenfeaturesisusedtorateeachhawk’s
+fitness based on how well it classifies things (usually accuracy). Hawks change their positions during each
+iteration based on methods like surprise pounce, soft besiege, and hard besiege. An energy parameter that
+getslowerovertimemakessurethatthehawksallendupinthesameplace.HHOthenusesthebestfeature
+subsettotrainthefinalensemblemodel.
+Afterchoosingthefeatures,weusedstratifiedsamplingtokeeptheclassproportionsthesameandsplit
+the dataset into training and testing subsets. A major problem with attack detection activities, meanwhile,
+is that some types of attacks are substantially less common than others. To fix this, we used the SMOTE
+method on the training set. SMOTE makes copies of instances of minority classes to make the number of
+majority class samples equal, which balances the class distribution. Undersampling throws away data that
+could be useful from the majority class, whereas SMOTE keeps all of the original samples and adds to the
+minorityones.Thismethodmakesthemodelbetteratlearningfrominfrequentpatternsandimprovesrecall
+onclassesthataren’twellrepresented.Thisisveryimportantinsecurityapplications,wheremissinganattack
+canbequitebad.
+Stackedensemblelearningisasophisticatedmodelingtechniquethatintegratesthepredictionstrengths
+of various algorithms to enhance accuracy and dependability. This work employs a stacked ensemble
+approach utilizing three distinct models: XGBoost, Support Vector Machine (SVM), and Random Forest
+(RF),complementedbyameta-classifierthatamalgamatestheiroutputstorenderthefinalconclusion.Every
+one of these foundation learners has its own strengths. XGBoost is a gradient boosting system that works
+well with non-linear patterns and missing values. It often gives good results on structured datasets because
+itisoptimizedforspeedandaccuracy.RandomForestisagroupofdecisiontreesthatusesbaggingtomake
+them more stable against noise and high variance by averaging several decision routes. The SVM with an
+RBFkernel,ontheotherhand,worksbestinhigh-dimensionalenvironmentsandisgreatatfindingcomplex
+class borders via kernel-based transformations. InEq.(4),
+D represents full dataset,N samples, xi feature
+vectors, yi correspondinglabels,and Rd indicatesrealvaluedimensions.
+D={( xi, yi)}N
+i=1, xi∈Rd, yi∈{1,2,..., K} (4)
+
+ComputMaterContin. 2026;86(1) 7
+Figure1: ProposedMethodologyforIDS
+There are two steps to the stackingprocess. In the first step, each base model is trained on the training
+data by itself. After that, the predictions are put together to make a new feature matrix, with each column
+representingthepredictionsfromoneoftheunderlyingmodels.Inthesecondstage,ameta-classifierlearns
+fromthisnewfeaturematrix.TheRandomForestclassifierischosenasthemeta-learnerbecauseitisstable,
+canhandlenon-linearcorrelations,andcanbeunderstood.Themeta-modelfiguresoutwhichmodelworks
+bestincertainsituationsbylearninghowtobestmixtheoutputsofthebaselearners.Forinstance,theSVM
+might work better when the classes are well-separated, while XGBoost might work better when the data is
+noisyoruneven.Themeta-learnerfindsthesestrengthsandgiveseachmodel’spredictionstherightamount
+
+8 ComputMaterContin. 2026;86(1)
+of weight, so the final conclusion is based on the best of all three methods. Once the entire stacked model
+hasbeentrained,thetestdataisusedtoseehowwellitworks.Thebasemodelsprovidepredictionsforeach
+testinstance,whicharethensenttothemeta-classifiertogetthefinaloutput.Thisdesign,whichisbasedon
+modelsworkingtogether,frequentlycutsdownongeneralizationerrorsandmakespredictionsmuchmore
+accurate. TrainM base models on the training data: InEq.(5), f
+m(x) represents prediction function,mth
+baselearnerand M forbasemodels.
+fm(x)= Train(x, y), m=1,2,..., M (5)
+Generate predictions for both training and test data using each base model. InEqs.(6) and (7),
+Dtrain , Dtest: Training and testing datasets.x and y represent the data and labels.[ f1), f2, fM)] for trained
+modelsand xi, x j inputs.
+ztrain
+i =[ f1(xi), f2(xi),..., fM(xi)], ∀(xi, yi)∈Dtrain (6)
+ztest
+j =[ f1(x j), f2(x j),..., fM(x j)], ∀(x j, y j)∈Dtest (7)
+InEq.(8),trainameta-learner g o nthebaselearningo u tp u ts:
+g(z)= Train(Ztrain , y),w h e r eZtrain ={ ztrain
+i } (8)
+In Eq.(9), the final prediction for a new test instance is determined as:ˆy j for final predicted class for
+testsample x j and g formetamodel.
+ˆy j= g(ztest
+j )= g( f1(x j), f2(x j),..., fM(x j)) (9)
+O n eo ft h eb e s tt h i n g sa b o u ts t a c k i n gi st h a ti tb a l a n c e so u tt h ee ff e c t so fb i a sa n dv o l a t i l i t y .R a n d o m
+Forestsreducevariance,XGBoostreducesbias,andSVMaddsstrengthtodecisionboundarycreation.The
+factthatthesebaselearnersaresodifferentfromoneother,withtree-basedmodels andkernelapproaches,
+meansthattheirmistakesaremostlyuncorrelated.Themeta-classifiertakesadvantageofthisbyfiguringout
+howtocombinetheiroutputsinawaythatworksbestondataithasn’tseenbefore.
+4 ResultsandDiscussion
+This section provides the experimental results for IDS using stacked ensemble model. We evaluate
+the model performance using accuracy, precision, recall and F1 score metrics. These are very important in
+machinelearningclassificationtasks.
+Accurac y= (TRP+ FAN)
+(TRP+ TRN+ FAP+ FAN) (10)
+Precisionscore = TRP
+(TRP+ FAP) (11)
+Recallscore = TRP
+(TRP+ FAN) (12)
+F1score =⎛
+⎝2×
+(precisionscore)×(recallscore)
+(precisionscore)+( recallscore)
+⎞
+⎠ (13)
+
+ComputMaterContin. 2026;86(1) 9
+The performance of the proposed stacked model for intrusion detection using KDD99 imbalance
+datasetisshownin Table 2.TheresultsoftheevaluationoftheclassificationmodelontheKDDCup99dataset
+showthatitworkswellgenerally,especiallyforhigh-frequencyattacktypes.However,ithastroublefinding
+unusual or subtle threats. Denial-of-Service (DoS) assaults including smurf, neptune, and back got flawless
+precision, recall, and F1 scores, with thousands of right predictions and no mistakes. This shows that the
+stacked model is quite good at finding the most important patterns in the training data. The model also
+did very well with regular traffic, getting almost perfect scores, which means that there weren’t many false
+positives in benign circumstances. There were a few minor misclassifications of other assaults, like satan,
+ipsweep,portsweep,andwarezclient.Evenmoreworrying,acollectionoflow-frequencyorstealthyassaults,
+like rootkit, load module, ftp_write, and multihop, were not found at all, with no precision or recall. These
+failuresshowthatthemodelcouldn’tlearnusefulpatternsforunusualclasses,probablybecausethereweren’t
+enoughexamplesofthoseclassesduringtraining.Attackslikeguess_passwdandbuffer_overflowhadvaried
+outcomes,withsomebeingdetectedandothersbeingmisclassifiedalot.
+Table 2:TheperformanceoftheproposedstackedmodelforintrusiondetectionusingKDD99imbalancedataset
+Attacktype Precision Recall F1score Attacktype Precision Recall F1score
+Smurf 100.0 100.0 100.0 Guess_passwd 66.67 50.00 57.14
+Neptune 100.0 100.0 100.0 Buffer_overflow 100.0 83.33 90.91
+Normal 99.88 99.98 99.93 Land 100.0 85.71 92.31
+Back 100.0 100.0 100.0 Warezmaster 100.0 100.0 100.0
+Satan 99.78 98.72 99.25 Imap 100.00 66.67 80.00
+Ipsweep 99.48 99.21 99.34 Rootkit 00.00 00.00 00.00
+Portsweep 100.0 99.38 99.69 loadmodule 00.00 00.00 00.00
+Warezclient 99.06 97.22 98.13 ftp_write 00.00 00.00 00.00
+Teardrop 100.0 100.0 100.0 multihop 00.00 00.00 00.00
+Pod 100.00 98.55 99.27 Phf 100.0 100.0 100.0
+Nmap 100.0 96.72 98.33
+Table 3shows the performance of the proposed stacked model for intrusion detection using KDD99
+balanced dataset. To address class imbalance and reduces the chances of overfitting we applied SMOTE on
+training data. After applying SMOTE, the model achieved best training and when we evaluate on the test
+dataitshowssuperiorperformance.Forsmurf,neptune,back,teardrop,pod,nmap,warezmaster,phf,perl,
+and spy type of attack, model achieved 100% performance. For rootkit, multihop, load module, the model
+achievedpoorresultsapproximately50%.While,otherattacksachievedbetterresultsabove80%,inrespect
+withprecision,recallandF1score.Theperformanceoftheproposedstackedmodelusinganotherdatasetis
+shown inTable 4where Reconnaissance (Rec), DoS GoldenEye (DoS GE), DoS Slowhttptest (DoS ST) are
+someattacklabels.
+Table 3:Theperformanceoftheproposedstacked modelforintrusiondetectionusingKDD99balanceddataset
+Attacktype Precision Recall F1Score Attacktype Precision Recall F1Score
+Smurf 99.50 99.45 99.47 Buffer_overf 86.00 70.00 773.3
+Neptune 99.55 99.60 99.58 Land 90.00 60.00 72.00
+Normal 99.30 99.35 99.32 Warezmaster 99.50 99.50 99.50
+(Continued)
+
+10 ComputMaterContin. 2026;86(1)
+Table 3 (continued)
+Attacktype Precision Recall F1Score Attacktype Precision Recall F1Score
+Back 99.00 98.80 98.90 Imap 99.00 60.00 74.62
+Satan 98.50 98.40 98.45 Rootkit 71.00 66.00 68.44
+Ipsweep 98.80 98.50 98.65 Loadmodule 85.00 33.00 47.40
+Portsweep 99.00 9920 99.10 ftp_write 99.00 48.00 64.55
+Warezclient 98.50 98.50 98.50 multihop 66.00 33.00 44.00
+Teardrop 99.70 99.70 99.70 Phf 100.0 100.0 100.0
+Pod 99.50 98.00 98.74 perl 100.0 100.0 100.0
+Nmap 99.00 98.00 98.50 spy 100.0 100.0 100.0
+Guess_pass 98.50 90.00 94.12
+Table 4:The performance of the proposed stacked model using UNSW-NB15 and CIC-IDS2017 Wednesday DoS,
+DDoS-FridayDataset
+UNSW-NB15Dataset CIC-IDS2017Dataset
+Label Precision Recall F1Score Label Precision Recall F1Score
+Normal 99.55 99.40 99.48 Benign 99.00 98.70 98.85
+Generic 99.00 98.85 98.92 DoSHulk 98.80 98.30 98.55
+Exploits 97.80 97.55 97.67 DoSGE 98.00 97.70 97.85
+Fuzzers 98.02 97.80 97.91 DoSslowloris 97.50 97.00 97.25
+DoS 97.64 97.40 97.52 DoS ST 97.20 96.80 97.00
+Rec 97.05 96.90 96.97 Heartbleed 75.00 71.00 73.00
+Analysis 78.00 77.00 77.50 DDoS 97.50 97.40 97.45
+Backdoor 79.00 78.00 78.50
+Shellcode 89.00 88.00 88.50
+Worms 850 76.50 78.46
+Fig.2 shows the ROC-AUC of the proposed stacked model using KDD99 IDS balanced dataset. We
+evaluated the performance on a particular test data set following the model’s training. We conduct a
+more thorough examination of the classifier’s performance by generating a ROC curve and establishing
+performance metrics. In order to enhance classification accuracy, we either determine the threshold or
+evaluate the classifier’s performance in the domains of high sensitivity and specificity. The ROC curve
+demonstrates that a corresponding pair of TPR and FPR values exists at each point for any given threshold
+value. Altering the threshold value enables us to identify a variety of TPR and FPR values. Subsequently,
+thepairingsareemployedtogenerateaROCcurve.TheallattacksarewithAUCareplotted.Usingbalance
+data,thestackedmodelachievedoutclassresultsforattacks.Duringtrainingsomeattacksthathadveryless
+number of samples are got good AUC score.
+To improve model interpretability, SHAP (SHAPley Additive Explainability) was used to evaluate the
+contributionofindividualcomponentstotheclassificationresults.TheSHAPsummaryshowsthatfeatures
+suchasprotocol,servicehadasignificantimpactonthemodel’spredictions.
+
+ComputMaterContin. 2026;86(1) 11
+Figure2: ROC-AUCoftheproposedstackedmodelusingKDD99IDSbalanceddataset
+To illustrate spatial flexibility, the DoS attack model flowchart was examined. The model initially
+assumed a neutral order, but the presence of high src_bytes and counts shifted the predictions toward the
+“attack”sequence.TheSHAPvaluesforeachfeaturecontributedequallytothefinalprediction,allowingus
+toassesswhichspecificinputfeaturesledtothefinalclassification.Theexplainabilityoftheproposedstacked
+modelisshownin Fig.3.
+This descriptive capability provides valuable insights for security professionals. By understanding the
+factors that influence a person’s decision, researchers can predict conversion rates, correct false positives,
+
+12 ComputMaterContin. 2026;86(1)
+and improve claims. Furthermore, definable AI techniques like SHAP improve the reliability and accuracy
+ofautomatedidentifiers,makingthemsuitableforuseinreal-worldcybersecurityenvironments.
+Figure3: Theexplainabilityoftheproposedstackedmodel( a)S H APin teractio nval ue(b)W a terfallplo t
+Theproposedmodeldemonstratesthecomputationalefficiencyusingthreedatasetsin Table 5.During
+the training phase, the average Inference time of the whole model, including feature selection (HHO),
+SMOTE, and classification, is about 52 ms on a computer with 16 GB RAM and an Intel i7 processor for
+KDD99dataset.Thetrainingtimeisabout98.5s,makingitsuitableforodordetectioninnearreal-time.The
+feature selection approach increased the feature retrieval rate, but also significantly improved the accuracy
+and generalization of the model. Using UNSW-NB15 dataset, the inference time is 63 ms and training is
+106.8 s. We have implemented additional evaluation using 5-fold cross-validation. This method divides the
+datasetintofiveequalparts,usingfourfoldsfortrainingandonefortestingineachiteration,ensuringthat
+every data point is used for both training and validation. The model achieved highest 97.54% accuracy for
+KDD99dataset.
+Table 5:Computationalefficiencyandcrossvalidationoftheproposedmodel
+Dataset Testingaccuracy K =5foldsaccuracy Avginferencetime(ms) Trainingtime(s)
+KDD99 99.32 97.54 52 98.5
+CIC-IDS2017 98.12 97.34 71 162.4
+UNSW-NB15 99.44 96.89 63 106.8
+Table 6shows the performance of ablation study. A validation study was conducted to evaluate the
+effectofeachparameterontheproposedmodel:HHOfeatureselection,randomidentification,andfeature
+extraction. By sequentially reducing one parameter at a time, we were able to observe changes in overall
+performance and F1 score. The overall model achieved an accuracy of 99.32%, while removing or stacking
+HHOresultedinasignificantdecreaseinaccuracy.TheaccuracyoftheSMOTEapproachwashigher,which
+
+ComputMaterContin. 2026;86(1) 13
+justifies the benefit of eliminating class imbalance. The analysis shows that each component contributes
+significantlytotheimprovementofthesystem.
+Table 6:Performance of ablation study
+Configuration Accuracy F1Score
+Full model 99.32 99.30
+Without HHO 98.45 98.30
+No SMOTE 95.75 95.60
+SingleXGBoost 98.65 98.70
+WithoutHHO&Stacking 98.59 98.65
+Table 7compares our proposed model with several state-of-the-art methods using three popular
+datasets: KDD99, CICIDS2017, and UNSWNB15. The goal is to evaluate how well different models predict
+intrusionsbasedoncommonperformancemetricssuchasprecision,accuracy,recall,andF1score.Previous
+studies, such as CICIDS 2017 and the CNN+LSTM model [11], achieved 93.4% accuracy, while the voting
+model [14]a c h i e v e d9 6 . 2 %a c c u r a c y ,b o t ho fw h i c hh a v es h o w ng o o dp e r f o r m a n c eb u th a v en o tb e e n
+published.Althoughsomemodels,suchasDNN[ 13]andBDH-DLS[ 16],haveachievedhighaccuracy(upto
+99%),theyhavenotprovidedquantitativemetricssuchasprecisionorrecall,makingitdifficulttoaccurately
+assesstheiractualperformance.
+Table 7:Comparativeevaluationwithrecentstate-of-the-artIDSmethods
+Study Algorithms Datasetused Accuracy Precision Recall F1score
+[11]C N N +LSTM CICIDS2017 93.4 94.0 93.0 93.3
+[13]D N N K D D 9 9 9 9 – ––
+[14] Votingmodel CICIDS2017 96.2 89 89 89
+[16] BDHDLS CICIDS2017 99 – – –
+Proposed Stacked
+KDD99 99.3 Avg94.9 Avg84.7 Avg88.3
+CIC-IDS2017 98.1 Avg94.7 Avg93.7 Avg94.3
+UNSW-NB15 99.4 Avg92.0 Avg90.7 Avg91.1
+UpdatedNetFlow-V3 96.8 Avg94.2 Avg93.7 Avg93.9
+In contrast, our proposed stacked model shows robust and consistent performance across all datasets.
+On KDD99, it achieves 99.3% accuracy, with an average F1 score of 88.3, which also performs well on
+traditionaldatasets.OnthemorecomplexCICIDS-2017dataset,itachieves98.1%accuracyandanF1score
+of 94.3, which demonstrates high classification accuracy. On UNSWNB15, the accuracy reaches 99.4%,
+outperformingpreviousmodelsinbothaccuracyandprecision.Overall,theresultsshowthatourmethodis
+notonlyaccuratebutalsowell-definedforawiderangeofdatasets.Also,wedidexperimentsusingthelatest
+NetFlow version 3 dataset that consists of multi-class attacks. The stacked model achieved 96.8% accuracy
+and93.9%F1score.
+5 Conclusion
+This paper presents a strong and comprehensive stacked ensemble intrusion detection strategy that
+addresses imbalanced datasets like KDD99 and IDS. The dataset is especially preprocessed using Robust
+
+14 ComputMaterContin. 2026;86(1)
+Scaler and Quantile Transformer to handle outliers and skewed distributions. Harris Hawks Optimization
+chooses the most critical information for learning to improve input features. The stacked model is trained
+using both datasets and applied SMOTE on KDD99. The stacked ensemble approach improves prediction
+by combining the XGBoost, SVM, and RF greatest predictions. This approach prevents overfitting and
+underfitting,ensuringconsistentresultsacrossnetworktraffictypes.Theexperimentsshowthatthestacked
+model achieved 99.32% accuracy for the KDD99 multi-class attack dataset and 99.44% for the UNSW-
+NB15dataset.TheperformanceoftheproposedapproachisenhancedwhileusingSMOTEontrainingdata.
+The system also used XAI to show which input properties were most important in each detection. This
+informationcanhelpsecurityteamstrustthemodel’sdecisionsandinterpretwarnings.
+Acknowledgement: This research was supported by Princess Nourah bint Abdulrahman University Researchers
+SupportingProjectnumber(PNURSP2025R104),PrincessNourahbintAbdulrahmanUniversity,Riyadh,SaudiArabia.
+TheauthorsarealsothankfultoPrinceSultanUniversity,Riyadh,SaudiArabiaofAPCsupport.
+FundingStatement: ThisresearchisfundedbyPrincessNourahbintAbdulrahmanUniversityResearchersSupporting
+Projectnumber(PNURSP2025R104),PrincessNourahbintAbdulrahmanUniversity,Riyadh,SaudiArabia.
+Author Contributions:Conceptualization, Amjad Rehman, and Tanzila Saba; methodology, Tanzila Saba; software,
+validation, Shaha Al-Otaibi and Mona M. Jamjoom; formal analysis, investigation, Shaha Al-Otaibi and Muhammad
+I. Khan; resources, Amjad Rehman; data curation, writing—original draft preparation, Amjad Rehman and Mona M.
+Jamjoom; writing—review and editing, Tanzila Saba; visualization, supervision, Tanzila Saba; project administration,
+Muhammad I. Khan; funding acquisition, Mona M. Jamjoom, Shaha Al-Otaibi. All authors reviewed the results and
+a p p r o vedthefinalversio no ftheman uscri p t.
+AvailabilityofDataandMaterials: Thedatasetsgeneratedoranalyzedduringthecurrentstudyareavailablefromthe
+correspondingauthoronreasonablerequest.
+EthicsApproval: Not applicable.
+ConflictsofInterest: Theauthorsdeclaresnoconflictsofinteresttoreportregardingthepresentstudy.
+References
+1. KhraisatA,GondalI,VamplewP,KamruzzamanJ.Surveyofintrusiondetectionsystems:techniques,datasetsand
+challenges.Cybersecurity.2019;2:20.doi:10.1186/s42400-019-0038.
+2. HairabBI,SaidElsayedM,JurcutAD,AzerMA.AnomalydetectionbasedonCNNandregularizationtechniques
+againstzero-dayattacksinIoTnetworks.IEEEAccess.2022;10:98427–40.doi:10.1109/ACCESS.2022.3206367.
+3. RizviS,OrrRJ,CoxA,AshokkumarP,RizviMR.IdentifyingtheattacksurfaceforIoTnetwork.InternetThings.
+2020;9(1):100162.doi:10.1016/j.iot.2020.100162.
+4. Gupta BB, Dahiya A. Distributed Denial of Service (DDoS) Attacks: Classification, Attacks, Challenges and
+Countermeasures.BocaRaton,FL,USA:CRCpress;2021.doi:10.1201/9781003107354.
+5. Mouatassim T, El Ghazi H, Bouzaachane K, El Guarmah EM, Lahsen-Cherif I. Cybersecurity analytics: toward
+anefficientML-basednetworkintrusiondetectionsystem(NIDS).In:RenaultÉ.,BoumerdassiS,MühlethalerP,
+editors.MachineLearningforNetworking.MLN2023.Cham,Switzerland:Springer;2024.p.267–84.doi:10.1007/
+978-3-031-59933-0_18.
+6. Halbouni A, Gunawan TS, Habaebi MH, Halbouni M, Kartiwi M, Ahmad R. CNN-LSTM: hybrid deep neural
+network for network intrusion detection system. IEEE Access. 2022;10:99837–49. doi:10.1109/ACCESS.2022.
+3206425.
+7. BallaA,HabaebiMH,ElsheikhEAA,IslamMR,SulimanFM.Theeffectofdatasetimbalanceontheperformance
+ofSCADAintrusiondetectionsystems.Sensors.2023;23(2):758.doi:10.3390/s23020758.
+
+ComputMaterContin. 2026;86(1) 15
+8. AlahmedS,AlasadQ,HammoodMM,YuanJ-S,AlawadM.Mitigationofblack-boxattacksonintrusiondetection
+systems-basedML.Computers.2022;11(7):115.doi:10.3390/computers11070115.
+9. Khraisat A, Alazab A. A critical review of intrusion detection systems in the Internet of Things: techniques,
+deploymentstrategy,validationstrategy,attacks,publicdatasetsandchallenges.Cybersecurity.2021;4(1):18.doi:10.
+1186/s42400-021-00077-7.
+10. Liu Z, Xu B, Cheng B, Hu X, Darbandi M. Intrusion detection systems in the cloud computing: a comprehensive
+anddeepliteraturereview.ConcurrComput.2022;34(4):e6646.doi:10.1002/cpe.6646.
+11. KimA,ParkM,LeeDH.AI-IDS:applicationofdeeplearningtoreal-timewebintrusiondetection.IEEEAccess.
+2020;8:70245–61.doi:10.1109/ACCESS.2020.2986882.
+12. Sharma B, Sharma L, Lal C, Roy S. Explainable artificial intelligence for intrusion detection in IoT networks: a
+deeplearningbasedapproach.ExpertSystAppl.2024;238(1):121751.doi:10.1016/j.eswa.2023.121751.
+13. KimJ,ShinN,JoSY,KimSH.Methodofintrusiondetectionusingdeepneuralnetwork.In:2017IEEEInternational
+Conference on Big Data and Smart Computing (BigComp); 2017 Feb 13–16; Jeju, Republic of Korea. p. 313–6.
+doi:10.1109/BIGCOMP.2017.7881684.
+14. Patil S, Varadarajan V, Mazhar SM, Sahibzada A, Ahmed N, Sinha O, et al. Ex-plainable artificial intelligence for
+intrusiondetectionsystem.Electronics.2022;11(19):3079.doi:10.3390/electronics11193079.
+15. AbualiKM,NissiratL,Al-SamawiA.AdvancingnetworksecuritywithAI:SVM-baseddeeplearningforintrusion
+detection.Sensors.2023;23(21):8959.doi:10.3390/s23218959.
+16. ZhongW,YuN,AiC.Applyingbigdatabaseddeeplearningsystemtointrusiondetection.BigDataMiningAnal.
+2020;3(3):181–95.doi:10.26599/BDMA.2020.9020003.
+17. Thapa N, Liu Z, D.B. KC, Gokaraju B, Roy K. Comparison of machine learning and deep learning models for
+networkintrusiondetectionsystems.FutInternet.2020;12(10):167.doi:10.3390/fi12100167.
+18. AlrayesFS,ZakariahM,AminSU,KhanZI,AlqurniJS.CNNchannelattentionintrusiondetectionsystemusing
+NSL-KDDdataset.ComputMaterContin.2024;79(3):4319–47.doi:10.32604/cmc.2024.050586.
+19. Elsaid SA, Shehab E, Mattar AM, Azar AT, Hameed IA. Hybrid intrusion detection models based on GWO
+optimizeddeeplearning.DiscovApplSci.2024;6(10):531.doi:10.1007/s42452-024-06209-1.
+20. MahboobaB,TimilsinaM,SahalR,SerranoM.Explainableartificialintelligence(XAI)toenhancetrustmanage-
+mentinintrusiondetectionsystemsusingdecisiontreemodel.Complexity.2021;2021(1):6634811.doi:10.1155/2021/
+6634811.
+21. Sistla VP, Kolli VK, Voggu LK, Bhavanam R, Vallabhasoyula S. Predictive model for network intrusion detection
+systemusingdeeplearning.RevD’IntelligenceArtif.2020Jun1;34(3):323–30.doi:10.18280/ria.340310.
+22. ParkC,LeeJ,KimY,ParkJ-G,KimH,HongD.AnenhancedAI-basednetworkintrusiondetectionsystemusing
+generativeadversarialnetworks.IEEEInternetThingsJ.2023;10(3):2330–45.doi:10.1109/JIOT.2022.3211346.
+23. Djama A, Maazouz M, Kheddar H. Hybrid machine learning approaches for classification DDoS attack. In: 2024
+1stInternationalConferenceonElectrical,Computer,TelecommunicationandEnergyTechnologies(ECTE-Tech);
+2024Dec17–18;OumElBouaghi,Algeria.p.1–7.doi:10.1109/ECTE-Tech62477.2024.10850919.
+24. Alrayes FS, Amin SU, Hakami N. An adaptive framework for intrusion detection in IoT security using MAML
+(Model-AgnosticMeta-Learning).Sensors.2025;25(8):2487.doi:10.3390/s25082487.

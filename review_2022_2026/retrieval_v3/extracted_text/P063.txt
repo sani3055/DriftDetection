@@ -1,0 +1,1267 @@
+Tensor Networks for Explainable Machine Learning in Cybersecurity
+Borja Aizpurua, 1, 2 Samuel Palmer, 3 and Rom´ an Or´ us1, 4, 5
+1Multiverse Computing, Paseo de Miram´ on 170, E-20014 San Sebasti´ an, Spain
+2Department of Basic Sciences, Tecnun - University of Navarra, E-20018 San Sebasti´ an, Spain
+3Multiverse Computing, Spadina Ave., Toronto, ON M5T 2C2, Canada
+4Donostia International Physics Center, Paseo Manuel de Lardizabal 4, E-20018 San Sebasti´ an, Spain
+5Ikerbasque Foundation for Science, Maria Diaz de Haro 3, E-48013 Bilbao, Spain
+In this paper we show how tensor networks help in developing explainability of machine learning
+algorithms. Specifically, we develop an unsupervised clustering algorithm based on Matrix Product
+States (MPS) and apply it in the context of a real use-case of adversary-generated threat intelligence.
+Our investigation proves that MPS rival traditional deep learning models such as autoencoders and
+GANs in terms of performance, while providing much richer model interpretability. Our approach
+naturally facilitates the extraction of feature-wise probabilities, Von Neumann Entropy, and mu-
+tual information, offering a compelling narrative for classification of anomalies and fostering an
+unprecedented level of transparency and interpretability, something fundamental to understand the
+rationale behind artificial intelligence decisions.
+I. INTRODUCTION
+Explainable Artificial Intelligence (XAI) emerges as a
+cornerstone in the advancement of AI, shedding light
+on the often opaque intricacies of algorithmic decision-
+making [1]. It strives to render machine learning models
+that are not only robust and precise but also transpar-
+ent and comprehensible to human sight. The impetus
+for XAI is twofold: 1) it cultivates trust and supports ro-
+bust decision-making by providing clear explanations for
+outcomes, and 2) it ensures compliance with increasingly
+stringent transparency regulations. XAI achieves these
+goals through specific techniques such as LIME (Local In-
+terpretable Model-agnostic Explanations) [2] and SHAP
+(SHapley Additive exPlanations) [3], where the challenge
+lies in the tradeoff between model’s accuracy and explain-
+ability.
+Deep learning methods, including neural networks, au-
+toencoders [4] and GANs [5], excel at detecting intricate
+data patterns but often act as “black boxes” . Their com-
+plex architectures deliver powerful performance yet hin-
+der the visibility of the decision-making process, posing a
+challenge to the increasing imperative of interpretability
+in machine learning. After all, one should be able to ex-
+plain why an algorithm is providing a particular answer,
+and not a different one. In the search for a solution for
+this concern, the machine learning community has grown
+interest in alternative architectures that could make the
+work.
+In this work, we showcase the capabilities of Tensor
+Networks (TN) [6] to implement explainable machine
+learning. While other authors have explored similar
+trends recently [7], we go one step beyond and validate
+our approach with a real use-case in cybersecurity ana-
+lytics.
+TNs are a powerful mathematical framework used to
+represent high-dimensional data efficiently. They fac-
+torize vectors and operators in high-dimensional vec-
+tor spaces into a network of lower-dimensional tensors,
+enabling to capture complex multi-partite correlations
+while managing the curse of dimensionality. As such,
+TNs have a large number of applications in the simula-
+tion of complex quantum systems [8]. In the realm of
+machine learning, TNs have been traditionally consid-
+ered in two approaches: 1) the tensorization of tradi-
+tional machine learning models for enhanced computa-
+tion, as demonstrated by recent research [9], and 2) the
+creation of intrinsic tensor network-based models, based
+on, e.g., Matrix Product States (MPS) [6, 10]. MPS, in
+particular, stands out as an efficient and transformative
+approach in explainable AI, displaying not only a high
+capacity for anomaly detection but also an exceptional
+degree of interpretability.
+The chosen use-case to test our algorithms comes from
+cybersecurity. The field of adversary-generated threat
+intelligence focuses on anticipating and understanding
+the strategies and methodologies employed by cyber-
+adversaries. By establishing a baseline of normalcy and
+identifying deviations, MPS can discern intricate pat-
+terns of anomalous behavior, often indicative of sophis-
+ticated cyber-attacks, while providing insights into the
+data’s underlying structure and dependencies. This de-
+marcation is vital for the early detection and response to
+potential security incidents, such as network intrusions.
+While deep learning has proven to be highly effective [11]
+in this context, it still lacks interpretability. And, in addi-
+tion, TNs are known to be more precise than deep learn-
+ing approaches in anomaly detection for tabular datasets
+[12]. On top of all this, our paper also shows how TNs,
+and in particular MPS-based algorithms, are explainable
+for unsupervised anomaly detection.
+This paper is structures as follows: Sec.II details our
+MPS methodology and the extraction of interpretative
+insights from reduced density matrices. Sec.III presents
+a comparative performance analysis of MPS in adversary-
+generated threat intelligence, emphasizing its efficacy in
+reducing false positives. Sec.IV discusses MPS’s inter-
+pretability, examining feature probabilities, Von Neu-
+mann entropy, and anomaly detection mechanisms. Fi-
+nally, Sec.V concludes with a summary of our findings,
+arXiv:2401.00867v4  [cs.LG]  25 Apr 2025
+
+2
+their impact on explainable AI in cybersecurity, and an
+outlook on future research directions.
+II. METHODOLOGY
+This section explores the role of TNs in explainable
+machine learning, with a focus on MPS as a powerful
+framework for anomaly detection. We first introduce
+the general concept of TNs and their relevance to high-
+dimensional data representations. Then, we delve into
+the adequacy of MPS within the scope of unsupervised
+generative modeling for anomaly detection, illustrating
+its ability to efficiently capture feature correlations. We
+also explain the mechanisms for extracting valuable in-
+sights from MPS, particularly through the use of reduced
+density matrices, which provide deeper interpretability in
+machine learning applications.
+A. Introduction to Tensor Networks
+Tensor Networks (TNs) are a mathematical framework
+designed to efficiently represent and manipulate high-
+dimensional data. They originate from quantum many-
+body physics and have found applications in machine
+learning, classical statistical mechanics, quantum chem-
+istry, and even finance [12–14].
+The central idea of TNs is to decompose high-
+dimensional tensors into a network of lower-dimensional
+tensors connected by shared indices. This structured rep-
+resentation helps in efficiently capturing correlations in
+the data, reducing computational complexity, and main-
+taining interpretability.
+Several types of TN architectures exist, each suited for
+different types of problems [6, 15]:
+• Matrix Product States (MPS): The simplest
+and most commonly used TN, ideal for one-
+dimensional sequences, as in anomaly detection.
+• Projected Entangled Pair States (PEPS): A
+two-dimensional generalization of MPS, used for
+more complex correlations but computationally de-
+manding.
+• Multiscale Entanglement Renormalization
+Ansatz (MERA): Suitable for hierarchical data
+and quantum simulations, leveraging scale invari-
+ance.
+In the context of machine learning, TNs enable struc-
+tured compression of data while preserving essential re-
+lationships between features. This ability makes them
+particularly attractive for interpretable AI applications.
+Among these TN architectures, MPS stands out as a
+powerful tool for anomaly detection, efficiently capturing
+correlations between sequential features while remaining
+computationally tractable. In the next subsection, we
+detail the use of MPS in our approach.
+B. Unsupervised generative modeling with MPS
+Inspired by the machinery of quantum physics, Ref.[16]
+introduces a generative model that uses the principles of
+efficient learning and direct sampling into the fabric of
+machine learning. At the core of this approach lies the
+Matrix Product State for the representation of probabil-
+ity distributions over datasets that permits an explicit
+and easy handling of data features.
+Let us briefly sketch the approach in what follows.
+Given a dataset τ∈V ={0, 1}⊗N, the MPS model rep-
+resents the probability distribution
+P (v) =|Ψ (v)|2 (1)
+where Ψ(v) is the coefficient of the normalized quantum
+state
+|Ψ⟩=
+∑
+v∈V
+Ψ (v)|v⟩, (2)
+withv≡(v1,v 2,...,vN). The coefficient of the quantum
+wave function can be parameterized using an MPS as
+Ψ (v1, v2, ..., vN) = Tr
+(
+A(1)v1A(2)v2...A(N )vN
+)
+, (3)
+where each A(k)vk is a Dk−1×Dk matrix.
+C. Unsupervised generative modeling with MPS
+Inspired by the machinery of quantum physics, Ref.[16]
+introduces a generative model that uses the principles of
+efficient learning and direct sampling into the fabric of
+machine learning. At the core of this approach lies the
+Matrix Product State for the representation of probabil-
+ity distributions over datasets that permits an explicit
+and easy handling of data features.
+Let us briefly sketch the approach in what follows.
+Given a dataset τ∈V ={0, 1}⊗N, the MPS model rep-
+resents the probability distribution
+P (v) =|Ψ (v)|2 (4)
+where Ψ(v) is the coefficient of the normalized quantum
+state
+|Ψ⟩=
+∑
+v∈V
+Ψ (v)|v⟩, (5)
+withv≡(v1,v 2,...,vN). The coefficient of the quantum
+wave function can be parameterized using an MPS as
+Ψ (v1, v2, ..., vN) = Tr
+(
+A(1)v1A(2)v2...A(N )vN
+)
+, (6)
+where each A(k)vk is a Dk−1×Dk matrix, as shown in
+Fig. 1.
+The representational strength of MPS correlates di-
+rectly with the Von Neumann entanglement entropy of
+
+3
+……
+<latexit sha1_base64="rrKZtvKMVr5NhxLLGAkGiwncS2c=">AAAB63icbVDLSgNBEOyNrxhfUY9eBoPgKeyKr2PQi8cIxgSSJcxOZpMh81hmZoWw5Be8eFDEqz/kzb9xNtmDJhY0FFXddHdFCWfG+v63V1pZXVvfKG9WtrZ3dveq+wePRqWa0BZRXOlOhA3lTNKWZZbTTqIpFhGn7Wh8m/vtJ6oNU/LBThIaCjyULGYE21zqNQ3rV2t+3Z8BLZOgIDUo0OxXv3oDRVJBpSUcG9MN/MSGGdaWEU6nlV5qaILJGA9p11GJBTVhNrt1ik6cMkCx0q6kRTP190SGhTETEblOge3ILHq5+J/XTW18HWZMJqmlkswXxSlHVqH8cTRgmhLLJ45gopm7FZER1phYF0/FhRAsvrxMHs/qwWX94v681rgp4ijDERzDKQRwBQ24gya0gMAInuEV3jzhvXjv3se8teQVM4fwB97nD/awjjQ=</latexit>
+ 
+<latexit sha1_base64="AC0znfeXX4Fv1w+1O+l1BgssNs0=">AAAB7nicbVDLSgNBEOz1GeMr6tHLYBDiJeyKr2PUi8cI5gHJGmYnnWTI7OwyMyuEJR/hxYMiXv0eb/6Nk2QPmljQUFR1090VxIJr47rfztLyyuraem4jv7m1vbNb2Nuv6yhRDGssEpFqBlSj4BJrhhuBzVghDQOBjWB4O/EbT6g0j+SDGcXoh7QveY8zaqzUuH5MS97JuFMoumV3CrJIvIwUIUO1U/hqdyOWhCgNE1TrlufGxk+pMpwJHOfbicaYsiHtY8tSSUPUfjo9d0yOrdIlvUjZkoZM1d8TKQ21HoWB7QypGeh5byL+57US07vyUy7jxKBks0W9RBATkcnvpMsVMiNGllCmuL2VsAFVlBmbUN6G4M2/vEjqp2Xvonx+f1as3GRx5OAQjqAEHlxCBe6gCjVgMIRneIU3J3ZenHfnY9a65GQzB/AHzucPRXqO4w==</latexit>
+A
+(1)
+<latexit sha1_base64="a0PJ5wz/p9k/zkfxYSNPuhBMiCw=">AAAB7nicbVDLTgJBEOzFF+IL9ehlIjHBC9klvo6oF4+YyCOBlcwOszBhZnYzM2tCNnyEFw8a49Xv8ebfOMAeFKykk0pVd7q7gpgzbVz328mtrK6tb+Q3C1vbO7t7xf2Dpo4SRWiDRDxS7QBrypmkDcMMp+1YUSwCTlvB6Hbqt56o0iySD2YcU1/ggWQhI9hYqXX9mJarp5NeseRW3BnQMvEyUoIM9V7xq9uPSCKoNIRjrTueGxs/xcowwumk0E00jTEZ4QHtWCqxoNpPZ+dO0IlV+iiMlC1p0Ez9PZFiofVYBLZTYDPUi95U/M/rJCa88lMm48RQSeaLwoQjE6Hp76jPFCWGjy3BRDF7KyJDrDAxNqGCDcFbfHmZNKsV76Jyfn9Wqt1kceThCI6hDB5cQg3uoA4NIDCCZ3iFNyd2Xpx352PemnOymUP4A+fzB0cAjuQ=</latexit>
+A
+(2)
+<latexit sha1_base64="5r+jF+MWKRPZfkqlAMuMgL6PnhI=">AAAB7nicbVDLSgNBEOyNrxhfUY9eBoMQL2FXfB2jXjxJBPOAZA2zk9lkyOzsMDMrhCUf4cWDIl79Hm/+jZNkD5pY0FBUddPdFUjOtHHdbye3tLyyupZfL2xsbm3vFHf3GjpOFKF1EvNYtQKsKWeC1g0znLakojgKOG0Gw5uJ33yiSrNYPJiRpH6E+4KFjGBjpebVY1q+Ox53iyW34k6BFomXkRJkqHWLX51eTJKICkM41rrtudL4KVaGEU7HhU6iqcRkiPu0banAEdV+Oj13jI6s0kNhrGwJg6bq74kUR1qPosB2RtgM9Lw3Ef/z2okJL/2UCZkYKshsUZhwZGI0+R31mKLE8JElmChmb0VkgBUmxiZUsCF48y8vksZJxTuvnN2flqrXWRx5OIBDKIMHF1CFW6hBHQgM4Rle4c2Rzovz7nzMWnNONrMPf+B8/gBxqI8A</latexit>
+A
+(N )
+FIG. 1. [Color online] Representation of a Matrix Product
+State (MPS) for the coefficient Ψ( v) of quantum state |Ψ⟩,
+where the system is described by a sequence of interconnected
+tensors A(k). Each block A(k)vk corresponds to a Dk−1×Dk
+matrix. The vertical lines denote the physical indices vk,
+which represent the state of each subsystem in the quantum
+state vector v = ( v1, v2, . . . , vN), and horizontal lines corre-
+spond to bond indices.
+the corresponding quantum state, setting a lower bound
+for the bond dimensions Dk within the system, with
+larger bond dimensions capturing more complex param-
+eterizations and preserving entanglement. To align the
+model’s probability distribution P (v) with the training
+data distribution, the model optimizes variationally the
+parameters of Ψ( v) by minimizing the Negative Log-
+Likelihood (NLL) function across the training set. The
+NLL is given by
+L =−1
+|τ|
+∑
+v∈τ
+ln P (v), (7)
+where|τ|denotes the size of the training set.
+In the face of the intractability posed by many-body
+quantum systems, the MPS approach adopts a learning
+strategy analogous to the Density Matrix Renormaliza-
+tion Group (DMRG) method [17, 18]. DMRG tackles the
+exponential growth of the Hilbert space by keeping only
+the most “relevant” states of the system and truncating
+the remainder, thus dynamically adjusting the dimen-
+sions of the system based on state importance. Our op-
+timization, akin to DMRG’s variational two-site update,
+dynamically adjusts bond dimensions, ensuring compu-
+tational resources are allocated efficiently.
+The choice of bond dimension D directly affects the
+computational complexity of the MPS model, scales as
+O(NpD 3) with N number of features and p physical di-
+mension. In our implementation, we find that increasing
+D beyond a certain threshold ( ∼150) leads to dimin-
+ishing returns in anomaly detection performance while
+significantly increasing training time.
+Distinct from traditional generative models, this MPS
+framework can compute the partition function with linear
+complexity in the system size and boasts a direct sam-
+pling method that constructs samples incrementally. The
+model allows for deep theoretical understanding of its ex-
+pressive power, adaptive adjustability, efficient computa-
+tion of exact gradients and log-likelihood, and efficient
+direct sampling-position, making it therefore a powerful,
+efficient and interpretable tool for unsupervised learning
+and generative tasks.
+(a) (b)
+<latexit sha1_base64="ZulQnuAxajCQqeGX0rA170utLio=">AAAB6HicbVDLSgNBEOyNrxhfUY9eBoPgKeyKr2PQiwcPCZgHJEuYnXSSMbOzy8ysEJZ8gRcPinj1k7z5N06SPWhiQUNR1U13VxALro3rfju5ldW19Y38ZmFre2d3r7h/0NBRohjWWSQi1QqoRsEl1g03AluxQhoGApvB6HbqN59QaR7JBzOO0Q/pQPI+Z9RYqXbfLZbcsjsDWSZeRkqQodotfnV6EUtClIYJqnXbc2Pjp1QZzgROCp1EY0zZiA6wbamkIWo/nR06ISdW6ZF+pGxJQ2bq74mUhlqPw8B2htQM9aI3Ff/z2onpX/spl3FiULL5on4iiInI9GvS4wqZEWNLKFPc3krYkCrKjM2mYEPwFl9eJo2zsndZvqidlyo3WRx5OIJjOAUPrqACd1CFOjBAeIZXeHMenRfn3fmYt+acbOYQ/sD5/AGmyYza</latexit>
+L
+<latexit sha1_base64="vfR8Ei+JKCvm0xvUnoQ8DXdY8+4=">AAAB6HicbVDLTgJBEOzFF+IL9ehlIjHxRHaNryPRi0cw8khgQ2aHBkZmZzczsyZkwxd48aAxXv0kb/6NA+xBwUo6qVR1p7sriAXXxnW/ndzK6tr6Rn6zsLW9s7tX3D9o6ChRDOssEpFqBVSj4BLrhhuBrVghDQOBzWB0O/WbT6g0j+SDGcfoh3QgeZ8zaqxUu+8WS27ZnYEsEy8jJchQ7Ra/Or2IJSFKwwTVuu25sfFTqgxnAieFTqIxpmxEB9i2VNIQtZ/ODp2QE6v0SD9StqQhM/X3REpDrcdhYDtDaoZ60ZuK/3ntxPSv/ZTLODEo2XxRPxHERGT6NelxhcyIsSWUKW5vJWxIFWXGZlOwIXiLLy+TxlnZuyxf1M5LlZssjjwcwTGcggdXUIE7qEIdGCA8wyu8OY/Oi/PufMxbc042cwh/4Hz+AK/hjOA=</latexit>
+R
+<latexit sha1_base64="EqeA+mbLkNRXGR722P9vRZdlcXk=">AAAB6HicbVDLSgNBEOyNrxhfUY9eBoPgKeyKr2PQi8cE8oJkCbOT3mTM7OwyMyuEkC/w4kERr36SN//GSbIHTSxoKKq66e4KEsG1cd1vJ7e2vrG5ld8u7Ozu7R8UD4+aOk4VwwaLRazaAdUouMSG4UZgO1FIo0BgKxjdz/zWEyrNY1k34wT9iA4kDzmjxkq1eq9YcsvuHGSVeBkpQYZqr/jV7ccsjVAaJqjWHc9NjD+hynAmcFrophoTykZ0gB1LJY1Q+5P5oVNyZpU+CWNlSxoyV39PTGik9TgKbGdEzVAvezPxP6+TmvDWn3CZpAYlWywKU0FMTGZfkz5XyIwYW0KZ4vZWwoZUUWZsNgUbgrf88ippXpS96/JV7bJUucviyMMJnMI5eHADFXiAKjSAAcIzvMKb8+i8OO/Ox6I152Qzx/AHzucPsumM4g==</latexit>
+T
+<latexit sha1_base64="ZulQnuAxajCQqeGX0rA170utLio=">AAAB6HicbVDLSgNBEOyNrxhfUY9eBoPgKeyKr2PQiwcPCZgHJEuYnXSSMbOzy8ysEJZ8gRcPinj1k7z5N06SPWhiQUNR1U13VxALro3rfju5ldW19Y38ZmFre2d3r7h/0NBRohjWWSQi1QqoRsEl1g03AluxQhoGApvB6HbqN59QaR7JBzOO0Q/pQPI+Z9RYqXbfLZbcsjsDWSZeRkqQodotfnV6EUtClIYJqnXbc2Pjp1QZzgROCp1EY0zZiA6wbamkIWo/nR06ISdW6ZF+pGxJQ2bq74mUhlqPw8B2htQM9aI3Ff/z2onpX/spl3FiULL5on4iiInI9GvS4wqZEWNLKFPc3krYkCrKjM2mYEPwFl9eJo2zsndZvqidlyo3WRx5OIJjOAUPrqACd1CFOjBAeIZXeHMenRfn3fmYt+acbOYQ/sD5/AGmyYza</latexit>
+L
+<latexit sha1_base64="vfR8Ei+JKCvm0xvUnoQ8DXdY8+4=">AAAB6HicbVDLTgJBEOzFF+IL9ehlIjHxRHaNryPRi0cw8khgQ2aHBkZmZzczsyZkwxd48aAxXv0kb/6NA+xBwUo6qVR1p7sriAXXxnW/ndzK6tr6Rn6zsLW9s7tX3D9o6ChRDOssEpFqBVSj4BLrhhuBrVghDQOBzWB0O/WbT6g0j+SDGcfoh3QgeZ8zaqxUu+8WS27ZnYEsEy8jJchQ7Ra/Or2IJSFKwwTVuu25sfFTqgxnAieFTqIxpmxEB9i2VNIQtZ/ODp2QE6v0SD9StqQhM/X3REpDrcdhYDtDaoZ60ZuK/3ntxPSv/ZTLODEo2XxRPxHERGT6NelxhcyIsSWUKW5vJWxIFWXGZlOwIXiLLy+TxlnZuyxf1M5LlZssjjwcwTGcggdXUIE7qEIdGCA8wyu8OY/Oi/PufMxbc042cwh/4Hz+AK/hjOA=</latexit>
+R
+FIG. 2. [Color online] Graphical representation of the con-
+tractions to extract the Reduced Density Matrix (RDM) from
+an MPS: (a) one site, and (b) two distant sites. The contrac-
+tions leading to left L, right R and central T tensors are also
+highlighted. Tensors with open physical indices are in orange.
+D. Extracting information from MPS
+The Reduced Density Matrices (RDM) of the MPS
+contain all the relevant information regarding specific
+subsystems. As such, these objects allow for a better
+understanding of the correlations in the model, and are
+extremely valuable tools to interpret the produced results
+by the AI system. For a quantum state |Ψ⟩, the RDM
+ρA of subsystem A is defined as
+ρA≡TrAll−A (|Ψ⟩⟨Ψ|), (8)
+with the trace being a partial trace over all the degrees
+of freedom of the system except those of A.
+To compute RDMs from the MPS, we target spe-
+cific tensors for a subsystem within state-vector for the
+complete system. Each tensor, or ‘site’, contributes to
+state probabilities reflected in the modulus squared of
+the wavefunction. The RDM of a single site is calcu-
+lated through a sequence of contractions that progres-
+sively build up the left and right environments. This
+methodically ‘traces out’ the rest of the system to iso-
+late the site’s state. The outcome is a pair of environ-
+mental tensors that represent the broader system’s influ-
+ence on the site of interest. The last phase is to con-
+tract the target tensor with the environmental tensors,
+along with its complex conjugate, resulting in the RDM.
+This matrix not only captures the state of the subsystem
+but also its entanglements and interactions with the en-
+tire system. For subsystems consisting of multiple sites,
+the RDM can be computed similarly, by including the
+contraction of intermediate tensors. The computational
+complexity of these contractions scale polynomially with
+the largest bond dimension of the MPS, and allow, among
+other things, the explicit calculation of all possible cor-
+relations in the model. In addition, the diagonal entries
+of the RDM directly convey the state probabilities, pro-
+viding us with a transparent window into the quantum
+system’s behavior. As a guidance, in Fig.2 we sketch the
+calculation of RDMs for one- and two-site subsystems.
+Let us stress that the extracted RDMs are not only rich
+with information but easily readable right away. This
+stands in stark contrast to the opaque nature of weights
+
+4
+in traditional neural networks, which typically yield lit-
+tle intuitive understanding and require auxiliary methods
+such as Shapley values for interpretation [3]. In partic-
+ular, RDMs enable us to calculate the Von Neumann
+Entropy, which quantifies the informational content of
+the considered subsystems. It helps with the evaluation
+of feature importance, and assess why specific instances
+are flagged as anomalous through the lens of conditional
+probabilities and mutual information.
+III. ADVERSARY-GENERATED THREAT
+INTELLIGENCE
+To set the stage for discussing the interpretability ca-
+pabilities of Matrix Product States (MPS), it is pertinent
+to first introduce their application within the realm of
+adversary-generated threat intelligence with a real case
+scenario in cybersecurity.
+For this investigation, we delve into a dataset of cyber-
+attack vectors obtained from real-life scenarios, provided
+to us by the cybersecurity company CounterCraft SL.
+Encompassing a variety of configurations and system
+states, this dataset mirrors the intricate nuances and
+complexities that characterize true cyber-attacks. It is
+against this collection of diverse cyber threats that we
+later unpack the interpretability brought up by MPS.
+More specifically, the dataset deployed in this study is
+a collection of five distinct subsets, each corresponding
+to the totality of events recorded across all systems on
+a specific day. This compilation method offers a longi-
+tudinal view of cyber activities, gathering both benign
+and malicious events. As evidenced by the data, there
+is a pronounced imbalance between the overall number
+of events and those identified as part of cyber-attack in-
+cidents, which is reflective of the asymmetry typically
+encountered in real-world cybersecurity datasets. The
+subsets, named here ‘CC1’ through ‘CC5’, present a di-
+verse landscape of interactions, with ‘CC1’ containing
+140, 202 events of which 34 are incident-related, scaling
+up to ‘CC5’ with 194, 766 events including 822 tied to
+reported incidents. In total, we have 674 , 704 events of
+which 1, 007 are incident-related. This realistic imbal-
+ance poses a unique challenge and underscores the need
+for a robust anomaly detection system capable of dis-
+cerning subtle patterns of cyber-threats within predomi-
+nantly benign data traffic.
+To further elucidate the structure and complexity of
+the dataset, we provide a snapshot of sample entries in
+Table I. Each entry represents a system event character-
+ized by multiple features, including process paths, user-
+names, event types, and outcomes:
+The table highlights critical features such as:
+• Process Information: Details about the parent
+and child processes (‘Parent Process Path‘, ‘Parent
+Process‘, ‘Process Path‘, ‘Process Name‘).
+• User Details: The user responsible for the pro-
+cesses (‘Process User‘, ‘Real User‘).
+• Event Metadata: Event type (‘Type Code‘), as-
+sociated tags (‘Tags‘), category (‘Category‘), and
+outcome (‘Outcome‘).
+• Network Data: Host IP address and directories
+involved.
+These features encapsulate the breadth of system
+activities, enabling the detection of cyber-attacks as
+anomalies. In addition to the core features, an extra
+Tag feature is derived to classify events based on the
+MITRE ATT&CK framework and proprietary classifica-
+tions such as CounterCraft’s unique TTPs (e.g., T9xxx
+series). Events tagged with specific threat indicators sig-
+nal potential attacks, such as attack::T9007.002, provid-
+ing critical insights for identifying malicious activities.
+The diversity and granularity of these features are essen-
+tial for the MPS model to effectively discern malicious
+activities while maintaining interpretability. In the fol-
+lowing figures, a total of 23 features are presented. These
+features were derived by applying numerical encoding
+and distribution techniques to the original feature set de-
+scribed above, allowing for enhanced representation and
+facilitating more effective MPS training.
+Our methodology for applying the MPS model to
+anomaly detection in adversary-generated threat intel-
+ligence consists of the following steps:
+1. Data Preprocessing:
+• Extract features from logs in various formats
+(JSON, CSV, PCAP).
+• Filter out numeric features with zero variance
+(constant values) and remove duplicated fea-
+tures.
+• Perform correlation analysis (Spearman and
+Cram´ er’s V) to remove highly correlated nu-
+meric features.
+• If labels are available, analyze feature correla-
+tion with labels and select the most important
+features.
+• Apply clustering techniques and visualization
+for exploratory analysis.
+• Encode categorical features using one-hot en-
+coding or numerical encoding.
+• Perform time dependency analysis to check for
+data leakage.
+• Normalize the dataset and reduce the number
+of features using Principal Component Anal-
+ysis (PCA).
+2. F eature Encoding:
+• The selected features are numerically encoded
+to align with the MPS model’s input format.
+
+5
+TABLE I. Sample entries from the dataset highlighting key features.
+Parent Process
+Path
+Process
+User
+Parent
+Process
+Process
+Name
+Real
+User
+Process
+Path
+Type
+Code
+Category Outcome DirectoryHost IP
+/usr/sbin /nginx www-
+data
+dash hostname root /usr/bin
+/sed
+Connection
+Estab-
+lished
+process UNKNOWN/usr/bin 10.0.0.4
+/snap/amazon-
+ssm-
+agent/6312/ssm-
+agent-worker
+root ssm-agent-
+worker
+sed www-
+data
+/usr/sbin
+/nginx
+Create Pro-
+cess
+network SUCCESS /usr/sbin 172.31.3.38
+/usr/bin /dash root nginx nginx root /usr/bin
+/host-
+name
+DNSQuery network SUCCESS /usr/bin 172.31.14.43
+This ensures compatibility with the tensor
+network structure and optimizes the repre-
+sentation of both categorical and continuous
+data.
+3. T raining the MPS Model:
+• The MPS model is trained on the first 70% of
+benign events, sorted chronologically to ensure
+a realistic baseline.
+• The MPS model learns the statistical distri-
+bution of normal behavior, capturing feature
+correlations.
+• Hyperparameter tuning is performed to op-
+timize performance, balancing computational
+efficiency and accuracy. The key hyperparam-
+eters include:
+– MaxBondDim : Maximum bond dimen-
+sion of the MPS, controlling the model’s
+expressiveness.
+– lr shrink: Learning rate reduction factor
+if the loss stops improving.
+– loopmax : Maximum number of training
+loops.
+– safe thres: Threshold for detecting un-
+stable learning rates.
+– lr inf: Minimum learning rate before
+training stops.
+– lr var: Initial learning rate.
+– dcs : Number of descent steps within each
+optimization loop.
+– cut : Threshold for truncating small sin-
+gular values in bond dimension calcula-
+tions.
+• These hyperparameters were optimized
+through a grid search strategy, ensuring
+that the selected values provided a good
+balance between performance, stability, and
+computational cost. In particular, we found
+that a bond dimension of around 120 offered
+sufficient expressivity without excessive
+memory consumption.
+4. Anomaly Scoring:
+• For each event in the dataset (including the
+test data), the MPS model computes a Nega-
+tive Log Likelihood (NLL) score, representing
+the likelihood that the event belongs to the
+baseline normal behavior.
+5. Threshold Setting for Anomalies:
+• Anomalies are flagged based on a threshold
+applied to the NLL scores.
+• This threshold can be computed using sta-
+tistical measures such as the mean and stan-
+dard deviation of NLL values in the training
+dataset.
+6. Evaluation:
+• The remaining 30% of the data, which in-
+cludes both benign and attack-related events,
+is used to evaluate the model.
+• Performance metrics include detection rates
+for attack events and false positive rates for
+benign events.
+Our attack-detection system identifies attacks as
+anomalies. Notably, not all detected anomalies will be at-
+tacks. Indeed, there may be low-probability events that
+are perfectly legitimate (e.g., energy outages, system re-
+boots). Because of this, it is important to adjust the
+parameters available in the model to minimize the detec-
+tion of false positives, i.e., anomalies that are not attacks
+after all. With this in mind, central to the model’s suc-
+cess is the implementation of an acceptance threshold for
+the Negative Log Likelihood (NLL) of each event being
+generated by the model, so that events that exceed the
+threshold are classified as anomalous and may be consid-
+ered by a human analyst to check if they correspond to
+a real attack. Establishing this threshold is challenging
+and varies in practice; some analysts may use statistical
+metrics like the mean and standard deviation to discern
+attacks within anomalies, while others may opt for the
+median. Notably, the average NLL of daily benign events
+is consistently lower than that of attacks, confirming the
+model’s adeptness at flagging attacks as anomalies.
+Through rigorous training, which leverages 70% of the
+data and respects the chronological order of events, our
+
+6
+0 20 40
+Threshold
+103
+104
+105
+106
+Anomalies Detected
+0
+300
+600
+800
+1000
+Attacks Detected
+FIG. 3. [Color online] In red, the number of events categorized
+as anomalies by the MPS model. In blue, how many of the
+attacks are among the anomalies detected by the model. The
+x-axis represents the threshold value for the NLL from which
+an event is considered an anomaly or not. Notice that both
+plots have different vertical scales.
+model effectively captures attack patterns. This tempo-
+ral fidelity is crucial as shuffling the order of events has
+been shown to influence model training negatively. The
+remaining 30%, containing both benign events and all
+attack-related events, formed the testing dataset. This
+approach ensures that the training data simulates real-
+istic scenarios without prior knowledge of future events,
+aligning with the unsupervised nature of the MPS model.
+Here, the goal is to detect deviations from the baseline
+(training data) without explicit attack labels. This setup
+rigorously evaluates the model’s anomaly detection ca-
+pability on unseen data, including the full spectrum of
+attack patterns present in the test set.
+In Fig.3 we show one way to determine the threshold
+of NLL in our model, by analyzing the number of anoma-
+lies detected and the number of attack events present in
+those detected anomalies for multiple threshold values
+(notice that, in the figure, the scales for both quantities
+are different). Depending on the specific goal, one can
+choose a low threshold value and maximize the number
+of attack events at the expense of having a higher false
+positive rate, or choose a high value for the threshold
+and minimize the false positive rate at the expense of
+not detecting all the attack events inside the detected
+anomalies. In any case, in the figure we can see that the
+number of detected anomalies decreases very quickly with
+the threshold, whereas this is not the case for the number
+of detected attacks, meaning that our MPS model is re-
+markably good at pinpointing anomalies that correspond
+to true attacks.
+The MPS framework does not assume independence
+among input features, is specifically designed to capture
+correlations between features through its tensor network
+structure. Each tensor in the MPS represents a feature,
+50 100 150 200 250
+MPS Virtual Bond Dimension
+0.08
+0.2
+0.3
+0.7
+1
+3
+False Positive Rate (%)
+Variational Autoencoder
+Autoencoder
+Isolation Forest
+One-Class SVM
+MPS
+FIG. 4. [Color online] Comparison of false positive rate
+amongst traditional machine learning models and the MPS-
+based unsupervised model. The y-axis is the percentage of
+false positives while the x-axis is the virtual bond dimension
+of MPS.
+and the connections (bonds) between tensors model the
+interactions between features.
+The bond dimension, denoted asD, is a critical param-
+eter that determines the capacity of the MPS to capture
+feature correlations. A higher bond dimension allows the
+MPS to represent more complex and stronger correla-
+tions among features. Specifically, the expressiveness of
+the MPS in modeling joint probability distributions in-
+creases with the bond dimension, enabling it to capture
+higher-order dependencies that are common in cyberse-
+curity data.
+While a higher bond dimension enables the MPS model
+to capture richer feature correlations and detect more
+complex anomalies, it comes with increased computa-
+tional cost. As mentioned above, the training complexity
+of an MPS model grows as O(NpD 3). A higher D allows
+for better expressivity but results in increased memory
+consumption and longer training times. Therefore, an
+optimal trade-off is needed: too low a bond dimension
+may cause underfitting (missing important correlations),
+whereas too high a bond dimension may lead to over-
+fitting or impractical training times. Our experiments
+indicate that a bond dimension in the range of 50 to
+150 provides a balance between performance and com-
+putational efficiency, as evidenced by the decrease in the
+false positive rate shown in Fig. 4. These FPR values are
+achieved while maintaining a high detection precision of
+92.3%.
+In practice, our MPS model achieves remarkable re-
+sults: we see that by fine-tuning the threshold, an average
+of 83.5% of incident-report events are correctly identified
+as anomalies, and all attack types are detected (100% at-
+tack detection rate). Moreover, the average false positive
+rate (FPR) stands at a manageable 1.39%, substantially
+narrowing the search space for analysts by 98.61%.
+
+7
+It is worth noting that the time complexity of fit-
+ting the MPS model using the DMRG optimization pro-
+cess is higher than that of neural-network-based meth-
+ods such as autoencoders. This is because we selected
+a high bond dimension to ensure top performance and
+interpretable insights, prioritizing explainability and ac-
+curacy over training speed. While autoencoders are sim-
+pler, faster to train, and effective in anomaly detection,
+they function as black-box models and lack inherent in-
+terpretability. In contrast, the MPS model offers rich
+insights into feature correlations and anomaly character-
+istics, making it a better fit for scenarios where inter-
+pretability is critical.
+Notably, the results could be improved even further
+by increasing the MPS bond dimension, and/or by using
+more complex TN structures, able to capture more subtle
+correlations in the model. Last but not least, our MPS
+model can be scaled easily to datasets with a huge num-
+ber of features, and is remarkably memory-efficient, on
+top of being accurate (as shown) and explainable. This
+last property is what we discuss in detail in the next sec-
+tion.
+IV. MPS INTERPRETABILITY
+The fundamental goal of explainable AI is to pro-
+vide clear explanations of machine learning processes,
+enabling users to grasp the rationale behind AI-driven
+decisions, verify the reliability of these systems, and align
+AI outcomes with ethical and legal standards. TNs such
+as MPS stand out as a natural candidate for XAI, of-
+fering a suite of interpretability capabilities that bridge
+the division between the abstractness of high-dimensional
+data and the need for informed decision-making. In the
+following we discuss the explainability delivered by MPS
+and its contribution to model’s functionality.
+A. Direct probability extraction
+As presented in subsection II D, the RDM’s diagonal
+entries provide a probabilistic view of specific subsys-
+tem’s state, which is directly connected to the dataset’s
+frequency distribution. The MPS captures and adapts
+to the correlations in the data during training, allowing
+security analysts to assess how individual feature distri-
+butions contribute to detecting anomalous behaviors. By
+comparing empirical frequency distributions with MPS-
+derived probabilities, analysts can pinpoint deviations
+that may indicate cybersecurity threats. While a sim-
+ple frequency distribution is akin to a static snapshot,
+capturing conditional probabilities at a fixed time step,
+MPS allows for an efficient dynamical representation of
+other valuable insights, turning exhaustive analysis such
+as the case of all-to-all feature correlations (scaling expo-
+nentially in computational complexity) into a polynomial
+complexity scaling.
+0 1 2 3 4 5 6 7 8 9 10
+Feature Value Index
+10 4
+10 3
+10 2
+10 1
+Probability Distribution
+Freq. Distribution
+MPS
+FIG. 5. [Color online] Comparison of empirical frequency dis-
+tribution and MPS-derived distribution for a selected feature,
+represented in a semi-logarithmic scale.
+In Fig.5 we illustrate this concept through a semi-
+logarithmic histogram juxtaposing the empirical fre-
+quency distribution of a selected feature against its MPS-
+derived distribution. As seen in the plot, both quantities
+are similar but not equivalent, due to the influence of
+correlations between features. In stark contrast to classi-
+cal deep learning models, where such direct extraction
+of probabilities is not inherently possible, MPS offers
+a unique advantage here. Classical models require the
+use of external tools to approximate probability distri-
+butions, often through additional post-processing steps.
+MPS, however, integrates this capability into the core of
+its architecture.
+B. Von Neumann entropy
+In quantum-mechanical terms, the Von Neumann En-
+tropy measures the degree of entanglement between two
+systems. In particular, the entropy of a subsystem A and
+the rest of the system is defined as
+S≡−Tr (ρA logρA), (9)
+being ρA the RDM of subsystem A. In our setting, the
+entropy of a single MPS site measures the degree of en-
+tanglement between the feature corresponding to that
+site and the rest of the features in the system. In ma-
+chine learning jargon, this is a measure of the contextual
+interdependencies of the features in the model.
+The concept of Von Neumann Entropy is analogous
+to the Shannon entropy in classical information theory
+[19] but adapted for quantum systems and reduced den-
+sity matrices. In the end, the Von Neuamn entropy of
+a RDM is nothing but the Shannon entropy of its eigen-
+values. It quantifies the correlation between a subsystem
+with the rest of the system, thus providing insight into
+
+8
+0 1 2 3 4 5 6 7 8 9 10111213141516171819202122
+Feature Index
+0.0
+0.1
+0.2
+0.3
+0.4
+0.5
+0.6
+0.7
+0.8von Neumann Entropy
+von Neumann Entropy
+FIG. 6. [Color online] Von Neumann entropy of single MPS
+sites across various features in the dataset. Features with
+higher entropy values signify greater entanglement with the
+rest of the system, indicating a high degree of contextual in-
+terdependency.
+how independent a feature is within the broader data
+context. This metric plays a crucial role in cybersecurity
+anomaly detection, as it helps distinguish between fea-
+tures that contribute independently to an event and those
+that are contextually bound to cyber threats. Features
+with high entropy often indicate complex dependencies,
+such as coordinated attacks or lateral movements within
+a compromised network, while low-entropy features may
+correspond to isolated system events. This allows to dif-
+ferentiate between what might be deemed normal and
+anomalous within a dataset, effectively utilizing “con-
+text” to pinpoint deviations.
+In Fig.6, we present the Von Neumann entropy calcu-
+lated for each feature within our dataset. It is evident
+from the plot that certain features exhibit higher entropy
+values, e.g., features 8, 12, 14, and 20. Such high values
+of the entropy are indicative of a substantial degree of
+correlation with other features. Conversely, features 2,
+9, and 15 have entropies less than 0.2, suggesting low
+correlation with other features and therefore hig degree
+of independence.
+To further explore the relationship between a feature’s
+entanglement with the rest of the system and its dis-
+tribution representation, we show Fig.7. In this figure,
+we plot the normalized sum of the square root differ-
+ences between the frequency and MPS distributions over
+all features against their Von Neumann entropies. While
+not universally consistent, a pattern emerges across most
+features: those with higher entanglement often exhibit a
+more significant disparity between their MPS distribu-
+tion and the empirical frequency distribution. This was
+to be expected: the more entangled a feature is with the
+rest, the less independent is its probability distribution,
+and therefore the less similar to a simple frequency anal-
+0.0 0.2 0.4 0.6 0.8 1.0
+Normalized Sum of Sqrt Differences
+0.2
+0.4
+0.6
+0.8Von Neumann Entropy
+FIG. 7. [Color online] Normalized sum of square root dif-
+ferences between frequency and MPS distributions plotted
+against Von Neumann entropy for all features.
+ysis.
+The capacity to directly derive such insights from an
+MPS model is what sets it apart from classical deep
+learning approaches. Where classical models might re-
+quire supplementary techniques such as activation max-
+imization or feature visualization to approximate these
+insights, MPS inherently provides them.
+C. Feature importance
+The assessment of feature importance is a crucial as-
+pect of interpretability in machine learning. It involves
+quantifying the relative impact of each feature within a
+dataset on the model’s output. Within the MPS frame-
+work, this evaluation is conducted through a detailed
+analysis of the probability distributions derived from the
+MPS for each feature. These distributions allow for the
+calculation of average probabilities for the possible values
+of each feature across all instances, resulting in a mean
+probability that reflects the feature’s general tendency.
+To further analyze the differences between benign and
+attack events, we computed the mean probabilities of fea-
+ture values for both benign and attack instances as given
+by the MPS model. In our model, the likelihood of each
+event v = (v1,v 2,...,vN) is computed as the squared
+magnitude of the wavefunction Ψ( v), which, for an MPS
+model, can be expressed as a product of probabilities as-
+sociated with each feature:
+P (v) =|Ψ( v)|2 =
+N∏
+i=1
+Pi(vi) (10)
+wherePi(vi) is the probability associated with thei-th
+feature value vi derived from the local density matrices
+
+9
+Feature Mean Prob.
+(Benign)
+Mean Prob.
+(Attack)
+0 0.41 0.47
+1 0.18 0.08
+2 0.87 0.03
+3 0.55 0.02
+4 0.26 0.02
+5 0.41 0.48
+...
+...
+...
+19 0.5 0.61
+20 0.16 0.24
+21 0.31 0.41
+22 0.31 0.47
+Mean Overall
+Likelihood 2.14e-10 6.06e-18
+Mean NLL 9.669 17.217
+TABLE II. Mean probabilities of feature values and overall
+likelihoods for benign and attack instances.
+in the MPS model. The overall likelihood of an event is
+thus the product of the probabilities of its feature val-
+ues. We compute the mean of these overall likelihoods
+separately for benign events and attack events to com-
+pare their distributions. Additionally, the Negative Log
+Likelihood (NLL) for an event is calculated as:
+NLL =−logP (v) =−
+N∑
+i=1
+logPi(vi). (11)
+This NLL represents how unlikely an event is under
+the model trained on benign data; higher NLL values
+indicate greater anomalies.
+Table II presents the computed mean probabil-
+ities for features in benign and attack contexts,
+which can be instrumental in feature selection. Fea-
+tures with high probabilities in the benign category
+and low probabilities in the attack category, such
+as ‘data.parent process path‘, ‘data.processuser name‘,
+and ‘data.parent process basename‘ (features 2, 3, and
+4), are indicative of normal operational patterns. Their
+high likelihood under benign conditions and rarity dur-
+ing attacks signify their importance in identifying abnor-
+mal behavior. These features represent critical aspects
+of process-level activity: the execution path of a parent
+process, the user responsible for the process, and the pro-
+cess’s basename. Their behavior aligns with real-world
+expectations, where deviations in these parameters of-
+ten signal potential malicious activities, such as unau-
+thorized user access or unusual process execution paths.
+Conversely, features with a higher mean in the attack
+category than in the benign may be less informative for
+detecting anomalies, as their higher occurrence in attack
+scenarios does not contribute to distinguishing attacks
+from benign behavior. In addition, the total probability
+values, obtained by the product of probabilities across
+all features, reveal a striking disparity: the probability
+associated with attack features is several orders of mag-
+nitude lower than that of benign features, and the mean
+NLL for attack events is significantly higher. This stark
+contrast explains why the MPS model effectively discrim-
+inates between benign operations and cyberattacks: the
+improbability of the conjunction of attack features un-
+derscores their anomaly.
+In traditional deep learning approaches, determining
+feature importance would typically involve a suite of ad-
+hoc techniques such as Sensitivity Analysis, Gradient-
+based Techniques, or Feature Attribution Methods like
+SHAP [3]. These methods, while powerful, require addi-
+tional computational steps and can sometimes yield re-
+sults that are not immediately interpretable.
+D. Anomaly identification
+One of the most compelling aspects of using Ma-
+trix Product States (MPS) in anomaly detection is the
+model’s ability to provide clear explanations for the iden-
+tification of individual data instances as anomalies. This
+granularity is especially valuable in cybersecurity, where
+understanding the specific reason behind an anomaly
+alert is crucial for effective response.
+When the MPS model flags a row as anomalous, the
+underlying reason can be investigated by examining the
+individual probabilities of each feature’s values within
+that instance. The MPS allows for an inspection of these
+probabilities, which are readily available from the model’s
+parameters. Low probabilities associated with certain
+feature values contribute to the instance being deemed
+anomalous, as they deviate from the model’s learned rep-
+resentation of normal behavior. Conversely, feature val-
+ues with high probabilities are in alignment with the ex-
+pected patterns and therefore do not contribute to the
+anomalous classification.
+To quantify the anomaly, one can calculate the prod-
+uct of the individual feature probabilities for the row in
+question. By applying the negative log-likelihood (NLL)
+to this product, we obtain a scalar value representing the
+degree of anomaly. If this value surpasses a predefined
+threshold, the instance is classified as an anomaly.
+The ability to perform this analysis is inherent to the
+MPS framework and does not require additional auxil-
+iary tools. This direct approach contrasts sharply with
+methods employed in conjunction with traditional deep
+learning models, such as autoencoders. While such mod-
+els can effectively identify anomalies, they do not inher-
+ently provide insights into why a particular instance is
+classified as such. Unpacking the decision-making pro-
+cess typically involves more complex procedures, such as
+sensitivity analysis or activation maximization, which at-
+tempt to approximate the model’s reasoning ad-hoc.
+Through the MPS model, not only can we specify
+which features and their respective values are driving the
+anomalous classification, but we also gain a quantitative
+measure of the anomaly’s severity. A human can then in-
+
+10
+<latexit sha1_base64="+iA735F8IicH/wr4EQv6NPT53YM=">AAAB6HicbVDLSgNBEOz1GeMr6tHLYBA8hV3xdQx68ZiAeUCyhNlJbzJmdnaZmRXCki/w4kERr36SN//GSbIHTSxoKKq66e4KEsG1cd1vZ2V1bX1js7BV3N7Z3dsvHRw2dZwqhg0Wi1i1A6pRcIkNw43AdqKQRoHAVjC6m/qtJ1Sax/LBjBP0IzqQPOSMGivVea9UdivuDGSZeDkpQ45ar/TV7ccsjVAaJqjWHc9NjJ9RZTgTOCl2U40JZSM6wI6lkkao/Wx26IScWqVPwljZkobM1N8TGY20HkeB7YyoGepFbyr+53VSE974GZdJalCy+aIwFcTEZPo16XOFzIixJZQpbm8lbEgVZcZmU7QheIsvL5PmecW7qlzWL8rV2zyOAhzDCZyBB9dQhXuoQQMYIDzDK7w5j86L8+58zFtXnHzmCP7A+fwB0r2M9w==</latexit>
+i
+<latexit sha1_base64="ilY/QkTkYupHlTufaTNlJZ/WxVI=">AAAB6HicbVDLTgJBEOzFF+IL9ehlIjHxRHaNryPRi0dI5JHAhswOvTAwO7uZmTUhhC/w4kFjvPpJ3vwbB9iDgpV0UqnqTndXkAiujet+O7m19Y3Nrfx2YWd3b/+geHjU0HGqGNZZLGLVCqhGwSXWDTcCW4lCGgUCm8HofuY3n1BpHstHM07Qj2hf8pAzaqxUG3aLJbfszkFWiZeREmSodotfnV7M0gilYYJq3fbcxPgTqgxnAqeFTqoxoWxE+9i2VNIItT+ZHzolZ1bpkTBWtqQhc/X3xIRGWo+jwHZG1Az0sjcT//PaqQlv/QmXSWpQssWiMBXExGT2NelxhcyIsSWUKW5vJWxAFWXGZlOwIXjLL6+SxkXZuy5f1S5LlbssjjycwCmcgwc3UIEHqEIdGCA8wyu8OUPnxXl3PhatOSebOYY/cD5/ANRBjPg=</latexit>
+j
+FIG. 8. [Color online] TN contraction needed to compute the
+conditional RDM for one site of an MPS, highlighting how
+the state of one feature can affect the state distribution of
+another when its value is fixed. The operator inserted in the
+physical index of site j is diagonal and selects the value for
+that feature, acting as a filter. the contractions leading to
+left and right tensors are highlighted, and tensors with open
+indices are in orange.
+terpret why an anomaly is an anomaly , and take action
+correspondingly. This interpretability is crucial, trans-
+forming anomaly detection from a mere alerting mecha-
+nism into a diagnostic tool that offers actionable insights,
+which is a substantial advancement in the field of XAI.
+E. Conditional Probabilities
+Conditional probabilities within the MPS framework
+provide a nuanced understanding of how the state of one
+feature influences the state of another. By fixing the
+value of the physical index of one tensor, we can ob-
+serve the resultant changes in the reduced density ma-
+trix (RDM) of another tensor, effectively capturing the
+conditional relationships within the data.
+For the sake of illustration, consider the process of ob-
+taining a conditional density matrix where we select ten-
+sor i from the MPS to derive its RDM while fixing the
+physical index of tensor j at value k. This operation is
+akin to asking the question: “What is the state of feature
+i given that feature j is known to be k?” The methodol-
+ogy involves a sequence of contractions similar to those
+used in obtaining an unconditional RDM, but inserting
+an additional operator at site j that selects value k for
+that physical index (in practice, a diagonal matrix at site
+j with a “1” at index valuek and “0” elsewhere). A sim-
+ilar strategy can be applied to evaluate more complex
+conditional probabilities, as required. Fig. 8 graphically
+represents the tensor network contraction for the condi-
+tional RDM from the MPS.
+In our practical case, an example can be seen when
+fixing feature 21 to value “0” and observing its effect on
+feature 1. Table III showcases the probabilities of feature
+1 both when feature 21 is not conditioned and when it is
+conditioned to be “0” .
+In traditional deep learning, obtaining such conditional
+probabilities is not as direct. Autoencoders, for example,
+can be used to infer conditional probabilities by leverag-
+ing latent space representations in a supervised setting.
+However, this requires additional steps beyond the stan-
+dard training of the autoencoder.
+Value Index Not Conditioned Conditioned
+0 0.54 0.78
+1 0.33 0.15
+2 0.003 0.004
+3 0.012 0.036
+4 0.00267 0.003
+5 0.000303 0.003
+6 0.099 0.009
+7 0.0007 0.0008
+8 0.0017 0.002
+9 0.00048 0.0007
+10 0.00002 0.00003
+TABLE III. Comparison of the probabilities for feature 1 with
+and without conditioning on feature 21 being “0” . The con-
+ditioned probabilities reveal how the state of feature 21 influ-
+ences the probability distribution of feature 1.
+F. Mutual Information
+Mutual information, a concept deeply rooted in infor-
+mation theory, quantifies the amount of information ob-
+tained about one random variable from another. In the
+context of MPS, this metric can reveal the total correla-
+tion between two features, shedding light on their inter-
+dependence within the system. For a pair of subsystems
+or features within an MPS, mutual information can elu-
+cidate the extent of their correlation, beyond the scope
+of linear relationships captured by traditional correlation
+coefficients. This is particularly valuable when consid-
+ering the complex, non-linear interactions prevalent in
+high-dimensional data, as often encountered in cyberse-
+curity and other advanced analytics domains.
+The mutual information I(X;Y ) between two random
+variablesX and Y is defined as
+I(X;Y )≡
+∑
+y∈Y
+∑
+x∈X
+p(x,y ) log
+( p(x,y )
+p(x)p(y)
+)
+, (12)
+wherep(x,y ) is the joint probability distribution function
+of X and Y , and p(x) and p(y) are the marginal prob-
+ability distribution functions of X and Y , respectively.
+In this case, taking into account that the von Neumann
+entropy of RDM ρA is defined as S ≡−Tr(ρA logρA),
+the mutual information can be rewritten as
+I(A;B) =S(ρA) +S(ρB)−S(ρAB). (13)
+The incorporation of mutual information into our MPS
+framework allows to understand the intricate correlations
+between features within the system. The mutual infor-
+mation heatmap in Fig.9 is particularly valuable in cyber-
+security, as it reveals which features share the most infor-
+mation, highlighting patterns such as correlated network
+events or coordinated attacker behavior. By clustering
+highly correlated features, security teams can optimize
+intrusion detection rules and reduce redundant monitor-
+ing of less informative variables. Beyond interpretability,
+this metric holds practical utility in optimizing the MPS
+
+11
+0 10 20
+Tensor Index
+0
+5
+10
+15
+20 Tensor Index
+0.0
+0.5
+1.0
+1.5
+2.0
+FIG. 9. [Color online] Mutual information heatmap for the
+different features. We can observe that some pairs of features
+are highly correlated while others are very independent.
+model. By rearranging columns to position highly corre-
+lated features adjacent to each other, we can refine the
+efficiency of the virtual bond dimension, ensuring a more
+resource-effective and potent representation of the data’s
+entangled nature. In addition, those pairs of features
+with large mutual information could even be clustered
+together, therefore reducing the complexity of the prob-
+lem.
+In classical deep learning models, the analogous in-
+sights are generally not as straightforward to obtain.
+While certain techniques can estimate mutual informa-
+tion or capture feature interdependencies (such as Canon-
+ical Correlation Analysis (CCA) [20] or neural estimation
+approaches), they often do not provide the direct and in-
+trinsic measure that an MPS model with mutual infor-
+mation capabilities would.
+V. CONCLUSIONS AND NEXT STEPS
+In this paper we have discussed in detail the potential
+of TN methods to develop explainable and interpretable
+machine learning algorithms. We have shown the va-
+lidity of the approach for an MPS algorithm designed
+for clustering, with the application to a real-life use case
+in cybersecurity. Our research has unveiled the poten-
+tial of MPS as a powerful tool for unsupervised anomaly
+detection, particularly within the domain of adversary-
+generated threat intelligence. The key findings demon-
+strate that MPS not only rivals but in certain respects
+surpasses the performance of traditional machine learn-
+ing models such as autoencoders and GANs, especially
+in terms of explainability and interpretability. The ap-
+plication of MPS to a cybersecurity dataset revealed its
+robustness in identifying cyberthreats with a low false
+positive rate, a critical parameter in cybersecurity oper-
+ations. The ability of MPS to provide direct probability
+extraction, assess feature importance, and elucidate on
+the reasons behind the classification of data points as
+anomalies underscores its utility in operational environ-
+ments where understanding the ‘why’ behind a model’s
+decision is as vital as the decision itself. In addition, the
+research has highlighted the interpretability capabilities
+of MPS, offering insights into Von Neumann entropy, fea-
+ture importance, conditional probabilities, and mutual
+information directly from the model’s parameters with-
+out the need for additional tools or techniques. These
+capabilities have profound implications for explainable
+AI, setting a new benchmark for transparency in machine
+learning applications. In addition, the methods presented
+in this paper allow the capability to generate synthetic
+data in order to improve training of complex models (due
+to lack of data availability) and activity generation for
+deception systems. This would also help in the develop-
+ment of behavior-based models, which are better against
+unknown attacks than rule-based models.
+The methods developed in this work can be improved
+in many ways. For instance, we could consider more ad-
+vanced TN structures beyond MPS, with more intricate
+patterns of correlations. Furthermore, as part of future
+work, we aim to validate our MPS-based approach on ad-
+ditional well-established cybersecurity datasets to assess
+its robustness across different data distributions. Specif-
+ically, we plan to apply our model to:
+• KDD Cup 1999 [21]: One of the most widely used
+intrusion detection datasets, containing simulated
+attacks in a network traffic environment.
+• CIC-IDS2017 [22]: A modern intrusion detection
+dataset with real-world traffic and attack types col-
+lected by the Canadian Institute for Cybersecurity.
+• UNSW-NB15 [23]: A dataset capturing hybrid
+real and synthetic network traffic to simulate real-
+world cyber threats.
+These datasets contain a diverse set of attack types and
+real-world traffic patterns, making them ideal bench-
+marks for evaluating the scalability and robustness of
+our method. This future validation will allow us to assess
+whether our model retains its effectiveness across varying
+data distributions and attack scenarios. We leave this as
+an important direction for future research.
+Acknowledgements.- We acknowledge Donostia In-
+ternational Physics Center (DIPC), Ikerbasque, Basque
+Government, Diputaci´ on de Gipuzkoa, European Innova-
+tion Council (EIC) and Tecnun for constant support, as
+well as insightful discussions with the teams from Mul-
+tiverse Computing, DIPC and Tecnun on the algorithms
+and technical implementations. Special thanks to the
+team at CounterCraft SL, for providing the motivation
+for this work, the dataset and numerous technical dis-
+cussions. This work was supported by the Diputaci´ on
+
+12
+Foral de Gipuzkoa through the “Q4DecOps: Algoritmo
+cu´ antico para detecci´ on de anomal´ ıas en entornos de
+ciber-enga˜ no” project (2022-QUAN-000026-01).
+Data availability statement: authors are open to
+reasonable requests.
+[1] A. B. Arrieta, N. D´ ıaz-Rodr´ ıguez, J. Del Ser, A. Ben-
+netot, S. Tabik, A. Barbado, S. Garc´ ıa, S. Gil-L´ opez,
+D. Molina, R. Benjamins, et al. , Explainable artificial
+intelligence (xai): Concepts, taxonomies, opportunities
+and challenges toward responsible ai, Information fusion
+58, 82 (2020).
+[2] M. T. Ribeiro, S. Singh, and C. Guestrin, ” why should
+i trust you?” explaining the predictions of any classi-
+fier, in Proceedings of the 22nd ACM SIGKDD interna-
+tional conference on knowledge discovery and data min-
+ing (2016) pp. 1135–1144.
+[3] S. Lundberg, A unified approach to interpreting model
+predictions, arXiv preprint arXiv:1705.07874 (2017).
+[4] Y. Lecun and F. Soulie Fogelman, Modeles connexion-
+nistes de l’apprentissage, Intellectica, special issue ap-
+prentissage et machine 2 (1987).
+[5] I. Goodfellow, J. Pouget-Abadie, M. Mirza, B. Xu,
+D. Warde-Farley, S. Ozair, A. Courville, and Y. Bengio,
+Generative adversarial networks, Communications of the
+ACM 63, 139 (2020).
+[6] R. Or´ us, A practical introduction to tensor networks:
+Matrix product states and projected entangled pair
+states, Annals of physics 349, 117 (2014).
+[7] S.-J. Ran and G. Su, Tensor networks for interpretable
+and efficient quantum-inspired machine learning, Intelli-
+gent Computing 2, 0061 (2023).
+[8] R. Or´ us, Tensor networks for complex quantum systems,
+Nature Reviews Physics 1, 538 (2019).
+[9] S. S. Jahromi and R. Or´ us, Variational tensor neural
+networks for deep learning, Scientific Reports 14, 19017
+(2024).
+[10] F. Verstraete, V. Murg, and J. I. Cirac, Matrix prod-
+uct states, projected entangled pair states, and varia-
+tional renormalization group methods for quantum spin
+systems, Advances in physics 57, 143 (2008).
+[11] L. Ashiku and C. Dagli, Network intrusion detection
+system using deep learning, Procedia Computer Science
+185, 239 (2021).
+[12] J. Wang, C. Roberts, G. Vidal, and S. Leichenauer,
+Anomaly detection with tensor networks, arXiv preprint
+arXiv:2006.02516 (2020).
+[13] E. Stoudenmire and D. J. Schwab, Supervised learning
+with tensor networks, Advances in neural information
+processing systems 29 (2016).
+[14] S. Mugel, C. Kuchkovsky, E. S´ anchez, S. Fern´ andez-
+Lorenzo, J. Luis-Hita, E. Lizaso, and R. Or´ us, Dynamic
+portfolio optimization with real datasets using quantum
+processors and quantum-inspired tensor networks, Phys.
+Rev. Res. 4, 013006 (2022).
+[15] G. Vidal, Entanglement renormalization, Physical review
+letters 99, 220405 (2007).
+[16] Z.-Y. Han, J. Wang, H. Fan, L. Wang, and P. Zhang,
+Unsupervised generative modeling using matrix product
+states, Physical Review X 8, 031012 (2018).
+[17] U. Schollw¨ ock, The density-matrix renormalization
+group, Reviews of modern physics 77, 259 (2005).
+[18] U. Schollw¨ ock, The density-matrix renormalization group
+in the age of matrix product states, Annals of physics
+326, 96 (2011).
+[19] C. E. Shannon, A mathematical theory of communica-
+tion, ACM SIGMOBILE mobile computing and commu-
+nications review 5, 3 (2001).
+[20] D. R. Hardoon, S. Szedmak, and J. Shawe-Taylor, Canon-
+ical correlation analysis: An overview with application to
+learning methods, Neural computation 16, 2639 (2004).
+[21] UCI Machine Learning Repository, KDD Cup 1999 Data
+Set (1999).
+[22] Canadian Institute for Cybersecurity, CIC-IDS2017 In-
+trusion Detection Evaluation Dataset (2017).
+[23] University of New South Wales (UNSW), UNSW-NB15
+Dataset for Network Intrusion Detection (2015).

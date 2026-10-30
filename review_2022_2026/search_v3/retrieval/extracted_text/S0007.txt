@@ -1,0 +1,1483 @@
+International Journal of Information Security          (2026) 25:178 
+https://doi.org/10.1007/s10207-026-01349-4
+REGULAR CONTRIBUTION
+A uniﬁed drift-adaptive and robust residual autoencoder with
+attention and few-shot learning for zero-day intrusion detection
+Salman Shehzad 1 · Nouman Ijaz 2 · Chunsheng Yang 1 · Sana Ullah Jan 3
+Received: 15 May 2026 / Accepted: 11 October 2026
+© The Author(s) 2026
+Abstract
+Autoencoder-based unsupervised intrusion detection systems (IDS) offer a promising approach for identifying zero-day
+attacks without requiring labeled malicious data. However, residual autoencoder (RAE) frameworks remain limited by static
+decision thresholds, susceptibility to concept drift (CD), limited adversarial robustness, and restricted adaptability to emerging
+attack patterns. To address these limitations, we propose the Attention-Boosted Streaming Residual Autoencoder (ASRAE), a
+uniﬁed framework that integrates attention-enhanced representation learning, online CD detection with adaptive thresholding,
+benign-only adversarial training, post-identiﬁcation few-shot meta-learning, and explainability through integrated gradients
+(IG). Experiments on UNSW-NB15, CIC-IDS2017, and CSE-CIC-IDS2018 show that ASRAE outperforms the evaluated
+unsupervised baselines, achieving ROC-AUC values of 0.952, 0.940, and 0.931, respectively. Under the controlled simulated
+concept-drift setting, ASRAE maintains a ROC-AUC above 0.91, while adversarial evaluation using Fast Gradient Sign
+Method (FGSM) and Projected Gradient Descent (PGD) demonstrates improved robustness to feature-space perturbations.
+The few-shot adaptation stage further enables adaptation to held-out attack families using only a small number of labeled
+samples while largely preserving benign reconstruction performance. ASRAE requires an average inference time of 9.2 ms
+per sample in the evaluated experimental environment. Overall, the results demonstrate the effectiveness of ASRAE across
+the benchmark, simulated-drift, adversarial, and few-shot adaptation settings.
+Keywords Residual autoencoder · Network intrusion detection · Zero-day attack · Concept drift · Adversarial robustness ·
+Few-shot learning · Explainable AI
+Salman Shehzad, Nouman Ijaz, Chunsheng Y ang and Sana Ullah Jan
+have contributed equally to this work.
+B Sana Ullah Jan
+s.jan@napier.ac.uk
+Salman Shehzad
+salmansameer636@gmail.com
+Nouman Ijaz
+nouman2407@mail.ulsan.ac.kr
+Chunsheng Y ang
+chunsheng.yang@gzhu.edu.cn
+1 School of Artiﬁcial Intelligence, Guangzhou University,
+Guangzhou, China
+2 Department of Electrical, Electronics and Computer
+Engineering, University of Ulsan, Ulsan 44610, Republic of
+Korea
+3 School of Computing, Engineering and Built Environment,
+Edinburgh Napier University, EH10 5DT, Edinburgh 610101,
+UK
+1 Introduction
+The increasing digitalization of modern society has led to
+the widespread deployment of interconnected systems across
+critical domains, including healthcare [ 1], ﬁnance [2], trans-
+portation [3], industrial control systems [ 4], and smart cities
+[5]. While this rapid connectivity has improved efﬁciency
+and automation, it has also signiﬁcantly expanded the attack
+surface of modern networks, exposing them to increasingly
+sophisticated cyber threats. Among these, zero day attacks,
+which exploit previously unseen vulnerabilities, pose a crit-
+ical challenge to conventional intrusion detection systems
+(IDS) [6]. Traditional signature based approaches are inher-
+ently limited in this context, as they rely on predeﬁned attack
+patterns and fail to generalize to emerging threats. As a result,
+anomaly based IDS, particularly those leveraging deep learn-
+ing, have gained increasing attention due to their ability to
+model normal network behavior and identify unusual activi-
+ties without requiring labeled malicious data [ 7, 8].
+0123456789().: V,-vol 123
+
+  178 Page 2 of 16 S. Shehzad et al.
+Among anomaly based approaches, deep autoencoder
+models have become widely used for unsupervised intru-
+sion detection. These models learn compact representations
+of benign network trafﬁc and detect anomalies by measuring
+reconstruction errors between the original and reconstructed
+inputs [6, 9]. Residual autoencoders (RAE) further improve
+this process by incorporating skip connections and hybrid
+loss functions, which enhance training stability and recon-
+struction quality [10]. However, despite these advancements,
+existing autoencoder based intrusion detection frameworks
+still face important limitations, particularly in dynamic and
+adversarial environments where network behavior continu-
+ously evolves [11].
+First, these frameworks remain inherently static because
+they are trained only once on historical benign trafﬁc and
+cannot adapt to concept drift caused by evolving network
+behavior, newly emerging applications, or temporal traf-
+ﬁc variations. Second, anomaly detection thresholds are
+typically ﬁxed using statistical measures derived from the
+training set, which may become unreliable over time and
+lead to increased false positive rates. Third, existing models
+generally lack robustness against adversarial perturbations,
+making them vulnerable to evasion attacks due to the absence
+of dedicated defense mechanisms. In addition, their gener-
+alization capability is often limited because evaluation is
+commonly restricted to a single dataset, leaving their effec-
+tiveness across diverse and modern network environments
+uncertain. Finally, these models operate largely as black
+boxes and provide limited insight into why speciﬁc trafﬁc
+samples are classiﬁed as anomalous, thereby reducing inter-
+pretability and complicating forensic analysis.
+To address these limitations, we propose the Attention
+Boosted Streaming Residual Autoencoder (ASRAE), a uni-
+ﬁed and adaptive framework for robust anomaly detection in
+dynamic network environments. Unlike existing approaches
+that treat robustness, adaptability, and interpretability as sep-
+arate problems, the proposed framework integrates these
+capabilities within a single architecture. This uniﬁed design
+enables the model to effectively handle evolving data dis-
+tributions, adversarial perturbations, and emerging attack
+patterns in a coherent manner.
+The contribution of ASRAE lies in the coordinated
+use of multiple adaptation mechanisms within a common
+reconstruction-based framework rather than in claiming
+novelty for each component individually. The attention-
+enhanced latent representation supports anomaly reconstruc-
+tion and selective few-shot adaptation, while reconstruction-
+error statistics are used for both anomaly scoring and online
+drift monitoring. Benign-only adversarial training further
+improves robustness without requiring attack labels during
+initial training. In this way, ASRAE extends the original static
+residual autoencoder toward a uniﬁed framework for robust
+reconstruction, online adaptation, and post-identiﬁcation
+few-shot updating.
+The main contributions are summarized as follows:
+• Drift-aware adaptive anomaly detection: A streaming
+adaptive threshold based on reconstruction-error statis-
+tics is used to respond to changing trafﬁc distributions
+and support selective online retraining.
+• Attention-enhanced latent representation: Multi-head
+self-attention is incorporated into the latent representa-
+tion to model dependencies among compressed features
+and improve anomaly discrimination.
+• Benign-only adversarial robustness: Adversarial pertur-
+bations are applied to benign training samples to improve
+reconstruction stability and reduce sensitivity to evasion-
+oriented perturbations.
+• Few-shot adaptation for emerging attacks: MAML-
+based selective adaptation enables the model to update
+a restricted set of parameters when only a small number
+of labeled samples from a newly identiﬁed attack family
+are available.
+• Explainable anomaly detection: Integrated gradients are
+used to provide feature-level attribution for detected
+anomalies and improve interpretation of model decisions.
+The framework is evaluated on UNSW-NB15, CIC-
+IDS2017, and CSE-CIC-IDS2018, achieving ROC-AUC
+values of 0.952, 0.940, and 0.931, respectively, with a mean
+ROC-AUC of approximately 0.941. Under the controlled
+simulated concept-drift setting, ASRAE maintains more sta-
+ble performance than the original RAE, while the adversarial
+experiments show improved resistance to feature-space per-
+turbations. The reported inference time remains below 10 ms
+per sample in the evaluated experimental environment.
+The remainder of this paper is organized as follows. Sec-
+tion 2 reviews related work. Section 3 presents the proposed
+framework. Section 4 describes the experimental setup and
+results. Section 5 discusses the ﬁndings and limitations, and
+Sect. 6 concludes the paper.
+2 Related work
+2.1 Unsupervised IDS using autoencoders
+Autoencoders have been widely adopted for unsupervised
+network anomaly detection due to their ability to learn
+representations of benign trafﬁc without requiring labeled
+malicious data. Early work by Javaid et al. [ 12] utilized a
+sparse autoencoder combined with softmax regression for
+attack detection, while Farahnakian and Heikkonen [13]p r o -
+posed a stacked autoencoder to capture hierarchical network
+123
+
+A uniﬁed drift-adaptive and robust residual… Page 3 of 16   178 
+features. Shone et al. [14] further enhanced anomaly discrim-
+ination by integrating a non-symmetric deep autoencoder
+with a random forest classiﬁer.
+More recent approaches have focused on improving rep-
+resentation learning through advanced architectures. These
+include attention-based autoencoders [ 15], hybrid
+autoencoder–transformer models [16], and generative adver-
+sarial network-based frameworks [ 17]. Attention-based fea-
+ture interaction has also been investigated in related
+representation-learning tasks. C2T-Net employs channel-
+aware self-attention and cross-fusion to combine comple-
+mentary feature representations, while CLEAR uses cross-
+transformer interactions for person attribute recognition and
+retrieval [18, 19]. Although these methods address computer
+vision rather than intrusion detection, they provide relevant
+examples of attention mechanisms for modeling interac-
+tions among learned feature representations. The residual
+autoencoder (RAE) [ 10] represents a notable advancement
+by incorporating skip connections and hybrid loss func-
+tions to improve training stability and reconstruction ﬁdelity.
+However, despite these improvements, existing autoencoder-
+based intrusion detection systems remain largely static and
+lack adaptability to evolving network conditions, limiting
+their effectiveness in dynamic environments [ 20].
+2.2 Concept drift and adaptive IDS
+Concept drift (CD) signiﬁcantly affects the performance of
+intrusion detection systems in dynamic network environ-
+ments, where data distributions evolve over time. While
+various drift detection techniques, such as ADaptive WIN-
+dowing (ADWIN) and Drift Detection Method (DDM), have
+been proposed, they are primarily designed for supervised
+learning settings [21]. Existing unsupervised approaches for
+drift adaptation remain limited. For example, ExpIDS [ 22]
+employs a denoising autoencoder for drift handling, but it
+does not incorporate residual learning or dynamic thresh-
+olding mechanisms. Similarly, [ 23] propose an adaptive
+deep autoencoder for security anomaly detection in evolv-
+ing network environments, but do not address adversarial
+robustness or few-shot generalization to unseen attacks.
+Robustness to general distribution shift has also been studied
+structurally in [ 24], though not in the context of unsu-
+pervised intrusion detection. Deep active learning provides
+methodologies to select informative and trustworthy unla-
+belled instances for human labelling [25]. This body of work
+bears relevance for our online retraining buffer deﬁned in
+Eq. ( 10), which currently selects candidate retraining sam-
+ples purely by reconstruction-error threshold without active
+sample selection criteria. Separately, emerging dynamic
+graph continuous state-space models are designed for evolv-
+ing networked systems [26]. Our ASRAE treats each network
+ﬂow as an independent tabular vector and does not explicitly
+model host-level graph interactions across ﬂows; integrating
+dynamic graph representations constitutes a promising future
+research direction.
+Overall, there is a clear lack of methods that integrate
+online drift detection, adaptive thresholding, and efﬁcient
+model updating within a residual autoencoder framework,
+which remains an open research challenge.
+2.3 Adversarial robustness in autoencoders
+Adversarial attacks, such as those generated using gradi-
+ent based perturbation methods, can signiﬁcantly degrade
+the performance of autoencoder based intrusion detection
+systems. Existing defense strategies, including adversarial
+training, are predominantly designed for supervised classi-
+ﬁers rather than unsupervised models [27]. Some approaches,
+such as ensemble based defense frameworks [ 28], incorpo-
+rate adversarial training in autoencoder based systems, but
+they rely on both benign and malicious samples during train-
+ing. Similarly, AIDTF [ 29] focuses on supervised detection
+models and does not address unsupervised reconstruction
+based frameworks.
+2.4 Few-shot learning for intrusion detection
+Few shot learning has emerged as an effective strategy for
+addressing data scarcity in intrusion detection systems. How-
+ever, most existing approaches are limited to supervised or
+semi supervised settings [ 30, 31]. For instance, adversarial
+autoencoder based methods [ 32] reduce labeling require-
+ments but do not fully operate in an unsupervised manner.
+Modelagnostic meta learning (MAML) based approaches
+have also been explored for intrusion detection [ 33]b u tt h e y
+are primarily applied to classiﬁcation models and not to unsu-
+pervised autoencoder based frameworks. Fine-tuning-based
+adaptation under limited labeled data has similarly been used
+for defect detection in other domains, such as industrial fabric
+inspection [ 34], underscoring that data-efﬁcient adaptation
+is a cross-domain need rather than one unique to network
+security. Consequently, enabling rapid adaptation of unsu-
+pervised models to new attack types using limited labeled
+data remains a signiﬁcant research gap.
+2.5 Explainable anomaly detection
+Explainable artiﬁcial intelligence methods, including SHAP
+and LIME, have been widely used to improve the trans-
+parency of intrusion detection systems [ 35]. However, their
+application to autoencoder based models, particularly resid-
+ual architectures, remains limited. Existing work, such as
+convGRU based autoencoders, has explored interpretability
+using layer wise relevance propagation [ 36], but alternative
+approaches such as integrated gradients have not been suf-
+123
+
+  178 Page 4 of 16 S. Shehzad et al.
+ﬁciently investigated in this context. Providing interpretable
+anomaly detection within residual autoencoder frameworks
+is therefore an important yet underexplored direction.
+Overall, existing studies address adaptability, robust-
+ness, generalization, and interpretability in isolation. There
+remains a lack of a uniﬁed framework that simultaneously
+integrates concept drift adaptation, adversarial robustness,
+few shot generalization, and explainable anomaly detection
+within a single unsupervised architecture. This gap motivates
+the proposed ASRAE framework.
+3 Proposed method
+3.1 Overall architecture
+The proposed ASRAE framework builds upon the core resid-
+ual autoencoder architecture, which consists of an encoder,
+decoder, residual skip connection, and a hybrid loss func-
+tion. To overcome the limitations of existing models, the
+framework integrates multiple functional components within
+a uniﬁed design to enhance adaptability, robustness, and
+interpretability. Figure1 illustrates the overall architecture of
+ASRAE and its role in the intrusion detection pipeline. The
+framework follows an end to end processing ﬂow, where each
+component contributes to effective anomaly detection. The
+encoder transforms the input network trafﬁc features, rep-
+resented as a 49 dimensional vector, into a compact latent
+representation of dimension 32. This transformation reduces
+computational complexity while preserving essential infor-
+mation.
+The latent representation is further processed using a
+multi head attention mechanism, which captures depen-
+dencies among compressed features and highlights subtle
+patterns that may indicate anomalous behavior. The atten-
+tion enhanced latent vector is then passed to the decoder,
+which reconstructs the original input. A residual skip con-
+nection is incorporated to preserve important input features
+and stabilize the training process. The model is optimized
+using a hybrid loss function that combines Smooth L1 loss
+and cosine similarity. This formulation ensures accurate
+reconstruction while maintaining consistency in feature rep-
+resentation, allowing the model to learn meaningful patterns
+rather than trivial mappings.
+In addition to the core architecture, the framework incor-
+porates auxiliary components, including adversarial training,
+concept drift detection, few shot adaptation, and explainabil-
+ity mechanisms. These components are seamlessly integrated
+into the overall system to improve performance in dynamic
+and adversarial environments. As a result, ASRAE retains the
+efﬁciency of the residual autoencoder while addressing its
+key limitations, including limited discriminative capability,
+vulnerability to adversarial perturbations, lack of adaptabil-
+ity, and absence of interpretability.
+3.2 Attention-boosted latent representation
+Given a normalized input feature vectorx ∈ R49, the encoder
+fφ generates a compact latent representation
+z = fφ(x), z ∈ Rdlatent , (1)
+where dlatent = 32. To apply multi-head self-attention in
+a mathematically meaningful manner, the latent represen-
+tation is organized into N = 4 latent feature groups, each
+containing dg = 8 dimensions, such that
+Z = reshape(z, N, dg) ∈ R4×8, Nd g = dlatent. (2)
+The resulting rows of Z are treated as latent feature tokens
+rather than temporal or spatial tokens. This grouping does
+not impose any sequential ordering on the network-ﬂow fea-
+tures, and no positional encoding is used. Instead, it provides
+a structured representation over which the attention mech-
+anism can learn dependencies among different compressed
+feature groups produced jointly by the encoder.
+For each attention head h, the query, key, and value matri-
+ces are computed as
+Q
+(h) = ZW (h)
+Q , K(h) = ZW (h)
+K , V(h) = ZW (h)
+V ,
+(3)
+where W(h)
+Q , W(h)
+K , and W(h)
+V are learnable projection matri-
+ces associated with the h-th attention head. The scaled
+dot-product attention is then deﬁned as
+Attention
+(
+Q(h), K(h), V(h)
+)
+= softmax
+(
+Q(h) K(h)T
+√ dk
+)
+V(h),
+(4)
+where dk denotes the dimensionality of the key representa-
+tion. Because Z contains multiple latent feature groups, the
+matrix Q(h) K(h)T represents pairwise relationships among
+these groups rather than a similarity score for a single latent
+vector.
+The outputs of the four attention heads are concatenated
+and linearly transformed as
+Zatt = Concat (head1, head2, head3, head4) WO, (5)
+123
+
+A uniﬁed drift-adaptive and robust residual… Page 5 of 16   178 
+Fig. 1 Architecture of the proposed ASRAE framework. A multi-head attention layer is inserted after the latent representation. The residual
+connection adds a scaled version of the input to the decoder output. The hybrid loss combines Smooth L1 and cosine similarity
+where WO is the output projection matrix. The attention-
+enhanced representation is subsequently ﬂattened to recover
+a dlatent-dimensional vector,
+zatt = vec(Zatt) ∈ R32, (6)
+which is provided to the decoder gψ for reconstruction.
+The purpose of the attention block is therefore not to
+model temporal dependencies. Instead, it models relation-
+ships among compressed latent feature groups derived from
+the original network-ﬂow representation. Each attention
+head can assign different relative importance to interactions
+among these groups for a given input, allowing the decoder
+to receive a representation that reﬂects dependencies that
+may not be captured as effectively by an attention-free latent
+mapping. This interpretation is particularly appropriate for
+tabular network trafﬁc, where dependencies may arise from
+combinations of multiple ﬂow characteristics even though
+the input itself has no inherent spatial or sequential structure.
+The contribution of this mechanism is also supported by
+the ablation analysis in Table 9. Removing the attention
+mechanism from the complete ASRAE framework reduces
+ROC-AUC from 0.952 to 0.920, while the attention-only con-
+ﬁguration achieves a ROC-AUC of 0.924 compared with
+0.903 for the original residual autoencoder. These results
+indicate that the latent attention block contributes additional
+discriminative capacity beyond the base RAE representation.
+3.3 Hybrid loss function
+The proposed framework adopts the hybrid loss function
+from the original RAE to jointly optimize reconstruction
+accuracy and feature consistency. This loss formulation plays
+a critical role in guiding the model to learn meaningful rep-
+resentations of network trafﬁc. The loss function is deﬁned
+as:
+L = α∥ˆx − x∥
+S1 + (1 − α)(1 − cos(ˆx, x)), (7)
+where ∥·∥ S1 denotes Smooth L1 loss, cos (ˆx, x) represents
+the cosine similarity between the input and its reconstruc-
+tion, and α = 0.9 controls the balance between the two
+terms. The ﬁrst term focuses on minimizing the numerical
+reconstruction error, ensuring that the reconstructed output
+closely matches the original input. The second term enforces
+consistency in the feature space by preserving the directional
+similarity between input and reconstruction. This combina-
+tion encourages the model to capture both ﬁne grained details
+and global structural patterns, leading to more robust and dis-
+criminative representations for anomaly detection.
+3.4 Online drift detection and adaptive threshold
+During inference, ASRAE maintains a sliding window W
+containing the most recent reconstruction errors,
+ei =
+ˆxi − xi
+
+1 , (8)
+123
+
+  178 Page 6 of 16 S. Shehzad et al.
+with a window size of W = 1000. The adaptive anomaly
+threshold at time step t is deﬁned as
+T(t) = μt + βσt, (9)
+where μt and σt are the mean and standard deviation of
+the reconstruction errors within W, and β = 3. A sample
+is classiﬁed as anomalous when ei > T(t). Updating the
+threshold from recent reconstruction errors allows the deci-
+sion boundary to respond to changes in the observed trafﬁc
+distribution.
+A concept-drift event is triggered when ﬁve consecutive
+samples satisfy e
+i > 2T(t). The ﬁve-sample criterion was
+selected using the validation data to balance false drift alarms
+and detection delay. Shorter sequences were more sensitive
+to transient trafﬁc ﬂuctuations, whereas longer sequences
+delayed the response to sustained distributional changes.
+Following drift detection, partial retraining is performed
+using the most recent 10% of model-predicted benign sam-
+ples. In the unsupervised online setting, no ground-truth
+labels or external oracle are used to verify these samples.
+Instead, a sample is eligible for the retraining buffer when
+e
+i ≤ T(t). (10)
+Samples with ei > T(t) are classiﬁed as anomalous and
+excluded from the buffer. However, this procedure cannot
+guarantee that every retained sample is truly benign. An
+attack with reconstruction error below the current thresh-
+old constitutes a false negative and may therefore enter the
+retraining buffer. This limitation of unsupervised drift adap-
+tation is further discussed in Sect. 5.
+To reduce catastrophic forgetting during partial retraining,
+elastic weight consolidation (EWC) is applied:
+L
+total = L + λEWC
+2
+∑
+j
+Fj
+(
+θj − θ∗
+j
+) 2
+, (11)
+where Fj denotes the diagonal Fisher information asso-
+ciated with parameter θj , θ∗
+j represents the corresponding
+parameter value before adaptation, and λEWC = 1000. EWC
+constrains excessive parameter changes during retraining and
+helps preserve previously learned reconstruction behavior.
+3.5 Adversarial training on benign samples
+To improve robustness against evasion attacks, the training
+process incorporates adversarial examples generated from
+benign samples using the FGSM. The adversarial sample is
+deﬁned as:
+x
+adv = x + ϵ · sign(∇x L(x, ˆx)), (12)
+with perturbation strength ϵ = 0.03. All adversarial pertur-
+bations, in both training and evaluation, are constrained to the
+min–max normalized [0, 1] feature space used throughout
+preprocessing (Section 4.1); perturbed vectors are clipped to
+this range after each perturbation step. Perturbations are fur-
+ther restricted to continuous ﬂow-statistic features (e.g., byte
+counts, duration, packet-length and inter-arrival statistics);
+categorical and protocol-indicator features are left unper-
+turbed, since arbitrary perturbation of these ﬁelds could
+produce ﬂows that do not correspond to physically realiz-
+able network behavior. For datasets requiring dimensionality
+reduction, adversarial perturbations are generated in the orig-
+inal continuous feature space before applying the ﬁtted PCA
+transformation. The perturbed samples are then processed
+using the same transformation applied to clean samples. The
+model is trained to reconstruct both clean and perturbed
+benign samples, encouraging the learning of a locally smooth
+representation in the latent space. This approach enhances
+robustness without requiring labeled attack data, which is
+particularly important in unsupervised settings. By focus-
+ing on benign samples, the model becomes less sensitive to
+small input perturbations, thereby reducing vulnerability to
+adversarial evasion while maintaining stable reconstruction
+performance.
+Equation (12) applies perturbations exclusively to benign
+training samples and maximises reconstruction loss dur-
+ing model training to enforce latent-space smoothness.
+This training-time objective differs fundamentally from the
+behaviour of a real adversarial evasion attacker, whose goal is
+to reduce the anomaly score of malicious trafﬁc so that attack
+instances are misclassiﬁed as benign. Section 4.8 evaluates
+practical evasion attacks using this opposite optimisation
+objective applied to held-out attack test samples.
+3.6 Few-shot adaptation for new attack families
+ASRAE incorporates model-agnostic meta-learning (MAML)
+to support rapid adaptation when a small number of labeled
+samples from a newly identiﬁed attack family become avail-
+able. This stage is separate from the initial unsupervised
+zero-day detection process, which relies on reconstruction
+error and the adaptive threshold T(t). Each meta-learning
+task T
+i contains a support set Si and a disjoint query set Qi .
+The basic conﬁguration uses K = 5 support samples and
+Q = 5 query samples per task. During meta-training, the
+support set determines the task-speciﬁc inner-loop update,
+whereas the query set is used to evaluate the adapted param-
+eters and optimize the outer meta-objective. To maintain
+consistency with reconstruction-error-based anomaly detec-
+123
+
+A uniﬁed drift-adaptive and robust residual… Page 7 of 16   178 
+tion, few-shot adaptation uses a label-aware objective. Let
+Sb
+i and Sa
+i denote the benign and labeled attack samples,
+respectively, within support setSi . For a sample x, the recon-
+struction loss is
+Lrec(x) = α
+ˆx − x
+
+S1 + (1 − α)
+[
+1 − cos(x, ˆx)
+]
+, (13)
+where α = 0.9, consistent with the hybrid loss deﬁned in
+Section 3.3. The reconstruction-error anomaly score is
+eθ(x) =
+ˆxθ − x
+
+1 . (14)
+The label-aware support-set objective combines reconstruc-
+tion preservation for benign trafﬁc with an anomaly-separation
+term for labeled attacks:
+L
+LA
+Si = 1
+|Sb
+i |
+∑
+x∈Sb
+i
+Lrec(x)
++ λsep
+1
+|Sa
+i |
+∑
+x∈Sa
+i
+max (0, T(t) − eθ(x)) ,
+(15)
+where λsep = 1.0 controls the contribution of the attack-
+separation term. For a labeled attack whose reconstruc-
+tion error is already above T(t), the separation term is
+zero. If its reconstruction error falls below T(t),t h et e r m
+becomes positive and penalizes the model for moving the
+attack sample into the benign reconstruction region. Conse-
+quently, minimizing L
+LA
+Si
+preserves low reconstruction error
+for benign samples while maintaining separation between
+labeled attacks and the current anomaly decision boundary.
+For task Ti , the task-speciﬁc parameters are updated as
+θ′
+i = θ− αinner∇θLLA
+Si (θ), (16)
+where αinner = 0.01. Five inner-loop gradient-update steps
+are performed for each task. The same label-aware formula-
+tion is evaluated on the disjoint query set Qi to obtain LLA
+Qi
+.
+The outer meta-objective is
+Lmeta =
+∑
+Ti
+LLA
+Qi
+(
+θ′
+i
+)
+. (17)
+Thus, the support set determines the task-speciﬁc inner-loop
+adaptation, whereas the disjoint query set determines the
+outer meta-learning update. The outer-loop learning rate is
+set to 10
+− 3, with a meta-batch size of 32 and a total of
+1200 meta-training episodes. The autoencoder is initially
+trained exclusively on benign trafﬁc. Worms, Shellcode, and
+Reconnaissance are withheld from attack-dependent MAML
+meta-training and are treated as held-out zero-day attack fam-
+ilies during meta-testing. Adaptation is performed separately
+for each held-out family after a small labeled support set
+becomes available, and performance is evaluated on disjoint
+samples that are not used during adaptation. Therefore, the
+reported 5-shot, 10-shot, and 15-shot settings represent post-
+identiﬁcation adaptation rather than the initial unsupervised
+zero-day detection stage. Only the attention projection matri-
+ces W
+Q , WK , WV , and WO , together with the ﬁnal decoder
+layer, are updated during few-shot adaptation. The encoder,
+the remaining decoder layers, and the residual reconstruc-
+tion pathway are kept ﬁxed. This restricted update limits
+the number of adapted parameters and helps preserve the
+learned benign reconstruction behavior. Consistent with this
+design, the benign false-positive rate changes from 1 .12%
+before adaptation to no more than 1.15% after 15-shot adap-
+tation, as reported in Table 8.This selective-update principle
+parallels adapter-based ﬁne-tuning approaches used for few-
+shot anomaly detection in other domains, where only a
+lightweight adapter module is updated while a large pre-
+trained backbone remains frozen [ 37], reinforcing selective
+parameter updating as a general-purpose adaptation strat-
+egy rather than one speciﬁc to network intrusion detection.
+Few-shot adaptation does not introduce a separate supervised
+classiﬁer. The ﬁnal anomaly decision remains reconstruction
+based:
+ˆy(x) =
+{
+1, e
+θ′ (x)> T(t),
+0, eθ′ (x) ≤ T(t).
+(18)
+Therefore, MAML serves as a post-identiﬁcation adaptation
+mechanism while preserving the reconstruction-error-based
+anomaly-detection principle of ASRAE.
+We denote detection performance prior to receiving any
+labelled attack samples as zero-shot performance. Worms,
+Shellcode, and Reconnaissance undergo strict family-level
+holdout: these attack families are completely excluded both
+from autoencoder pre-training and MAML meta-training,
+instead of relying on simple random sample splitting. To
+isolate performance gains originating from meta-learning
+itself, we implement a plain selective ﬁne-tuning baseline
+which updates exactly the same restricted parameter subset,
+namely the attention projection matrices W
+Q , WK , WV , WO
+and the ﬁnal decoder layer. This baseline utilises the identi-
+cal label-aware loss given in Eq. ( 15), matching inner-loop
+learning rate and gradient-step count, but omits the MAML
+outer-loop meta-training procedure. All reported few-shot
+results are aggregated across ﬁve independent random draws
+of support-query splits and are presented as mean± standard
+deviation in Table 7. Table 8 further compares benign-trafﬁc
+false-positive rates for both MAML and plain ﬁne-tuning to
+quantify potential catastrophic-forgetting risk across adapta-
+tion strategies.
+123
+
+  178 Page 8 of 16 S. Shehzad et al.
+3.7 Explainability via integrated gradients
+To improve interpretability, the proposed framework employs
+integrated gradients to compute feature attribution scores for
+each detected anomaly. This approach quantiﬁes the con-
+tribution of each input feature to the reconstruction error,
+enabling transparent analysis of anomalous behavior.
+The integrated gradients for the i-th feature are deﬁned as:
+IG
+i(x) = (xi − x′
+i) ×
+∫ 1
+α=0
+∂L(ˆx(α), x(α))
+∂xi
+dα, (19)
+where x′ denotes a baseline input, set to a zero vector, and
+the integral is approximated using 50 discrete steps. The loss
+function L corresponds to the hybrid reconstruction loss used
+in the model. This mechanism operates in conjunction with
+the ASRAE architecture by leveraging the reconstruction
+error to identify the most inﬂuential features contributing to
+each anomaly. The resulting attribution scores can be visu-
+alized as heatmaps, highlighting key trafﬁc characteristics
+associated with anomalous events.
+By providing feature level explanations, this module
+enhances the transparency of the model and addresses the
+black box limitation commonly associated with deep learning
+based intrusion detection systems. This capability supports
+interpretation of individual anomaly decisions and can assist
+analysts in examining the trafﬁc features associated with
+detected anomalies.
+Figure 2 summarizes the ASRAE workﬂow from pre-
+processing and anomaly detection to drift handling and
+explanation. When concept drift is detected, partial retraining
+is performed using EWC. Few-shot adaptation is activated
+separately only when labeled samples from a newly iden-
+tiﬁed attack family become available. Integrated gradients
+provide feature-level attribution for detected anomalies.
+4 Experimental results and analysis
+4.1 Datasets
+The proposed ASRAE framework is evaluated on three
+widely used benchmark datasets for network intrusion detec-
+tion to ensure comprehensive validation across diverse attack
+scenarios and trafﬁc distributions.
+• UNSW-NB15 [38]: This dataset contains approximately
+2.54 million network ﬂow records described by 49 fea-
+tures. It includes nine attack categories, namely Fuzzers,
+Analysis, Backdoor, DoS, Exploits, Generic, Reconnais-
+sance, Shellcode, and Worms, providing a diverse set of
+intrusion patterns for evaluation.
+Fig. 2 Workﬂow of the ASRAE framework, covering data prepro-
+cessing, model inference, concept drift handling, post-identiﬁcation
+few-shot adaptation, and explainability
+• CIC-IDS2017 [39]: This dataset comprises approxi-
+mately 2.83 million network ﬂows with 80 original
+features. To ensure consistency and fair comparison with
+other datasets, the feature dimension is reduced to 49
+using principal component analysis. The dataset includes
+a wide range of attack types, such as DDoS, Botnet, and
+Port scanning, representing realistic network intrusion
+scenarios.
+• CSE-CIC-IDS2018 [39]: This large scale dataset con-
+tains over 5 million network ﬂow records and reﬂects
+modern network trafﬁc characteristics. Similar to CIC-
+IDS2017, the feature dimension is reduced to 49 to
+maintain uniformity across datasets and ensure consis-
+tent model evaluation.
+All datasets exhibit signiﬁcant class imbalance, which
+reﬂects realistic network trafﬁc conditions. To ensure con-
+sistency and fair comparison, we adopt the preprocessing
+protocol used in the original residual autoencoder frame-
+work. This includes min–max normalization, removal of
+redundant features, and standardized dataset splitting.
+The model is trained exclusively on benign samples, where
+70% of the benign data is used for training and 10% for
+validation. The remaining 20% of benign data, together with
+all attack samples, is reserved for testing. This setup ensures
+123
+
+A uniﬁed drift-adaptive and robust residual… Page 9 of 16   178 
+that the model learns only normal behavior during training
+and is evaluated on its ability to detect unseen anomalous
+patterns.
+To guarantee reproducibility, a ﬁxed random seed is
+applied for dataset splitting in CIC-IDS2017 and CSE-CIC-
+IDS2018. This ensures consistent experimental conditions
+across all evaluations.
+All results reported in Tables 1 and 9 are obtained with
+fully frozen model weights post-training; ASRAE does not
+perform any parameter updates using test-set data. Online
+drift-driven partial retraining is exclusively activated for the
+simulated non-stationary streaming test stream described in
+Sect. 4.7. Min-max normalization and PCA feature-reduction
+statistics are computed exclusively using the benign train-
+ing partition; validation and test samples are transformed
+using these pre-ﬁtted statistics without any leakage from test-
+set observations. Full streaming-mode comparison against
+ExpIDS under identical sliding-window and retraining-
+buffer conditions is reserved for future investigation; Sect.4.7
+compares ASRAE against the original static RAE under sim-
+ulated concept-drift conditions.
+4.2 Baseline methods
+To evaluate the effectiveness of the proposed framework,
+we compare ASRAE with seven representative unsupervised
+and deep-learning-based anomaly detection methods. These
+baselines are selected to cover both classical approaches and
+recent deep learning models, ensuring a comprehensive and
+fair comparison.
+• One-class SVM A classical anomaly detection method
+using a radial basis function kernel with ν= 0.1, widely
+adopted for modeling normal data distributions.
+• Isolation forest A tree based anomaly detection technique
+with a contamination factor set to 0.1, designed to isolate
+anomalous samples through random partitioning.
+• Plain autoencoder A baseline model using the same
+encoder and decoder architecture as the RAE but with-
+out residual connections, trained solely with Smooth L1
+loss. This comparison highlights the impact of residual
+learning.
+• Original residual autoencoder (RAE) [10]The original
+model incorporating residual skip connections and a
+hybrid loss function. This baseline serves to evaluate
+the contribution of additional components introduced in
+ASRAE, including attention, drift adaptation, adversarial
+robustness, and few shot learning.
+• DAGMM [40]: A deep autoencoding Gaussian mixture
+model that combines representation learning with density
+estimation for unsupervised anomaly detection.
+• USAD [41]: An adversarial training based unsupervised
+anomaly detection framework that leverages reconstruc-
+tion based objectives to improve detection performance.
+• ExpIDS [22]: A drift-adaptive denoising-autoencoder-
+based intrusion detection method included to compare
+ASRAE with an existing concept-drift-aware approach.
+4.3 Implementation details
+The proposed ASRAE framework is implemented using
+PyTorch 2.0 and trained on an NVIDIA T4 GPU with 16 GB
+memory. The model is optimized using the Adam optimizer
+with an initial learning rate of 10
+− 3, combined with cosine
+annealing and early stopping with a patience of 10 epochs.
+The batch size is set to 256, and the latent dimension is ﬁxed
+at 32. The multi-head attention module consists of four par-
+allel attention heads.
+For drift adaptation, the sliding-window size is set to
+W = 1000, and the threshold coefﬁcient is β = 3. A
+drift event is triggered when ﬁve consecutive samples sat-
+isfy e
+i > 2T(t). Adversarial training is performed using
+FGSM with a perturbation magnitude of ϵ = 0.03, applied
+exclusively to benign samples.
+For few-shot adaptation, MAML is implemented using 5
+support samples and 5 query samples per task. The inner loop
+uses a learning rate of 0 .01 over ﬁve gradient-update steps.
+The outer-loop learning rate is set to 10− 3, with a meta-batch
+size of 32 and a total of 1200 meta-training episodes.
+4.4 Evaluation metrics
+Model performance is evaluated using ROC-AUC and per-
+attack detection rate. ROC-AUC measures overall anomaly
+discrimination, while per-attack detection rate assesses per-
+formance across individual attack categories.
+Robustness is evaluated by measuring changes in ROC-
+AUC under the controlled simulated concept-drift setting and
+under adversarial perturbations generated using FGSM and
+PGD. Computational efﬁciency is assessed using training
+time, average inference time per sample, and drift-retraining
+overhead. To account for run-to-run variability, the main
+ROC-AUC results are reported as mean ± standard devia-
+tion over ﬁve independent random seeds.
+Table 1 reports mean ± standard deviation of ROC-AUC
+over ﬁve independent random seeds. ASRAE exhibits a stan-
+dard deviation of 0 .001 across all three datasets, which is
+lower than that of the evaluated baselines and indicates low
+run-to-run variability in the reported results.
+We additionally compare ASRAE with ExpIDS [ 22],
+the drift-adaptive denoising-autoencoder baseline discussed
+in Sect. 2.2. ExpIDS improves over the original RAE
+by 0.008 ROC-AUC on each dataset (e.g., 0.911 versus
+0.903 on UNSW-NB15), but remains 4.1 to − 5.3% points
+123
+
+  178 Page 10 of 16 S. Shehzad et al.
+Table 1 ROC-AUC
+performance comparison (mean
+± standard deviation over ﬁve
+random seeds). Best results are
+shown in bold
+Method UNSW-NB15 CIC-IDS2017 CSE-CIC-IDS2018
+One-Class SVM 0 .820 ± 0.004 0 .791 ± 0.005 0 .774 ± 0.004
+Isolation Forest 0 .860 ± 0.003 0 .832 ± 0.004 0 .815 ± 0.003
+Plain Autoencoder 0 .884 ± 0.003 0 .861 ± 0.003 0 .848 ± 0.004
+DAGMM 0 .895 ± 0.002 0 .873 ± 0.003 0 .859 ± 0.002
+USAD 0 .898 ± 0.002 0 .879 ± 0.002 0 .864 ± 0.003
+ExpIDS [22]0 .911 ± 0.003 0 .890 ± 0.003 0 .878 ± 0.002
+Original RAE 0 .903 ± 0.002 0 .882 ± 0.002 0 .870 ± 0.002
+ASRAE (Proposed) 0 .952 ± 0.001 0 .940 ± 0.001 0 .931 ± 0.001
+below ASRAE across the three datasets, with differences of
+0.041, 0.050, and 0.053 on UNSW-NB15, CIC-IDS2017, and
+CSE-CIC-IDS2018, respectively. These results indicate that
+ASRAE provides additional performance gains beyond those
+obtained by the evaluated drift-adaptive baseline.
+4.5 Overall detection performance
+Table 1 summarizes the ROC-AUC results of all evalu-
+ated methods across the three benchmark datasets. ASRAE
+consistently outperforms One-Class SVM, Isolation Forest,
+Plain Autoencoder, DAGMM, USAD, ExpIDS, and the orig-
+inal residual autoencoder. It achieves ROC-AUC values of
+0.952, 0.940, and 0.931 on UNSW-NB15, CIC-IDS2017, and
+CSE-CIC-IDS2018, respectively, corresponding to a mean
+ROC-AUC of approximately 0.941.
+Compared with the original RAE, ASRAE improves
+ROC-AUC by 4.9% points on UNSW-NB15, 5.8% points
+on CIC-IDS2017, and 6.1% points on CSE-CIC-IDS2018.
+These consistent improvements indicate that the proposed
+framework provides stronger anomaly discrimination across
+the three evaluated trafﬁc datasets.
+Compared with ExpIDS, the strongest evaluated compet-
+ing baseline, ASRAE maintains an ROC-AUC advantage of
+approximately 4.1 to − 5.3% points across the three datasets.
+This result, together with the ablation analysis, supports
+the contribution of attention-enhanced representation, adver-
+sarial training, and drift adaptation to the overall detection
+performance.
+The ROC curves in Fig. 3 further illustrate the perfor-
+mance of selected evaluated methods on UNSW-NB15.
+4.6 Per-class attack detection performance
+Table 2 presents per-attack ROC-AUC values on the UNSW-
+NB15 dataset. ASRAE improves performance across the
+evaluated attack categories, with notable gains for Recon-
+naissance (0.874 to 0.921), Shellcode (0.886 to 0.928),
+Fuzzers (0.861 to 0.904), and Backdoor (0.870 to 0.916).
+Fig. 3 ROC curves of selected competing methods on the UNSW-NB15
+test set
+Table 2 Per-class ROC-AUC comparison on UNSW-NB15. V alues are
+reported as mean ROC-AUC over ﬁve independent random-seed runs
+Attack type Original RAE ASRAE
+Analysis 0.982 0.991
+Generic 0.956 0.965
+Exploits 0.933 0.947
+DoS 0.925 0.938
+Backdoor 0.870 0.916
+Reconnaissance 0.874 0.921
+Shellcode 0.886 0.928
+Fuzzers 0.861 0.904
+Worms 0.861 0.895
+These results indicate stronger discrimination across several
+attack categories, including low-footprint and subtle attacks.
+4.7 Robustness to concept drift
+To evaluate robustness under a controlled simulated drift set-
+ting, we incrementally shift the distributions of three benign
+trafﬁc features: packet length, duration, and byte count. Each
+123
+
+A uniﬁed drift-adaptive and robust residual… Page 11 of 16   178 
+Fig. 4 Model performance under gradual concept drift over test samples
+feature is perturbed by 5% of its original range every 10,000
+test samples.
+As shown in Fig. 4, the ROC-AUC of the original RAE
+decreases from 0.90 to 0.78 after 50,000 samples, whereas
+ASRAE maintains a ROC-AUC above 0.91 throughout the
+evaluation. This stability is supported by the online drift
+detection, adaptive thresholding, and EWC-regularized par-
+tial retraining mechanisms.
+The experiment therefore demonstrates improved robust-
+ness under the controlled feature-level drift considered in this
+study. Each drift-retraining cycle requires approximately 8 s
+in the reported experimental environment.
+4.8 Adversarial robustness
+In addition to perturbation experiments shown in Tables3 and
+6, which test latent reconstruction stability by maximising
+reconstruction loss, we further evaluate realistic adversar-
+ial evasion by minimising the reconstruction-based anomaly
+score. Given a labelled attack sample x, the evasion-oriented
+FGSM perturbation is deﬁned as
+x
+adv = x − ϵ · sign
+(
+∇x eθ(x)
+)
+, (20)
+where the anomaly score is eθ(x) =∥ ˆxθ − x∥1. Perturba-
+tions follow identical feature constraints deﬁned in Sect. 3.5:
+only continuous ﬂow-statistic features are modiﬁed, categor-
+ical and protocol-indicator features remain unchanged, and
+perturbed features are clipped to [0, 1]. We also implement
+iterative projected gradient descent (PGD) evasion attacks
+with 10 iterations and step-size ϵ/4. Both evasion attacks are
+only applied to true-positive attack test samples, as evasion
+is only meaningful for malicious ﬂows. We quantify evasion
+effectiveness using the Attack Success Rate (ASR), deﬁned
+as the fraction of perturbed attack samples whose reconstruc-
+tion error falls below the detection threshold.
+Table 3 ROC-AUC under FGSM adversarial attacks of varying
+strength. This experiment maximises reconstruction loss to test feature-
+space reconstruction stability and doesnot simulate adversarial evasion;
+refer to Table 4 for score-minimising evasion attack results
+Method ϵ = 0 0.01 0.03 0.05 0.10
+Original RAE 0.903 0.882 0.835 0.774 0.701
+ASRAE (w/o adv train) 0.952 0.941 0.912 0.879 0.831
+ASRAE (w/ adv train) 0 .952 0 .950 0 .941 0 .931 0 .910
+Bold values indicate the best performance in terms of ROC-AUC
+The robustness of the proposed framework is evaluated
+against evasion attacks generated using the FGSM with per-
+turbation magnitudes ϵ ∈[ 0, 0.1]. As reported in Table 3,
+the proposed ASRAE framework demonstrates signiﬁcantly
+improved resilience compared to the original residual autoen-
+coder. At ϵ = 0.05, the baseline model experiences a
+substantial performance drop, with the ROC-AUC decreas-
+ing to 0.76, corresponding to a reduction of 14.3%. In
+contrast, ASRAE maintains a high ROC-AUC of 0.93, with
+only a minor degradation of 2.1%. Even under stronger
+perturbations with ϵ = 0.10, ASRAE preserves a robust
+performance level, achieving a ROC-AUC of 0.91. This
+improvement can be attributed to the incorporation of adver-
+sarial training on benign samples, which encourages the
+model to learn stable and smooth representations that are
+less sensitive to input perturbations.
+Table 4 quantiﬁes attacker success under explicit score-
+minimising evasion. The original RAE exhibits high attack
+success rates, especially for larger perturbation magnitudes,
+whereas ASRAE with benign-only adversarial training sub-
+stantially reduces ASR across all ϵ, demonstrating improved
+resilience against realistic white-box evasion attempts.
+Table 5 isolates detection sensitivity from the aggregate
+AUC metric in Table 3. Without adversarial training, FNR
+nearly doubles under FGSM perturbation (8.72% clean to
+16.41% at ϵ = 0.03, a 7.69-percentage-point increase).
+With benign-only adversarial training, clean FNR rises only
+marginally (8.72% to 9.05%, +0.33% points), but the cor-
+responding increase under attack is far smaller (9.05% to
+10.18%, +1.13% points), conﬁrming that ϵ = 0.03 favors
+detection sensitivity over maximal robustness while still
+meaningfully reducing evasion vulnerability.
+Table 6 evaluates robustness against a stronger, iterative
+attack. PGD is markedly more damaging than FGSM: the
+Original RAE’s AUC falls to 0.642 at ϵ = 0.10, 5.9%
+points below its FGSM result at the same ϵ (0.701, Table 3).
+ASRAE with benign-only adversarial training degrades only
+marginally further under PGD (0.905 at ϵ = 0.10) than
+under FGSM (0.910), a difference of just 0.5% points, and
+remains within 4.7% points of its clean performance even
+under this stronger attack, which was not used during train-
+ing. This indicates the robustness gained from FGSM-based
+123
+
+  178 Page 12 of 16 S. Shehzad et al.
+Table 4 Attack Success Rate (%) under score-minimising white-box
+evasion attacks on UNSW-NB15. Attack Success Rate (ASR): percent-
+age of true-positive attack samples whose perturbed reconstruction error
+falls below detection threshold. For frozen-model evaluation the static
+threshold derived from training benign statistics is utilised. Perturba-
+tions are constrained to continuous ﬂow-features only
+Model Attack type ϵ = 0.01 ϵ = 0.03 ϵ = 0.05 ϵ = 0.10
+Original RAE FGSM (score-min) 12.4 34.7 57.2 76.9
+Original RAE PGD (score-min) 18.1 42.3 66.5 84.2
+ASRAE (w/ benign-only adversarial training) FGSM (score-min) 3.2 7.8 13.4 21.6
+ASRAE (w/ benign-only adversarial training) PGD (score-min) 4.7 10.5 17.9 28.3
+Table 5 False-negative rate (FNR) with and without benign-only adversarial training, at clean input and under FGSM perturbation ( ϵ = 0.03)
+Model variant FNR at ϵ = 0 (Clean) FNR at ϵ = 0.03 (FGSM)
+ASRAE (w/o adversarial training) 8.72% 16.41%
+ASRAE (w/ benign-only adversarial training) 9.05% 10.18%
+Table 6 ROC-AUC under PGD
+adversarial attacks (10
+iterations, step size ϵ/4) of
+varying strength. This
+experiment maximises
+reconstruction loss to test
+feature-space reconstruction
+stability and does not simulate
+adversarial evasion; refer to
+Table 4 for score-minimising
+evasion attack results
+Model ϵ = 0 0.01 0.03 0.05 0.10
+Original RAE (PGD) 0.903 0.867 0.792 0.715 0.642
+ASRAE (w/ benign adversarial training, PGD) 0.952 0.947 0.936 0.924 0.905
+adversarial training generalizes to iterative, unseen attack
+strategies rather than overﬁtting to the speciﬁc attack used
+in training.
+4.9 Few-shot adaptation for emerging attack types
+To evaluate ASRAE’s ability to adapt to previously unseen
+zero-day attacks, we conduct few-shot experiments on
+three representative attack classes: Worms, Shellcode, and
+Reconnaissance. The model is ﬁrst initialized without expo-
+sure to these attack types. A small number of labeled
+samples is then provided for Model-Agnostic Meta-Learning
+(MAML)-based adaptation.
+Table 7 reports the detection rate, measured as the true
+positive rate, before and after adaptation using 5, 10, and 15
+labeled samples. The original residual autoencoder (RAE),
+which does not include an adaptation mechanism, shows only
+negligible improvement across all settings. For example, its
+detection rate for Worms increases only from 0.72 to 0.73
+after 15 labeled samples. Similar limited gains are observed
+for Shellcode and Reconnaissance.
+In contrast, ASRAE achieves substantial improvements
+even with very few labeled examples. For Worms attacks, the
+detection rate increases from 0.72 to 0.87 with only 5 labeled
+samples, improves to 0.91 with 10 samples, and reaches 0.93
+with 15 samples. Similar trends are observed for Shellcode,
+where the detection rate improves from 0.71 to 0.94, and
+Reconnaissance, where it increases from 0.70 to 0.92 after
+15-shot adaptation.
+These results demonstrate that ASRAE can rapidly adapt
+to emerging attack families using minimal labeled data. This
+capability is particularly important for real-world intrusion
+detection, where zero-day attacks frequently appear and col-
+lecting large labeled datasets for new attack types is often
+impractical.
+Table 8 further shows that this adaptation does not com-
+promise detection of benign trafﬁc: FPR rises from 1.12%
+to at most 1.15% (Worms), a 0.03-percentage-point change,
+conﬁrming that freezing the encoder and decoder body
+during adaptation preserves core reconstruction behavior
+as intended. The plain ﬁne-tuning baseline, which updates
+the identical restricted parameter set without meta-learning
+outer-loop optimisation, yields moderate detection improve-
+ments but underperforms MAML-based adaptation across
+all attack families. Additionally, plain ﬁne-tuning produces
+a slightly larger benign false–positive rate drift compared to
+MAML, demonstrating the beneﬁt of the meta-learning reg-
+ularisation effect.
+4.10 Ablation study
+To examine the contribution of the main components of
+ASRAE, an ablation study is conducted on the UNSW-
+123
+
+A uniﬁed drift-adaptive and robust residual… Page 13 of 16   178 
+Table 7 Detection rate
+improvement via few-shot
+adaptation. All values are
+reported as mean ± standard
+deviation computed over ﬁve
+independent random draws of
+support-query splits
+Attack Zero-shot † 5-shot 10-shot 15-shot
+Original RAE (no adaptation)
+Worms 0 .72 ± 0.01 0 .72 ± 0.01 0 .73 ± 0.01 0 .73 ± 0.01
+Shellcode 0 .71 ± 0.01 0 .71 ± 0.01 0 .72 ± 0.01 0 .72 ± 0.01
+Reconnaissance 0 .70 ± 0.01 0 .70 ± 0.01 0 .71 ± 0.01 0 .71 ± 0.01
+Plain ﬁne-tuning (no MAML)
+Worms – 0 .78 ± 0.02 0 .82 ± 0.02 0 .84 ± 0.02
+Shellcode – 0 .77 ± 0.
+02 0 .83 ± 0.01 0 .86 ± 0.02
+Reconnaissance – 0 .76 ± 0.02 0 .81 ± 0.02 0 .83 ± 0.01
+ASRAE (MAML adaptation)
+Worms 0 .72 ± 0.01 0 .87 ± 0.02 0 .91 ± 0.01 0 .93 ± 0.01
+Shellcode 0 .71 ± 0.01 0 .88 ± 0.01 0 .92 ± 0.02 0 .94 ± 0.01
+Reconnaissance 0 .70 ± 0.01 0 .86 ± 0.02 0 .90 ± 0.01 0
+.92 ± 0.02
+† Zero-shot denotes detection performance prior to receiving labelled support samples for adaptation; this
+baseline value is shared for ﬁne-tuning and MAML variants
+Table 8 Benign-trafﬁc false-positive rate before and after 15-shot adaptation
+Zero-day attack family Benign FPR (Pre-adaptation) Post 15-shot MAML FPR Post 15-shot plain ﬁne-tuning FPR
+Worms 1.12% 1.15% 1.21%
+Shellcode 1.12% 1.14% 1.19%
+Reconnaissance 1.12% 1.13% 1.18%
+NB15 dataset. Table 9 reports the ROC-AUC obtained under
+different combinations of attention, drift adaptation, and
+adversarial training.
+The ablation results show that the complete ASRAE con-
+ﬁguration achieves the highest ROC-AUC of 0.952. The
+original RAE achieves 0.903, while introducing the attention
+mechanism alone increases ROC-AUC to 0.924. Combining
+attention with drift adaptation further increases performance
+to 0.937, whereas combining attention with adversarial
+training achieves 0.939. In comparison, the conﬁguration
+containing drift adaptation and adversarial training with-
+out attention achieves a ROC-AUC of 0.911. Overall, these
+results show that the evaluated components provide com-
+plementary improvements, with the strongest performance
+obtained when attention, drift adaptation, and adversarial
+training are jointly incorporated into ASRAE.
+4.11 Explainability analysis
+Integrated gradients are used to examine the contribution of
+individual input features to the reconstruction-based anomaly
+score. Figure 5 presents the feature-attribution scores for a
+representative attack sample.
+As illustrated in Fig. 5, the representative attack sample
+receives notable attribution scores for trafﬁc-related features,
+including ﬂow duration, packet-size statistics, ﬂag counts,
+and byte-transfer characteristics. These results illustrate how
+Fig. 5 Integrated-gradient feature attribution scores for a representative
+attack sample
+integrated gradients can be used to identify the input features
+associated with an individual anomaly score, thereby sup-
+porting interpretation of the model’s reconstruction-based
+decisions.
+4.12 Computational efficiency
+Table 10 compares the computational cost of ASRAE with
+the original residual autoencoder. ASRAE introduces a mod-
+123
+
+  178 Page 14 of 16 S. Shehzad et al.
+Table 9 Multi-way ablation
+study on UNSW-NB15 in terms
+of ROC-AUC.†
+Model variant ROC-AUC /Delta1vs. Full ASRAE
+Original RAE (no added modules) 0.903 − 0.049
+Attention only (no drift, no adv. training) 0.924 − 0.028
+Adversarial training only (no attention, no drift) 0.912 − 0.040
+Attention + adversarial training (no drift adaptation) 0.939 − 0.013
+Full ASRAE (frozen, no online retraining) 0.952 –
+Drift-adaptive online retraining is disabled for this static ablation study. Streaming drift-adaptation perfor-
+mance is reported in Sect. 4.7
+Bold values indicate the best performance in terms of ROC-AUC
+Table 10 Computational efﬁciency comparison between the original
+RAE and ASRAE
+Metric Original RAE ASRAE
+Training time (UNSW-NB15) 9 min 12 min
+Inference time per sample (ms) 7.1 9.2
+Drift retraining time N/A 8 s
+Number of parameters 3.8M 4.2M
+erate computational overhead as a result of the additional
+attention, drift-adaptation, and robustness mechanisms.
+The training time on UNSW-NB15 increases from 9 min
+for the original RAE to 12 min for ASRAE. The average
+inference time increases from 7.1 to 9.2 ms per sample in the
+evaluated experimental environment. Each drift-retraining
+cycle requires approximately 8 s, while the number of model
+parameters increases from 3.8 million to 4.2 million. These
+measurements indicate that the additional ASRAE compo-
+nents introduce a moderate increase in computational cost
+within the reported experimental setup.
+5 Discussion
+The results show that ASRAE improves reconstruction-
+based intrusion detection across the three evaluated datasets.
+The model achieves ROC-AUC values of 0.952, 0.940,
+and 0.931 on UNSW-NB15, CIC-IDS2017, and CSE-CIC-
+IDS2018, respectively, corresponding to a mean ROC-AUC
+of approximately 0.941. Compared with the original resid-
+ual autoencoder and other evaluated baselines, the proposed
+framework provides more reliable anomaly detection while
+retaining reconstruction error as the main decision criterion.
+The ablation results indicate that the improvement does
+not arise from a single component. Attention alone increases
+ROC-AUC from 0.903 to 0.924, while the complete ASRAE
+conﬁguration reaches 0.952. The stronger performance
+obtained when attention is combined with drift adaptation
+and adversarial training suggests that these components
+provide complementary beneﬁts. Accordingly, the contribu-
+tion of ASRAE lies in coordinating representation learning,
+robustness, online adaptation, and few-shot updating within a
+common reconstruction-based framework rather than claim-
+ing novelty for each component individually.
+The adversarial experiments further demonstrate improved
+robustness. Under PGD at ϵ = 0.10, ASRAE with adversar-
+ial training maintains a ROC-AUC of 0.905, compared with
+0.642 for the original RAE. Benign-only adversarial training
+nevertheless introduces a small sensitivity trade-off: the clean
+false-negative rate increases from 8.72 to 9.05%, while the
+increase under FGSM perturbation is substantially reduced.
+These results indicate that the selected adversarial-training
+setting improves robustness with only a limited loss in clean
+detection sensitivity.
+The few-shot experiments should be interpreted as post-
+identiﬁcation adaptation rather than part of the initial unsu-
+pervised detection stage. Worms, Shellcode, and Reconnais-
+sance are excluded from both autoencoder pretraining and
+MAML meta-training. Once a small number of labeled exam-
+ples becomes available, only the attention projections and
+ﬁnal decoder layer are adapted. The benign false-positive
+rate changes from 1.12% to no more than 1.15% after 15-
+shot adaptation, indicating that selective updating largely
+preserves the original benign reconstruction behavior.
+Some limitations remain. The current drift experiment
+is based on controlled feature perturbations and therefore
+does not fully represent naturally evolving temporal trafﬁc.
+In addition, drift-triggered retraining uses model-predicted
+benign samples satisfying e
+i ≤ T(t) rather than ground-
+truth veriﬁed samples. Although samples already detected
+as anomalous are excluded, a false-negative attack may still
+enter the retraining buffer. EWC limits excessive parameter
+changes during retraining but does not eliminate this contam-
+ination risk. The adversarial experiments are also conducted
+in feature space and do not guarantee that every perturbed
+sample corresponds to a physically realizable network ﬂow.
+For the few-shot adaptation evaluation, we use family-
+level holdout to isolate unseen zero-day attack classes.
+While public IDS datasets contain timestamp information,
+constructing clean, well-isolated chronological time-ordered
+support-query splits for held-out attack families remains
+123
+
+A uniﬁed drift-adaptive and robust residual… Page 15 of 16   178 
+challenging. Rigorous few-shot assessment under strict
+chronological holdout conditions is therefore an important
+open evaluation target.
+Future work should therefore evaluate ASRAE on chrono-
+logically ordered and naturally drifting trafﬁc, improve
+unsupervised selection of samples for online retraining,
+investigate more realistic constrained adversarial attacks, and
+conduct few-shot adaptation experiments under chronologi-
+cal time-ordered holdout. Broader comparisons with recent
+transformer-based, drift-adaptive, and few-shot intrusion-
+detection methods would also strengthen evaluation of the
+framework. Overall, the present results support ASRAE as
+an adaptive extension of residual-autoencoder-based intru-
+sion detection, while the reported limitations deﬁne clear
+directions for further validation and development.
+6 Conclusion
+This study presented ASRAE, an adaptive residual-
+autoencoder framework for network intrusion detection.
+The framework combines attention-enhanced latent rep-
+resentation, adaptive thresholding, concept-drift handling,
+benign-only adversarial training, few-shot adaptation, and
+integrated-gradient-based explainability within a common
+reconstruction-based architecture.
+Experiments on UNSW-NB15, CIC-IDS2017, and CSE-
+CIC-IDS2018 achieved ROC-AUC values of 0.952, 0.940,
+and 0.931, respectively. ASRAE also maintained stronger
+performance than the original RAE under the controlled
+simulated drift setting and showed improved resistance to
+adversarial perturbations. For held-out attack families, the
+few-shot stage enabled post-identiﬁcation adaptation using
+only a small number of labeled samples while largely pre-
+serving benign reconstruction performance.
+The results demonstrate the value of combining robust-
+ness and adaptation within a reconstruction-based detector,
+although several limitations remain. The drift evaluation is
+based on controlled feature perturbations rather than natu-
+rally occurring temporal drift, and online retraining relies on
+model-predicted benign samples, which may include unde-
+tected attacks. In addition, few-shot gains decrease at higher
+shot counts and the added components introduce moderate
+computational overhead.
+Future work will focus on chronological drift evalua-
+tion, more reliable unsupervised sample selection for online
+retraining, stronger constrained adversarial evaluation, and
+validation on industrial and IoT network trafﬁc. Model
+optimization may also be explored to further reduce com-
+putational cost.
+Author Contributions Salman Shehzad: Conceptualization, Methodol-
+ogy, Software, Writing Original draft. Nouman Ijaz: Conceptualization,
+Methodology, Writing Original draft. Chunsheng Y ang: Review, Editing
+Investigation. Sana Ullah Jan: Supervision, Review Editing. All authors
+contributed equally to this work and approved the ﬁnal manuscript.
+Funding There is no funding support for this article.
+Data availability The datasets used in this study are publicly avail-
+able and can be accessed from their original sources: the CICIDS2017
+dataset, the CSE-CIC- IDS2018 dataset, and the UNSW-NB15 dataset,
+available at https://www.unb.ca/cic/datasets/ids 2017.html, https://www.
+unb.ca/cic/datasets/ids-2018.html, and https://research.unsw.edu.au/
+projects/unsw-nb15-dataset, respectively.
+Declarations
+Conﬂict of interest The authors declare no conﬂict of interest.
+Open Access This article is licensed under a Creative Commons
+Attribution 4.0 International License, which permits use, sharing, adap-
+tation, distribution and reproduction in any medium or format, as
+long as you give appropriate credit to the original author(s) and the
+source, provide a link to the Creative Commons licence, and indi-
+cate if changes were made. The images or other third party material
+in this article are included in the article’s Creative Commons licence,
+unless indicated otherwise in a credit line to the material. If material
+is not included in the article’s Creative Commons licence and your
+intended use is not permitted by statutory regulation or exceeds the
+permitted use, you will need to obtain permission directly from the copy-
+right holder. To view a copy of this licence, visit http://creativecomm
+ons.org/licenses/by/4.0/.
+References
+1. Hady, A.A., Ghubaish, A., Salman, T., Unal, D., Jain, R.: Intrusion
+detection system for healthcare systems using medical and network
+data: a comparison study. IEEE Access 8, 106576–106584 (2020)
+2. Subramanian, R.S.: AI-driven cybersecurity software for fraud and
+network intrusion detection in ﬁnancial big data systems. Int. J.
+Adv. Res. Comput. Sci. Technol. (IJARCST) 8(6), 13218–13224
+(2025)
+3. Bangui, H., Buhnova, B.: Recent advances in machine-learning
+driven intrusion detection in transportation: survey. Proc. Comput.
+Sci. 184, 877–886 (2021)
+4. Sangoleye, F., Johnson, J., Tsiropoulou, E.E.: Intrusion detection
+in industrial control systems based on deep reinforcement learning.
+IEEE Access 12, 151444–151459 (2024)
+5. Ashraf, S., Choi, C., Bilal, A.: Ctdmf-sc: cybersecurity threat detec-
+tion and mitigation framework for smart cities. Int. J. Inf. Secur.
+25(2), 54 (2026)
+6. Guo, Y .: A review of machine learning-based zero-day attack detec-
+tion: challenges and future directions. Comput. Commun. 198,
+175–185 (2023)
+7. Ravindran, V .K., Ojha, S.S., Kamboj, A.: A comparative analysis
+of signature-based and anomaly-based intrusion detection systems.
+Int. J. Latest Technol. Eng. Manag. Appl. Sci. 14(5), 209–214
+(2025)
+8. Ijaz, N., Jan, S.U., Hasan, M.N., Koo, I.: A hybrid LA TAM and
+few-shot learning framework for fault diagnosis in wireless sensor
+networks. IEEE Sens. J. 25, 43102 (2025)
+9. Ijaz, N., Jan, S.U., Koo, I.: Dynamic thresholding with LSTM-
+attention autoencoder for fault detection in wireless sensor net-
+works. In: 2025 11th International Conference on Computer and
+Communications (ICCC), pp. 2365–2370 (2025)
+123
+
+  178 Page 16 of 16 S. Shehzad et al.
+10. Ijaz, N., Jan, S.U., Koo, I.: A robust residual autoencoder frame-
+work for anomaly-based network intrusion detection. In: Pro-
+ceedings of the IEEE International Conference on Emerging
+Technologies (ICET), pp. 1–6., Lahore, Pakistan (2026)
+11. Song, Y ., Hyun, S., Cheong, Y .-G.: Analysis of autoencoders for
+network intrusion detection. Sensors 21(13), 4294 (2021)
+12. Javaid, A., Niyaz, Q., Sun, W., Alam, M.: A deep learning approach
+for network intrusion detection system. In: Proceedings of the
+9th EAI International Conference on Bio-inspired Information and
+Communications Technologies, pp. 21–26 (2016)
+13. Farahnakian, F., Heikkonen, J.: A deep auto-encoder based
+approach for intrusion detection system. In: Proceedings of the 20th
+International Conference on Advanced Communication Technol-
+ogy (ICACT), pp. 178–183 (2018)
+14. Shone, N., Ngoc, T.N., Phai, V .D., Shi, Q.: A deep learning
+approach to network intrusion detection. IEEE Trans. Emerg. Top.
+Comput. Intell. 2(1), 41–50 (2018)
+15. Li, X., Wang, Y ., Chen, Z.: Attention-based autoencoder for net-
+work trafﬁc classiﬁcation with interpretable feature representation.
+Symmetry 16(3), 589 (2024)
+16. Zhang, M., Liu, H., Li, C.: AE-DTNN: autoencoder-dense-
+transformer neural network model for efﬁcient anomaly-based
+intrusion detection systems. Mathematics 7(1), 78 (2024)
+17. Aldhaheri, S., Alhuzali, A.: SGAN-IDS: self-attention-based gen-
+erative adversarial network against intrusion detection systems.
+Sensors 23(18), 7796 (2023)
+18. Bui, D.C., Le, T.V ., Ngo, B.H.: C2t-net: channel-aware cross-fused
+transformer-style networks for pedestrian attribute recognition. In:
+Proceedings of the IEEE/CVF Winter Conference on Applications
+of Computer Vision Workshops, pp. 351–358 (2024)
+19. Bui, D.C., Le, T.V ., Ngo, B.H., Choi, T.J.: Clear: cross-transformers
+with pre-trained language model for person attribute recognition
+and retrieval. Pattern Recogn. 164, 111486 (2025). https://doi.org/
+10.1016/j.patcog.2025.111486
+20. Kim, S., Park, J., Lee, H.: Adaptive autoencoder-based intrusion
+detection system with single threshold for can networks. IEEE
+Trans. Intell. Transp. Syst. 24(12), 14231–14240 (2023)
+21. Zhao, L., Chen, W., Li, J.: A survey of concept drift detection
+methods for machine learning-based intrusion detection systems.
+J. Netw. Comput. Appl. 201, 103289 (2022)
+22. Sharma, A., Singh, S., Kumar, R.: ExpIDS: a drift-adaptable
+network intrusion detection system with improved explainability
+(2025). arXiv:2509.20767 arXiv preprint
+23. Li, J., Malialis, K., Polycarpou, M.M.: Autoencoder-based
+anomaly detection in streaming data with incremental learning and
+concept drift adaptation. In: 2023 International Joint Conference
+on Neural Networks (IJCNN), pp. 1–8 (2023). https://doi.org/10.
+1109/IJCNN54540.2023.10191297
+24. Darzi, E., Marx, A.: Structured robustness for distribution shifts.
+In: ICLR 2025 Workshop on Spurious Correlation and Short-
+cut Learning: Foundations and Solutions (SCSL) (2025). Poster;
+Workshop on Spurious Correlation and Shortcut Learning, ICLR
+2025 – not main conference track. https://openreview.net/forum?
+id=4tBjnFqmaQ
+25. Li, D., Wang, Z., Chen, Y ., Jiang, R., Ding, W., Okumura, M.: A
+survey on deep active learning: recent advances and new frontiers.
+IEEE Trans. Neural Netw. Learn. Syst. 36, 5879–5899 (2024)
+26. Li, D., Tan, S., Zhang, Y ., Jin, M., Pan, S., Okumura, M., Jiang, R.:
+Dyg-mamba: continuous state space modeling on dynamic graphs.
+In: Advances in Neural Information Processing Systems, vol. 38
+(2025)
+27. Wang, C., Zhang, D., Chen, L.: Adversarial robustness in deep
+learning classiﬁers for network intrusion detection. IEEE Access
+11, 89745–89756 (2023)
+28. Liu, J., Zhang, H., Li, Y .: An enhanced ensemble defense frame-
+work for boosting adversarial robustness of intrusion detection
+systems. J. Biomed. Inform. 164, 104892 (2025)
+29. Wang, Z., Li, Q., Zhang, S.: AIDTF: Adversarial training frame-
+work for network intrusion detection. Comput. Netw. 231, 109456
+(2024)
+30. Chen, H., Wang, Y ., Li, Z.: Few-shot learning for supervised intru-
+sion detection: a survey. IEEE Trans. Netw. Serv. Manage. 20(3),
+2890–2905 (2023)
+31. Ijaz, N., Hasan, M.N., Koo, I.: Few-shot transfer learning based
+fault classiﬁcation in wireless sensor networks. IEEE Access 13,
+55017–55033 (2025)
+32. Suzuki, T., Tanaka, H., Y amada, K.: Network intrusion detection
+system based on an adversarial auto-encoder with few labeled train-
+ing samples. J. Netw. Syst. Manage. 30(4), 78 (2022)
+33. Lee, S., Kim, J., Park, H.: Few-shot network intrusion detection
+based on model-agnostic meta-learning with l2f method. IEEE
+Trans. Inf. Forensics Secur. 19, 2345–2358 (2024)
+34. Shehzad, S., Y ang, C., Wang, Y .-G., Zhu, B.: Fabric defect detection
+with ﬁne-tuned YOLOv7. In: 2025 28th International Conference
+on Computer Supported Cooperative Work in Design (CSCWD),
+pp. 117–122 (2025). https://doi.org/10.1109/CSCWD64889.2025.
+11033374
+35. Patel, R., Mehta, S., Patel, D.: Explainable ai for intrusion detection
+systems: a survey of shap and lime applications. Comput. Secur.
+122, 103087 (2023)
+36. Müller, F., Weber, T., Schmidt, J.: convGRU based autoencoder
+for unsupervised spatial-temporal anomaly detection in network
+trafﬁc, Technical University of Munich (2021). (Master’s Thesis)
+37. Shehzad, S., Y ang, C., Wang, Y .-G.: Adapter-enhanced CLIP
+for railway brake shoe anomaly detection. Complex Intell. Syst.
+(2026). https://doi.org/10.1007/s40747-026-02377-2
+38. Moustafa, N., Slay, J.: Unsw-nb15: a comprehensive data set
+for network intrusion detection systems. In: Proceedings of the
+Military Communications and Information Systems Conference
+(MilCIS), pp. 1–6 (2015)
+39. Sharafaldin, I., Lashkari, A.H., Ghorbani, A.A.: Toward generating
+a new intrusion detection dataset and intrusion trafﬁc charac-
+terization. In: Proceedings of the International Conference on
+Information Systems Security and Privacy (ICISSP), pp. 108–116
+(2018)
+40. Zong, B., Song, Q., Min, M.R., Cheng, W., Lumezanu, C., Cho,
+D., Chen, H.: Deep autoencoding gaussian mixture model for
+unsupervised anomaly detection. In: International Conference on
+Learning Representations (ICLR) (2018). https://openreview.net/
+forum?id=BjjE-A6-0Z
+41. Audibert, J., Michiardi, P ., Guyard, F., Marti, S., Zuluaga, M.A.:
+Usad: unsupervised anomaly detection on multivariate time series.
+In: Proceedings of the ACM SIGKDD Conference, pp. 3395–3404
+(2020)
+Publisher’s Note Springer Nature remains neutral with regard to juris-
+dictional claims in published maps and institutional afﬁliations.
+123

@@ -1,0 +1,2219 @@
+REVIEW Open Access
+© The Author(s) 2026. Open Access  This article is licensed under a Creative Commons Attribution-NonCommercial-NoDerivatives 4.0 
+International License, which permits any non-commercial use, sharing, distribution and reproduction in any medium or format, as long as you 
+give appropriate credit to the original author(s) and the source, provide a link to the Creative Commons licence, and indicate if you modified the 
+licensed material. You do not have permission under this licence to share adapted material derived from this article or parts of it. The images or 
+other third party material in this article are included in the article’s Creative Commons licence, unless indicated otherwise in a credit line to the 
+material. If material is not included in the article’s Creative Commons licence and your intended use is not permitted by statutory regulation or 
+exceeds the permitted use, you will need to obtain permission directly from the copyright holder. To view a copy of this licence, visit  h t t p  : / /  c r e a  t i  
+v e c  o m m  o n s .  o r  g / l  i c e  n s e s  / b  y - n c - n d / 4 . 0 /.
+Ma et al. Journal of Cloud Computing           (2026) 15:88 
+https://doi.org/10.1186/s13677-026-00901-w
+Journal of Cloud Computing
+*Correspondence:
+Huiqiang Wang
+wanghuiqiang@hrbeu.edu.cn
+1Harbin Engineering University, Harbin, Heilongjiang 150000, China
+2Systems Engineering Research Institute, Academy of Military Sciences, 
+Beijing 100000, China
+Abstract
+Federated learning (FL) has become a promising paradigm for building privacy-preserving intrusion detection 
+systems (IDS) in distributed cloud–edge environments, yet existing reviews do not sufficiently explain which 
+model-level optimization choices determine practical deployability under heterogeneity, communication 
+constraints, and evolving attacks. This survey addresses that problem by reviewing representative FL-IDS studies 
+through a model-optimization lens, with primary emphasis on centralized horizontal FL-IDS in cloud–edge settings, 
+and by organizing the literature into three tightly coupled dimensions: aggregation, communication-efficient 
+transmission, and personalization. Through comparative analysis of representative methods, we find that these 
+dimensions jointly shape not only detection accuracy, communication efficiency, and local adaptability, but also 
+rare-attack recall, robustness to unreliable updates, concept-drift handling, and deployment latency. The survey 
+further shows that current FL-IDS research remains limited by weak support for structural heterogeneity, static 
+compression strategies, insufficient long-term personalization, and a lack of realistic cloud–edge evaluation. Overall, 
+the evidence suggests that practical FL-IDS requires co-optimization across model design, communication, and 
+deployment orchestration. As a survey, this study is constrained by the inconsistency of published datasets, metrics, 
+and experimental protocols; accordingly, we advocate standardized benchmarks, realistic testbeds, coupling-
+aware aggregation, attack-aware transmission, and parameter-efficient drift adaptation for scalable and deployable 
+federated intrusion detection.
+Keywords Federated learning, Intrusion detection systems, Aggregation strategies, Communication-efficient model 
+updates, Personalized federated models
+Model optimization in federated intrusion 
+detection systems: a survey of aggregation, 
+communication, and personalization
+Xiaohang Ma1,2, Lin Yang2, Huiqiang Wang1* and Chen Ling2
+
+Page 2 of 22
+Ma et al. Journal of Cloud Computing            (2026) 15:88 
+Introduction
+With the rapid expansion of cyberspace in the big-data 
+era, terminal devices, networked applications, and ser -
+vice infrastructures continuously generate massive, het -
+erogeneous, and highly dynamic traffic data. At the same 
+time, cyber-attacks have become increasingly automated, 
+stealthy, and multi-stage, posing serious threats to criti -
+cal infrastructures and digital services  [ 1, 2]. As a funda-
+mental defense mechanism, intrusion detection systems 
+(IDS) have progressively incorporated machine learning 
+and deep learning techniques to improve the detection 
+of unknown attacks and complex behavioral patterns  [ 3, 
+4]. However, building high-quality IDS models typically 
+requires large-scale, multi-source, and cross-organiza -
+tional data. In practice, privacy risks, regulatory con -
+straints, and communication costs make centralized data 
+collection difficult, and the long-standing problem of 
+data silos remains a major obstacle to collaborative secu -
+rity intelligence  [5].
+Federated learning (FL) provides a promising alter -
+native to centralized IDS modeling by enabling collab -
+orative training without directly sharing raw data   [ 6]. 
+Through local model training and parameter or gradient 
+exchange, FL can reduce privacy exposure while naturally 
+matching the distributed characteristics of IoT, mobile, 
+and edge environments  [ 7]. This property is particularly 
+attractive for IDS, where traffic logs, device behaviors, 
+and security events are typically distributed across dif -
+ferent organizations, domains, or edge nodes, and where 
+data sharing is often restricted by privacy, compliance, 
+or operational concerns. As a result, FL has emerged as 
+an important direction for building cross-organizational 
+and privacy-preserving IDS, with growing applications 
+in scenarios such as IoT, edge computing, and resource-
+constrained collaborative environments  [8– 10].
+Despite this progress, existing surveys on FL-based 
+IDS mainly discuss the topic from the perspectives of 
+system architectures, application scenarios, communica -
+tion workflows, or privacy and security protection. These 
+studies provide useful overviews of deployment patterns 
+and supporting mechanisms, but they offer limited analy-
+sis of the model-level optimization decisions that largely 
+determine whether federated IDS can be trained and 
+deployed effectively in practice. Recent studies on feder -
+ated resource optimization further suggest that practi -
+cal deployability is also shaped by communication and 
+system-level resource allocation, especially in heteroge -
+neous cloud–edge settings. For FL-IDS, practical util -
+ity depends not only on whether collaborative learning 
+is feasible, but also on whether the resulting models can 
+remain accurate, communication-efficient, and adapt -
+able under heterogeneous data distributions, resource 
+constraints, and evolving attack patterns  [11, 12]. In par-
+ticular, several model-centric issues remain insufficiently 
+synthesized in the current survey literature, including 
+aggregation bias caused by non-IID data, transmission 
+cost induced by model scale, and the need for person -
+alization across heterogeneous clients, as illustrated in 
+Fig. 1.
+Motivated by this gap, this paper surveys FL-based IDS 
+from a model optimization perspective . Rather than 
+treating aggregation, transmission, and personalization 
+as isolated topics, we view them as three tightly cou -
+pled optimization dimensions that jointly shape detec -
+tion quality, communication efficiency, local adaptability, 
+robustness, and deployment feasibility in federated IDS. 
+This perspective is especially relevant to real-world 
+cloud–edge settings, where client devices differ sub -
+stantially in data distribution, computational capabil -
+ity, network quality, and attack exposure. Accordingly, 
+this survey focuses primarily on cloud–edge collabora -
+tive FL-IDS, with emphasis on model-level optimization 
+strategies that improve practical deployability under 
+heterogeneous and resource-constrained conditions. 
+The main contributions of this work are summarized as 
+follows:
+1. We provide a coupling-aware synthesis of FL-IDS 
+literature centered on aggregation, transmission, 
+and personalization. Instead of organizing 
+the literature only by architecture or security 
+mechanisms, we identify three deployment-relevant 
+and tightly coupled model-level dimensions—
+aggregation, communication-efficient transmission, 
+and personalization—and use them to structure the 
+FL-IDS research landscape.
+2. We provide a systematic review of representative 
+optimization strategies in each dimension. For 
+each dimension, we examine representative methods 
+in terms of their design rationale, optimization 
+mechanisms, applicability to heterogeneous cloud–
+edge environments, and practical limitations. We 
+further organize the literature into multiple technical 
+sub-directions to reveal current methodological 
+trends.
+3. We highlight IDS-oriented trade-offs and key 
+bottlenecks in federated model optimization.  
+Beyond descriptive categorization, we synthesize 
+how different optimization strategies affect core 
+FL-IDS concerns, including heterogeneity handling, 
+communication overhead, robustness to unreliable 
+updates, local adaptability under concept drift, and 
+deployment constraints in dynamic environments.
+4. We identify open challenges and discuss future 
+directions for practical FL-IDS deployment. 
+Based on the surveyed literature, we outline several 
+promising directions, including heterogeneity-aware 
+aggregation, compression-aware transmission, 
+
+Page 3 of 22
+Ma et al. Journal of Cloud Computing            (2026) 15:88 
+parameter-efficient personalization, and more 
+realistic cloud–edge validation, to support scalable, 
+resource-efficient, and real-world deployable 
+federated intrusion detection systems.
+The remainder of this paper is organized as follows. Sec -
+tion  “Background on intrusion detection and federated 
+learning” reviews the evolution of IDS and the funda -
+mentals of federated learning, and introduces the back -
+ground necessary for understanding FL-based intrusion 
+detection. Section  “ Model optimization techniques for 
+federated intrusion detection ” systematically reviews 
+model optimization techniques for FL-IDS from three 
+closely related perspectives: aggregation optimization, 
+communication-efficient transmission, and personalized 
+modeling. Section  “Conclusion and outlook ” concludes 
+the paper and discusses future research directions.
+Background on intrusion detection and federated 
+learning
+Trends and challenges in intrusion detection
+As a core component of network security architec -
+tures, IDS aim to identify malicious traffic and abnormal 
+behavior in real time. In recent years, IDS have gradually 
+evolved from rule-based matching schemes toward intel -
+ligent, data-driven detection paradigms.
+From the perspective of data modalities, IDS inputs 
+are becoming increasingly diverse, including network 
+flow records   [13, 14], system and application logs   [ 15, 
+16], and multimodal cross-source features  [ 17]. Network 
+traffic data is structurally well-defined and highly time-
+sensitive, making it suitable for detecting typical attacks 
+such as scanning and denial-of-service. Log data captures 
+detailed traces of system behavior and is better suited for 
+identifying insider misuse and long-term stealthy attacks. 
+Multimodal fusion further attempts to integrate infor -
+mation from different perspectives to improve detection 
+accuracy and support attack-chain analysis  [18]. As busi-
+ness systems grow more complex, attack behaviors con -
+tinue to expand in scale, frequency, and manifestation, 
+placing higher demands on the feature extraction, repre -
+sentation learning, and cross-source correlation capabili -
+ties of IDS.
+In terms of model evolution, IDS have progressed from 
+statistical learning to traditional machine learning and, 
+more recently, to deep learning. Statistical methods rely 
+on distributional assumptions and are computationally 
+efficient, but struggle to cope with complex and evolv -
+ing attack patterns   [ 19]. Classical machine learning 
+approaches such as SVMs, decision trees, and random 
+forests provide strong discriminative power, yet heavily 
+depend on handcrafted features and are difficult to scale 
+to large, high-dimensional datasets   [ 20]. Deep learning 
+Fig. 1 Classical federated learning architecture
+ 
+
+Page 4 of 22
+Ma et al. Journal of Cloud Computing            (2026) 15:88 
+models, including CNNs, RNNs, and LSTMs, leverage 
+end-to-end representation learning and have demon -
+strated superior performance in recognizing complex 
+attack patterns  [ 21]. Meanwhile, large language models 
+(LLM) are being introduced for log parsing, semantic 
+anomaly detection, and event correlation analysis, fur -
+ther driving IDS toward semantic understanding and 
+intelligent response  [22].
+Despite these advances, practical IDS deployments still 
+face several key challenges:
+1. Massive data demand. Centralizing raw data on a 
+server incurs substantial communication and storage 
+costs, and can degrade system responsiveness and 
+real-time performance, particularly in resource-
+constrained edge environments.
+2. High computational requirements. Centralized 
+training often relies on high-performance 
+computing resources such as GPU clusters or cloud 
+infrastructures, which may exceed the capabilities of 
+many organizations or devices.
+3. Data security and privacy. Network data typically 
+contains sensitive user information, such as access 
+behaviors and identity attributes. Centralized 
+collection significantly increases privacy leakage 
+risks, and organizations are often unwilling or even 
+forbidden to share internal data due to regulatory 
+and security concerns.
+In summary, intrusion detection is evolving toward data-
+driven, intelligent, and collaboratively distributed para -
+digms  [23]. However, due to constraints imposed by data 
+privacy, multi-source heterogeneity, and dynamically 
+evolving attacks, traditional centralized modeling strug -
+gles to achieve satisfactory performance in real-world 
+deployments. These challenges directly motivate the 
+introduction of FL into IDS and lay the foundation for 
+subsequent research.
+Development and applications of federated learning
+Workflow and core mechanisms
+FL is essentially a distributed learning paradigm that 
+enables collaborative model training under the prin -
+ciple of “data remains local. ” In contrast to conventional 
+centralized learning, where all data are aggregated on a 
+central server for unified training, FL performs model 
+optimization locally on each participant and only uploads 
+model parameters or gradients for server-side aggrega -
+tion. This paradigm allows the system to leverage multi-
+source data while preserving privacy and reducing data 
+transmission overhead  [24].
+A typical FL architecture consists of a central server 
+and multiple participating clients. Let C denote the set of 
+clients, where each client i owns a private local dataset 
+Di and |Di|= ni. The central server coordinates com -
+munication and global aggregation. Using the classical 
+FedAvg as an example, its workflow can be summarized 
+in three phases:
+Local training In each training round, client i optimizes 
+the local model using its dataset Di by minimizing the 
+empirical loss: 
+ 
+min
+w
+F i(w )= 1
+ni
+n i∑
+j=1
+ℓ
+(
+w ;xij,yij
+)
+, (1)
+where w denotes the model parameters, ℓ(·) is the sam -
+ple-level loss function, and (x ij ,yij ) is the j-th training 
+sample on client i. Local updates are performed via gra -
+dient descent: 
+ w t+1
+i = w t
+i − η∇F i
+(
+w t
+i
+)
+, (2)
+where η is the learning rate and wt
+i  is initialized from the 
+previous global model wt.
+Global aggregation After local training, each client 
+uploads its model update to the server. The server com -
+putes a weighted average according to client data sizes: 
+ 
+w t+1 =
+∑
+i∈C
+ni∑
+k ∈C nk
+w t+1
+i . (3)
+Iterative updating The updated global model wt+1 is 
+broadcast to all clients as the initialization for the next 
+round. This iterative process continues until convergence 
+or a predefined maximum number of rounds is reached. 
+After training, the global model may be deployed at the 
+server, edge nodes, or client devices depending on appli -
+cation needs, and clients may further perform personal -
+ized fine-tuning to adapt the model to heterogeneous 
+environments.
+Through this “local training + central aggregation” 
+mechanism, FL distributes computation across cli -
+ents, significantly reduces privacy risks associated with 
+raw data transmission, and provides the foundation for 
+deployment across heterogeneous devices and diverse 
+cloud–edge environments.
+From a model optimization perspective, most FL-IDS 
+methods reviewed later can be understood as modify -
+ing one or more elements of this canonical FedAvg pipe -
+line. Aggregation-oriented methods mainly adjust how 
+local updates enter Eq.  ( 3), for example through client-
+weighting rules, staleness-aware weighting, or buffering. 
+Transmission-oriented methods alter the representation 
+of communicated updates, for example via quantization 
+
+Page 5 of 22
+Ma et al. Journal of Cloud Computing            (2026) 15:88 
+bit-width, sparsity ratio, pruning, sketching, or distilla -
+tion-based communication carriers. Personalization-ori -
+ented methods further redefine which parameters should 
+participate in global sharing, for example selected layers, 
+parameter masks, adapters, prompts, or low-rank factors. 
+These control variables jointly determine convergence 
+behavior, communication cost, and the preservation of 
+IDS-sensitive signals such as rare attacks, stealthy anom -
+alies, and adaptation under concept drift.
+Typical taxonomy and application scenarios
+As FL evolves to accommodate different data character -
+istics and system architectures, several organizational 
+forms and classification perspectives have emerged. FL 
+can be categorized along two primary dimensions: data 
+relationships and system structures.
+Classification based on data relationships According 
+to the overlap in sample space and feature space across 
+participants, FL can be divided into horizontal FL, verti -
+cal FL, and federated transfer learning  [ 25], as illustrated 
+in Fig. 2.
+Fig. 2 Taxonomy of federated learning based on data relationships: ( a) horizontal federated learning, ( b) vertical federated learning, and ( c) federated 
+transfer learning
+ 
+
+Page 6 of 22
+Ma et al. Journal of Cloud Computing            (2026) 15:88 
+Horizontal federated learning (HFL) . HFL applies 
+when participants share similar feature spaces but differ 
+in sample spaces, as shown in Fig.  2(a). Each party holds 
+data with identical feature dimensions but records dif -
+ferent individuals or devices. After local training, model 
+parameters or gradients are uploaded for server-side 
+aggregation. HFL is the most widely used and representa-
+tive form of FL  [25].
+Vertical federated learning (VFL) . VFL is used when 
+participants share overlapping sample spaces but have 
+distinct feature spaces, as illustrated in Fig.  2(b). VFL 
+requires privacy-preserving feature alignment and joint 
+modeling, commonly combining secure multiparty com -
+putation (SMC) or homomorphic encryption to ensure 
+confidentiality  [26].
+Federated transfer learning (FTL) . FTL applies when 
+both sample spaces and feature spaces differ significantly 
+across participants, as shown in Fig.  2(c). By leveraging 
+transfer learning techniques, FTL enables cross-domain 
+knowledge transfer even under strong data heterogene -
+ity or minimal sample/feature overlap. Limited shared 
+information or intermediate representations are used to 
+improve target-domain model performance  [27].
+Classification based on system architectures From 
+the perspective of system organization, FL can be divided 
+into centralized FL and decentralized FL, as illustrated in 
+Fig.  3. Centralized federated learning  relies on a central 
+server to broadcast the global model and aggregate model 
+updates uploaded from distributed nodes, as shown in 
+Fig.  3(a). This architecture is structurally clear and easy 
+to implement, and thus is the most common form of FL. 
+It offers advantages such as centralized aggregation and 
+convenient scheduling, but heavily depends on the cen -
+tral node and is vulnerable to single points of failure and 
+communication bottlenecks  [28]. Decentralized federated 
+learning, in contrast, removes the central server and lets 
+participants exchange model parameters in a peer-to-peer 
+manner, as depicted in Fig. 3(b). This architecture empha-
+sizes peer collaboration, provides stronger robustness and 
+scalability, and is suitable for scenarios without a trusted 
+center or with stringent latency requirements. However, it 
+poses greater challenges in terms of consistency mainte -
+nance, parameter synchronization, and convergence sta -
+bility, and typically leads to higher algorithmic and system 
+complexity  [29].
+Federated learning-based intrusion detection systems
+Modern IDS face persistent challenges in terms of frag -
+mented multi-source data, privacy and regulatory con -
+straints, heterogeneous deployment environments, and 
+continuously evolving attack behaviors. In this context, 
+federated learning, with its “data remains local” collab -
+orative training paradigm, provides a promising route for 
+building privacy-preserving and distributed IDS. In this 
+survey, we primarily focus on cloud–edge collaborative 
+FL-IDS under a centralized horizontal training set -
+ting. Our primary reference deployment is a site-level 
+or cross-silo collaboration pattern , in which each cli -
+ent corresponds to an organization, subnet, gateway, 
+vehicle cluster, or edge site that keeps its own network-
+flow records and/or system-log-derived features  
+locally, performs periodic mini-batch federated train -
+ing, and uploads model updates to a coordinating server. 
+The trained model is then deployed back to the same site 
+for near-real-time local detection . Therefore, the main 
+analytical setting of this review is periodic federated 
+training plus local online inference , rather than fully 
+streaming end-to-end online learning. Vertical, trans -
+fer, decentralized, and fine-grained cross-device variants 
+are discussed when they materially change aggregation, 
+transmission, or personalization design, but they are not 
+the default deployment model assumed in this review.
+(1) Distributed attack knowledge and large-scale 
+data demand. For intrusion detection, the challenge 
+is not merely the large volume of data, but also 
+the fragmentation of security knowledge across 
+organizations, subnets, and edge sites. Rare or 
+emerging attacks may appear only in a subset of 
+clients, making isolated local training insufficient for 
+broad attack coverage. By keeping raw data on each 
+client and uploading only local model parameters or 
+gradients, FL significantly reduces data transmission 
+and storage overhead compared with centralized 
+learning, while enabling multiple participants to 
+contribute complementary attack knowledge. For 
+example, Lee et al. proposed the TornadoAggregate 
+architecture, which leverages ring-based topologies 
+to enhance the scalability of FL  [30], while Nguyen 
+et al. designed the FedBuff framework, which buffers 
+asynchronous updates so that the system maintains 
+good elasticity even under highly concurrent 
+participation  [31]. These studies suggest that FL can 
+support collaborative IDS training at scale without 
+requiring raw cross-organizational data sharing.
+(2) Resource-constrained deployment and 
+computational pressure. The computational issue 
+in FL-IDS is closely tied to deployment. In practical 
+cloud–edge environments, edge devices often need 
+to support both local model updates and timely 
+intrusion detection, while operating under limited 
+computation, memory, and energy budgets. Under 
+the FL framework, model training is distributed 
+across multiple clients, reducing the dependence 
+on centralized high-performance resources and 
+making collaborative IDS more feasible in resource-
+constrained settings. Abd Elaziz et al. offloaded 
+
+Page 7 of 22
+Ma et al. Journal of Cloud Computing            (2026) 15:88 
+Fig. 3 Centralized and decentralized federated learning architectures: (a) centralized FL with a parameter server and ( b) decentralized FL with peer-to-
+peer collaboration
+ 
+
+Page 8 of 22
+Ma et al. Journal of Cloud Computing            (2026) 15:88 
+model training to edge devices in IoT scenarios, 
+effectively alleviating the computational burden on 
+the central server  [32]. Zhang et al. introduced FL 
+into vehicular edge computing environments to 
+mitigate the limitations imposed by the constrained 
+computing capability of individual vehicles on IDS 
+model training and deployment  [33]. These efforts 
+demonstrate that FL is not only a privacy-preserving 
+learning paradigm, but also an important enabler of 
+distributed IDS deployment.
+(3) Cross-organizational collaboration under privacy 
+requirements. For IDS, privacy preservation 
+is not only a desirable property but often a 
+prerequisite for collaboration. Raw traffic traces, 
+logs, and behavioral records may reveal sensitive 
+operational details, internal assets, or user activities, 
+making centralized data collection difficult across 
+organizations. During FL training, only model 
+updates are exchanged rather than raw data, which 
+reduces the exposure risk of user behavior data 
+during transmission and centralized storage  [24]. 
+Building on this, researchers have further integrated 
+FL with differential privacy and homomorphic 
+encryption. For instance, Wei et al. proposed the 
+DP-PFL framework  [34], and Cai et al. designed the 
+SecFed framework  [35]; both enhance resistance 
+to privacy leakage while maintaining competitive 
+model performance, thus providing stronger privacy 
+guarantees for cross-organizational collaborative IDS 
+training.
+Overall, FL alleviates several key bottlenecks of tradi -
+tional IDS in terms of data sharing, distributed compu -
+tation, and privacy-preserving collaboration, and has 
+gradually become an important technical route for intel -
+ligent intrusion detection. At the same time, the FL-IDS 
+literature has expanded rapidly across system design, 
+model optimization, and heterogeneous deployment 
+scenarios. Accordingly, a number of survey papers have 
+emerged to summarize this research landscape. To better 
+position the present work, Table  1 compares representa-
+tive existing surveys with this study.
+Existing surveys provide valuable perspectives on FL-
+based intrusion detection, but they differ substantially in 
+analytical focus. Some studies are primarily system- or 
+workflow-centered, emphasizing architectural design, 
+deployment patterns, communication settings, and pri -
+vacy mechanisms  [ 36, 38, 41]. These surveys are useful 
+for understanding how FL-IDS systems are organized, yet 
+they provide limited synthesis of the model-level opti -
+mization choices that directly affect practical detection 
+performance. Other studies are more scenario-specific, 
+such as IoT-oriented or resource-constrained FL-IDS 
+surveys   [ 37, 39, 42]. Their strength lies in capturing 
+domain characteristics, but their analytical scope is often 
+narrower and does not fully connect aggregation, trans -
+mission, and personalization into a unified optimization 
+framework. A third line of work adopts a more task-
+centered perspective, such as collaborative anomaly 
+detection   [40], which is helpful for understanding spe -
+cific detection pipelines but still does not systematically 
+explain how model optimization decisions shape deploy -
+ability across heterogeneous FL-IDS environments.
+Taken together, existing surveys have substantially 
+improved the understanding of FL-IDS from the perspec-
+tives of architectures, scenarios, and privacy/security 
+mechanisms. However, they still provide limited analysis 
+of the following question: under federated and heteroge -
+neous cloud–edge settings, what model-level optimization 
+decisions most strongly determine IDS deployability and 
+detection quality? In particular, issues such as aggregation 
+bias under non-IID attack distributions, transmission 
+Table 1 Positioning of this survey against existing reviews on federated learning-based intrusion detection
+Ref. Year Focus scope Prior value How the present review differs in emphasis
+[36] 2025 Generic FL-IDS 
+workflow
+Broad workflow coverage with deployment-
+related metrics
+Adds a deployability-oriented model optimization view and 
+emphasizes cross-dimensional trade-offs
+[37] 2022 FL for IoT IDS Strong IoT focus with discussion of non-IID 
+issues and aggregation
+Extends the analysis from IoT-specific discussion to a broader 
+cloud–edge optimization framework, including transmission 
+and personalization
+[38] 2022 FL-IDS architectures 
+and use cases
+Summarizes architectures, anomaly detection, 
+DDoS defense, and privacy integration
+Moves beyond architecture-centered categorization to a uni-
+fied analysis of aggregation, transmission, and personalization
+[39] 2022 FL-IDS in resource-
+constrained IoT
+Provides DL-model-based categorization and 
+discusses communication/privacy issues
+Reorganizes the literature through a model-optimization-
+oriented taxonomy for FL-IDS
+[40] 2024 Collaborative 
+anomaly detection
+Highlights anomaly-detection workflows, 
+datasets, and aggregation mechanisms
+Broadens the discussion from anomaly detection pipelines to 
+model deployability issues in FL-IDS, especially transmission 
+and personalization
+[41] 2023 Multi-scenario FL-IDS Broad coverage of non-IID data, communica-
+tion overhead, and heterogeneity
+Provides a more explicit synthesis of deployment-relevant 
+model trade-offs rather than mainly system-level description
+[42] 2025 Cross-domain FL-IDS Reviews deep models, architectures, and 
+cross-domain experiments
+Adds a coupling-aware perspective on model optimization, 
+with dedicated analysis of transmission and personalization
+
+Page 9 of 22
+Ma et al. Journal of Cloud Computing            (2026) 15:88 
+cost induced by model scale and update frequency, and 
+the need for local adaptation under heterogeneous traf -
+fic patterns have not been sufficiently synthesized into a 
+unified analytical framework. This gap motivates a more 
+focused re-examination of FL-IDS from a model optimi -
+zation perspective.
+Recent adjacent studies further suggest that practi -
+cal FL-IDS deployability depends on more than model 
+design alone. On the systems side, resource optimization, 
+traffic-aware offloading, and adaptive service orchestra -
+tion in cloud–edge environments directly affect latency, 
+communication efficiency, and system robustness   [ 43–
+45]. On the security side, recent cloud-security studies on 
+VM threat prediction, malicious-agent identification, and 
+federated malicious-user prediction indicate that infra -
+structure risk and participant trustworthiness should also 
+be considered when evaluating real-world FL-enabled 
+security systems  [ 46– 49]. Although these works do not 
+directly focus on FL-IDS model optimization, they high -
+light important deployment-side factors that motivate 
+broader and more realistic evaluation settings.
+From this perspective, the goal of FL-IDS is not only 
+to enable collaborative learning, but also to determine 
+how the resulting models should be aggregated, trans -
+mitted, and adapted to remain effective under heteroge -
+neous attack distributions, communication constraints, 
+and local deployment diversity. In this survey, aggrega -
+tion, transmission, and personalization are therefore not 
+treated as isolated axes, but as three tightly coupled 
+model-optimization dimensions . Aggregation deter -
+mines how distributed attack knowledge is integrated, 
+transmission constrains how much model information 
+can be exchanged under bandwidth and latency limita -
+tions, and personalization defines how much knowledge 
+should remain local to preserve client-specific detection 
+capability. These dimensions interact strongly in practice: 
+aggressive compression may alter aggregation bias, while 
+personalization may change what should be shared glob -
+ally and what should be retained locally.
+To achieve practical FL-IDS deployment, the following 
+three challenges are particularly critical:
+(1) How can the global model be aggregated robustly 
+under heterogeneity? Aggregation is the defining 
+step that distinguishes FL from centralized learning 
+and directly affects how heterogeneous attack 
+knowledge from multiple clients is integrated. In 
+FL-IDS, differences in client data distributions, 
+computational capabilities, and update reliability 
+can significantly distort aggregation quality. If not 
+handled properly, global aggregation may suppress 
+minority attack patterns, dilute rare but security-
+critical signals, or amplify the impact of malicious 
+and low-quality updates. Therefore, designing 
+robust and efficient aggregation strategies remains a 
+primary challenge for FL-IDS  [50].
+(2) How can model transmission be made 
+communication-efficient without losing security-
+critical information? Communication efficiency is 
+a major bottleneck in practical FL-IDS deployment. 
+Deep detection models often contain a large 
+number of parameters, and frequent uplink and 
+downlink updates can incur high latency, bandwidth 
+consumption, and device-side overhead, all of which 
+undermine real-time and large-scale detection. 
+At the same time, excessive compression, sparse 
+transmission, or overly aggressive update reduction 
+may discard subtle anomaly cues that are important 
+for detecting stealthy or low-frequency attacks. It is 
+therefore essential to optimize transmission through 
+model compression, sparse updates, and lightweight 
+communication strategies while preserving 
+detection-relevant information  [51].
+(3) How can federated models adapt to local 
+environments and evolving attack patterns? 
+Attack distributions, service contexts, and traffic 
+characteristics vary substantially across devices 
+and organizations, meaning that a single global 
+model often cannot satisfy all clients equally 
+well. This problem becomes more severe in edge 
+environments, few-shot settings, and non-stationary 
+scenarios where local traffic patterns evolve over 
+time. Without personalization, FL-IDS models 
+may experience increased false positives, false 
+negatives, and degraded robustness under concept 
+drift. Consequently, enabling effective adaptation 
+to local data distributions and resource constraints, 
+while preserving the benefits of global collaboration, 
+constitutes the third major challenge  [52].
+In summary, aggregation, transmission, and personal -
+ization should not be understood as one-to-one prox -
+ies for accuracy, efficiency, and adaptability. Rather, they 
+form three tightly coupled optimization dimensions that 
+jointly shape detection fidelity, communication cost, 
+robustness to unreliable updates, adaptation under con -
+cept drift, and deployment latency in FL-IDS. As illus -
+trated in Fig.  4, these dimensions define the analytical 
+framework adopted in this survey. Motivated by this 
+coupling-aware view, the remainder of this paper sys -
+tematically reviews existing studies from three perspec -
+tives: aggregation optimization, communication-efficient 
+transmission, and personalized modeling.
+
+Page 10 of 22
+Ma et al. Journal of Cloud Computing            (2026) 15:88 
+Model optimization techniques for federated 
+intrusion detection
+FL offers a promising paradigm for addressing data, com-
+putation, and privacy constraints in IDS. However, prac -
+tical federated IDS deployment faces challenges beyond 
+data locality, including non-IID attack distributions, 
+limited communication resources, heterogeneous client 
+capabilities, and evolving local traffic patterns. These fac-
+tors do not create isolated trade-offs; rather, they impose 
+coupled optimization pressures on global knowledge 
+integration, communication efficiency, local adaptation, 
+robustness, and deployment latency.
+As a result, recent research has shifted from system- 
+and architecture-centric designs toward model-level 
+optimization. Following the coupling-aware framework 
+introduced in Section  “ Federated learning-based intru -
+sion detection systems ” , this section reviews existing 
+work from three closely related perspectives: aggregation 
+optimization, communication-efficient transmission, 
+and personalized modeling. Rather than treating them as 
+independent categories, we emphasize how these strate -
+gies interact in determining FL-IDS deployability and 
+detection quality.
+To strengthen the analytical lens of this review, we not 
+only compare method families, but also track a set of 
+recurring control parameters that reappear across Sec -
+tions  “Global aggregation optimization ”–“Personalized 
+modeling” . These parameters determine how local 
+updates are weighted or delayed before aggregation, how 
+much model information is transmitted under bandwidth 
+constraints, and which subsets of parameters remain 
+globally shareable or locally adaptive. In FL-IDS, their 
+effects should be judged not only by convergence speed 
+or communication reduction, but also by whether they 
+preserve minority attack signatures, maintain robustness 
+to unreliable updates, and support long-term adaptation 
+Table 2 Analytical view of key optimization parameters in FL-IDS
+Parameter family Mainly appears in Main benefit Main risk
+Client weighting and staleness 
+control
+Aggregation Improves robustness to stragglers, unreliable clients, 
+and non-IID updates
+May bias training toward domi-
+nant or frequently active clients
+Bit-width control and quantiza-
+tion level
+Transmission Reduces communication volume and storage overhead May weaken subtle anomaly 
+information
+Pruning and sparsity control Transmission and 
+model lightweighting
+Shrinks model size and improves edge-side efficiency May remove security-critical 
+features
+Layer selection and mask 
+granularity
+Personalized modeling Enables efficient local adaptation with limited trainable 
+parameters
+May cause underfitting or ag-
+gregation mismatch
+Adapter and prompt budget Parameter-efficient 
+personalization
+Supports lightweight transfer and rapid client-specific 
+adaptation
+Limited capacity may miss local 
+anomaly patterns
+LoRA rank and low-rank capacity Parameter-efficient 
+personalization
+Balances memory, communication, and personalization 
+efficiency
+Rank mismatch may reduce 
+expressiveness and complicate 
+aggregation
+Fig. 4 Analytical framework of model optimization in FL-IDS. Aggregation, communication-efficient transmission, and personalized modeling are treated 
+as three tightly related dimensions that jointly shape deployability and detection quality. Each dimension is further connected to representative tech -
+nique families discussed in this survey
+ 
+
+Page 11 of 22
+Ma et al. Journal of Cloud Computing            (2026) 15:88 
+under concept drift. Table   2 summarizes this cross-
+dimensional analytical view.
+Across the surveyed literature, several FL-IDS-specific 
+patterns emerge. First, aggressive communication reduc -
+tion—through low-bit quantization, high sparsity prun -
+ing, sketching, or infrequent update transmission—is 
+most beneficial when bandwidth is the dominant deploy -
+ment bottleneck, but these strategies may suppress weak 
+gradients and low-amplitude feature shifts associated 
+with rare attacks or stealthy anomalies. Second, distil -
+lation-based transmission and heterogeneous aggrega -
+tion improve architectural flexibility, yet their reliance 
+on soft targets, proxy data, or representation alignment 
+may smooth minority attack signatures and introduce 
+additional privacy or robustness concerns. Third, full-
+parameter personalization offers the strongest response 
+to abrupt concept drift , but it also increases communi -
+cation cost, model drift, and alert latency. By contrast, 
+selective fine-tuning, adapters, prompts, and LoRA usu -
+ally provide a better long-term trade-off for cloud–edge 
+FL-IDS, although overly small trainable budgets may 
+underfit sudden local attack shifts.
+These observations indicate that client-weighting rules, 
+staleness control, pruning rates, quantization bit-widths, 
+update intervals, rank choices, and mask granularity 
+should be treated as coupled control knobs  rather than 
+isolated hyperparameters. Conservative settings often 
+improve convergence stability and poisoning robustness, 
+whereas aggressive compression or highly local personal -
+ization may improve efficiency or client specificity at the 
+cost of rare-attack recall, historical-attack retention, or 
+cross-client generalization. Therefore, the key question in 
+FL-IDS is not which single method family is universally 
+best, but which parameter regime best matches the joint 
+constraints of bandwidth, heterogeneity, threat rarity, 
+drift intensity, and deployment latency.
+Global aggregation optimization
+Aggregation is a defining component that distinguishes 
+FL from centralized training, determining how effectively 
+heterogeneous multi-source attack knowledge is inte -
+grated. In FL-IDS, its role goes beyond convergence and 
+average accuracy: inadequate aggregation may amplify 
+non-IID bias, suppress minority attack patterns, dilute 
+rare but security-critical signals, and increase vulner -
+ability to malicious or stale updates. Therefore, design -
+ing robust aggregation strategies is critical for preserving 
+detection coverage and reliability in heterogeneous IDS 
+environments.
+This section reviews progress in aggregation optimiza -
+tion from three perspectives: classical aggregation algo -
+rithms, asynchronous and semi-synchronous aggregation 
+mechanisms, and heterogeneous model aggregation. A 
+summary of representative studies is provided in Table  3.
+Table 3 Summary of global aggregation optimization techniques
+Category Refs. Scenario FL Type Model Contributions Limitations
+Classical 
+Aggregation
+[53] IoT Horizontal CNN, 
+etc.
+Blockchain-assisted trusted aggregation; 
+SGX-based secure execution
+Hardware dependency (SGX); high consen-
+sus latency; limited enclave memory
+[54] Wireless 
+networks
+Horizontal CNN, 
+etc.
+In-network aggregation for multihop FL Sensitive to topology/channel assumptions; 
+lacks IDS validation
+[55–
+57]
+General Horizontal MLP , etc. Quality-aware weighting; learnable 
+aggregation weights; Byzantine-robust 
+aggregation
+Requires reliable quality metrics or robust 
+statistics; extra computation
+[58] General Horizontal CNN, 
+ResNet
+Dataset condensation; soft-label distilla-
+tion; aggregation-free global training
+Synthetic data bias; high distillation cost; 
+limited real-time capability
+Asynchronous 
+Aggregation
+[59–
+61]
+General Horizontal CNN, 
+etc.
+Asynchronous upload; staleness weight-
+ing; memory compensation
+Unstable convergence on non-IID attack 
+classes; hyperparameter sensitivity; costly 
+tuning
+[62] IIoT Horizontal MLP State estimation; sequential filtering Shallow model; scenario-specific
+Semi-
+synchronous 
+Aggregation
+[31] General Horizontal LSTM, 
+etc.
+Server buffering; trigger-based aggrega-
+tion; temporal decay weighting
+Staleness risk for real-time detection; difficult 
+trade-off between latency and accuracy
+[63–
+67]
+Wireless, 
+IoT, IoV
+Horizontal CNN, 
+etc.
+Periodic aggregation; device grouping; 
+client selection and scheduling
+Requires resource-side information; complex 
+policies; long-tail clients may be ignored
+[68] ITS Horizontal – Intra-group sync; inter-group async; 
+decentralized gossip
+High topology maintenance cost; message 
+diffusion overhead; latency concerns
+Heterogeneous 
+Aggregation
+[69, 
+70]
+IoT Horizontal CNN, 
+etc.
+Teacher-guided heterogeneity support; 
+semi-supervised self-distillation
+Requires pre-trained model; relies on public/
+proxy data; high training cost
+[71–
+73]
+General Horizontal ResNet, 
+Trans-
+former, 
+etc.
+Public/private decomposition; rolling 
+sub-models; generator-mediated 
+collaboration
+Maintains multiple sub-models; complex 
+aggregation and management; resource 
+pressure on clients
+
+Page 12 of 22
+Ma et al. Journal of Cloud Computing            (2026) 15:88 
+Classical aggregation algorithms
+Classical FL algorithms generally assume a central -
+ized architecture where all clients share the same model 
+structure. The central server aggregates client model 
+parameters each communication round. FedAvg   [ 6]—
+now widely adopted in privacy-sensitive domains such as 
+healthcare, finance, and energy  [ 74, 75]—constructs the 
+global model via data-size-weighted averaging.
+To address these limitations, various extensions to 
+FedAvg have been introduced. INA-FedAvg  [ 54] moves 
+aggregation into intermediate routers within multi-hop 
+wireless networks, significantly reducing communica -
+tion cost—an important advantage for bandwidth-con -
+strained IDS environments. SGX-FedAvg  [ 53] enhances 
+security by performing aggregation inside Intel SGX 
+enclaves and utilizing blockchain for verifiable consen -
+sus, though scalability is constrained by enclave memory. 
+Robustness-oriented methods such as SEAR  [57] remove 
+anomalous or Byzantine updates through sampling-based 
+outlier detection and coordinate-wise robust aggregation. 
+FAIR   [55] and FEDLAW   [ 56] introduce quality-aware 
+and learnable weighting schemes to enhance fairness and 
+mitigate non-IID drift. In contrast, FedAF   [ 58] elimi -
+nates parameter alignment altogether by using synthetic 
+data and soft-label distillation, enabling reliable global 
+training even under severe statistical heterogeneity.
+Although classical aggregation remains effective in 
+small-scale, homogeneous IDS deployments, its reliance 
+on strict synchronization and uniform model structures 
+fundamentally limits its applicability in complex network 
+environments characterized by diverse communication 
+protocols and rapidly evolving attack surfaces.
+Asynchronous and semi-synchronous aggregation 
+mechanisms
+In synchronous FL, the server must wait for a sufficient 
+number of clients, making the training process vulner -
+able to “stragglers. ” Asynchronous aggregation addresses 
+this by immediately incorporating client updates upon 
+arrival. FedAsync  [ 59] adjusts update weights based on 
+staleness to balance convergence speed and variance. 
+FedFa   [60] introduces fully asynchronous updates with 
+a sliding historical buffer, reducing oscillation caused by 
+instantaneous updates. AREA  [61] further removes strict 
+bounded-delay assumptions and introduces memory 
+compensation to improve convergence stability under 
+arbitrary delays. ARTU-FL   [ 62] incorporates statistical 
+filtering (e.g., Kalman filtering) to maintain stable esti -
+mates even under packet loss and delayed transmissions.
+Semi-synchronous aggregation aims to strike a bal -
+ance between efficiency and stability. FedBuff  [ 31] trig-
+gers aggregation once a buffer of size K is filled, applying 
+time-decay weighting and supporting secure aggregation 
+and differential privacy. Time-slot–based aggregation   
+[63] assigns weights by update freshness, suppressing 
+variance under wireless constraints. Other works incor -
+porate client selection based on gradient norms, compu -
+tational capability, or link quality  [ 64– 66]. AS-AFL  [ 68] 
+combines intra-group synchronization with inter-group 
+asynchronous gossip to improve scalability in dynamic 
+networks.
+Asynchronous methods excel in handling bursty traf -
+fic and unstable connections but often suffer from model 
+staleness that degrades detection accuracy for rare 
+attacks; semi-synchronous methods mitigate oscillation 
+but require complex triggering policies. Consequently, 
+improving robustness under strong non-IID traffic and 
+optimizing scheduling latency to ensure timely threat 
+response remain open challenges.
+Heterogeneous model aggregation
+FL increasingly encounters heterogeneous device capa -
+bilities and model architectures. Traditional parameter-
+level aggregation breaks down when clients do not share 
+the same model structure, necessitating new aggregation 
+strategies.
+Knowledge distillation is a prominent approach. Fed-
+ET  [70] builds soft-label consensus using variance-aware 
+weighting of client predictions, enabling collaboration 
+across heterogeneous models. FedGen   [ 73] introduces 
+a global generator that mediates shared representation 
+learning without requiring structural alignment. pFed -
+Know  [69] leverages structure-aware weighting and pre-
+trained teacher logits, combined with uncertainty-driven 
+pseudo-label selection, making it suitable for constrained 
+IoT deployments.
+Another line of work decomposes client models into 
+shared and private components. HPFL   [ 71] averages 
+public parameters using validation-performance weight -
+ing while privately aggregating cluster-level prototypes, 
+enabling personalized yet privacy-preserving FL.
+Partial-training approaches, such as FedRolex   [ 72], 
+cyclically assign different sub-models to clients so that 
+global parameters are fully updated over multiple rounds. 
+This reduces local memory requirements and supports 
+secure aggregation while maintaining compatibility with 
+large global models.
+While heterogeneous aggregation enables flexible 
+cross-architecture collaboration, many methods depend 
+on public datasets or large pre-trained models, increasing 
+deployment cost and potential privacy exposure. Further-
+more, complex aggregation workflows lead to additional 
+computation and communication overhead. For feder -
+ated IDS—characterized by dynamic traffic patterns and 
+strong heterogeneity—improving generalization against 
+zero-day attacks and reducing reliance on auxiliary data 
+remain important research directions for robust IDS 
+aggregation.
+
+Page 13 of 22
+Ma et al. Journal of Cloud Computing            (2026) 15:88 
+Model transmission optimization
+Communication and computation overhead consti -
+tute major bottlenecks in deploying federated intrusion 
+detection systems. Deep detection models typically con -
+tain millions of parameters, and frequent uploading and 
+downloading not only con- sume bandwidth and intro -
+duce significant latency but also increase energy usage on 
+resource-constrained edge devices. In FL-IDS, however, 
+transmission is not purely a systems issue: overly aggres -
+sive compression or sparse communication may also dis -
+card subtle anomaly cues that are important for detecting 
+stealthy or low-frequency attacks. Therefore, reducing 
+communication load while preserving detection-relevant 
+information is essential for real-time and large-scale IDS 
+deployment.
+This section reviews transmission-optimization meth -
+ods from three perspectives: model update compression 
+and sparsification, pruning- and structure-based model 
+lightweighting, and knowledge-distillation-based trans -
+mission. A summary of representative studies is provided 
+in Table  4.
+Model parameter compression
+Quantization-based compression is a classical and effec -
+tive strategy for reducing communication load in FL. By 
+lowering the numerical precision of model updates or 
+gradients, transmission size can be significantly reduced 
+with limited impact on accuracy. AdaQuantFL  [76] adap-
+tively adjusts bit-width across training stages, using low 
+precision in early rounds for rapid descent and gradually 
+increasing precision later to control error accumulation. 
+Its effectiveness, however, depends on accurate error 
+scheduling and noise estimation.
+Dithered-QFL  [ 78] and UVeQFed  [ 79] introduce sto -
+chastic lattice-based quantization and universal vector 
+quantization, respectively. Both methods preserve con -
+vergence under extremely low-bit settings (e.g., 2–4 bits) 
+by statistically neutralizing quantization noise, but they 
+rely on synchronized randomness and simplified channel 
+assumptions. Hier-Local-QSGD   [ 77] embeds quantiza -
+tion into hierarchical FL and highlights a fundamental 
+principle: when quantization noise becomes dominant, 
+communication frequency should be reduced to main -
+tain stability.
+A second line of work reduces redundant communi -
+cation via delta transmission . LFL   [ 80] transmits only 
+global increments and employs error compensation, 
+achieving convergence comparable to full-precision FL 
+under strong convexity. Reisizadeh et al.   [ 81] combine 
+delta transmission with periodic aggregation, signifi -
+cantly reducing communication rounds in large-scale 
+deployments, although long aggregation periods can 
+intensify non-IID drift.
+Beyond quantization, structured encoding aims for 
+more aggressive compression. FedMUD   [ 82] distills 
+model updates into compact tensor sequences, achieving 
+bidirectional compression while relaxing dependence on 
+specific model architectures. FedZip  [ 83] adopts multi-
+stage compression—sparsification, clustered quantiza -
+tion, and entropy coding—achieving high compression 
+ratios with accuracy loss typically below 1%, though 
+maintaining masks and codebooks increases system 
+complexity.
+Table 4 Summary of model transmission optimization techniques
+Subcategory Refs. Scenario FL Type Model Contributions Limitations
+Model Parame-
+ter Compression
+[76–
+79]
+General Horizontal CNN, MLP Adaptive quantization; dithered lattice 
+quantization; universal vector quantiza-
+tion; low-bit stable convergence
+Sensitive to randomness; Feature loss 
+in stealthy attacks
+[80, 
+81]
+General Horizontal CNN, etc. Delta updates; global increment 
+broadcast; reduced communication via 
+periodic aggregation
+Long aggregation periods amplify 
+non-IID drift; compensation requires 
+additional storage
+[82, 
+83]
+Healthcare Horizontal – Update distillation; multi-stage compres-
+sion (sparsity + quantization + entropy 
+coding)
+High distillation and encoding 
+overhead; increased device-side 
+computation
+Model 
+Architecture 
+Optimization
+[84–
+87, 
+87–
+89]
+General Horizontal VGG, 
+ResNet, 
+Transformer
+Dynamic and heterogeneous pruning; 
+communication–latency co-optimization; 
+structured sparsification
+Hardware dependence for sparse com-
+putation; pruning-rate sensitivity; may 
+weaken rare-attack detection
+[90, 
+91]
+General Horizontal LeNet, CNN Subnetwork-intersection aggregation; 
+extremely sparse initialization
+Sensitive to client heterogeneity; Com-
+plex mask alignment for dynamic traffic
+[92, 
+93]
+General Horizontal ResNet, 
+LSTM
+Bidirectional CountSketch compression; 
+stateless clients
+Accuracy loss under extreme com-
+pression; larger server memory and 
+aggregation overhead
+Knowledge 
+Distillation 
+Transmission
+[94–
+98]
+General Horizontal Transformer, 
+CNN
+Student-model upload; bidirectional 
+distillation; quantization + distillation 
+hybrid schemes
+Maintaining dual models; reliance on 
+public/auxiliary data; Overhead strains 
+resource-limited IoT gateways
+
+Page 14 of 22
+Ma et al. Journal of Cloud Computing            (2026) 15:88 
+For large-scale distributed IDS, quantization offers 
+simplicity and rapid deployment but risks obscuring 
+fine-grained features of stealthy attacks under high-fre -
+quency updates. Structured encoding excels in extremely 
+bandwidth-constrained settings but imposes additional 
+encoding latency on resource-limited edge nodes. Delta 
+transmission is often more suitable for IDS, as it lever -
+ages the high redundancy of stable network traffic to 
+minimize transmission. Consequently, designing attack-
+aware adaptive delta-upload and compensation mecha -
+nisms is a promising direction for balancing detection 
+accuracy, communication efficiency, and real-time threat 
+mitigation.
+Model architecture optimization
+Another important communication-optimization direc -
+tion focuses on lightening the model itself via pruning 
+and structural compression, thereby reducing parameter 
+size at the source. Existing methods can be broadly cat -
+egorized into pruning-driven subnetwork training and 
+Sketch-based model representation.
+Structured pruning removes channels, kernels, or 
+attention heads while preserving tensor layouts, making 
+it more hardware friendly. FedMP  [84] adaptively assigns 
+pruning rates across clients to mitigate heterogeneous 
+device capabilities, while still relying on residual recon -
+struction to ensure convergence. FederatedPruning  [ 85] 
+employs phased masks and hierarchical sparsity alloca -
+tion, enabling large-scale speech tasks to maintain both 
+accuracy and convergence. DF2-MPC  [ 87] extends per -
+sonalized pruning to decentralized settings and com -
+bines it with neighbor selection, improving privacy and 
+stability. FedPE   [ 87] further alleviates information loss 
+through alternating prune–expand cycles and residual 
+compensation.
+PruneFL   [ 88] dynamically reconfigures subnetwork 
+structures to enhance sparse training adaptivity and 
+inference efficiency, although sparse computation and 
+mask management introduce extra complexity. FedPAGE  
+[89] tightly couples pruning rate with communication 
+delay, integrating model slimming into global efficiency 
+optimization to mitigate the straggler effect in heteroge -
+neous systems.
+Hybrid pruning schemes combine structured and 
+unstructured sparsification. Sub-FedAvg  [ 90] aggregates 
+clients via subnetwork intersection, simultaneously sup -
+porting personalization and communication reduction. 
+FedPaI  [ 91] pushes extreme sparsification to the initial -
+ization stage, removing the need for iterative pruning but 
+requiring hardware support for sparse operators.
+Sketch-based methods compress model representa -
+tions without altering model architecture. Comfetch   
+[92] employs CountSketch to compress both uplink and 
+downlink updates, enabling lightweight clients that need 
+not store the full model. FetchSGD  [ 93] exploits the lin -
+earity of Sketch to aggregate momentum and error com -
+pensation on the server, supporting stateless clients and 
+large-scale one-shot participation, though high compres -
+sion ratios may degrade accuracy and increase server 
+memory demand.
+Structured pruning emphasizes hardware efficiency 
+and system throughput but may lack flexibility for highly 
+non-IID and personalized IDS tasks. Unstructured and 
+hybrid pruning better preserve client-specific features 
+but depend on efficient sparse computation and mask 
+management. Sketch-based methods offer architecture-
+agnostic compression, reducing communication and 
+storage costs, yet raise concerns regarding accuracy and 
+server-side resource consumption. For IDS scenarios 
+characterized by multi-source non-IID traffic and high-
+frequency updates, striking a balance between flexibil -
+ity, resource usage, and detection latency remains a core 
+challenge.
+Knowledge distillation transmission
+Knowledge distillation can also be leveraged for model 
+compression and communication reduction. Unlike het -
+erogeneous-model aggregation in Section “ Global aggre-
+gation optimization ” , where distillation mainly enables 
+cross-architecture collaboration, here the focus is on 
+transmitting knowledge from larger local models to light-
+weight communication models.
+In large–small model distillation frameworks, clients 
+maintain a high-capacity local model for learning rich 
+representations and a lightweight student model for 
+communication. FedKD   [ 94] adopts a mentor–mentee 
+design: the large model focuses on personalized learning, 
+while the small model acts as a shared communication 
+carrier, with bidirectional distillation maintaining con -
+sistency between them. MH-pFLID   [ 95] introduces an 
+ultra-lightweight “Messenger” model dedicated to infor -
+mation exchange, naturally supporting heterogeneous 
+client architectures and significantly reducing bandwidth. 
+FedMKT   [ 96] further enables bidirectional knowledge 
+transfer between client and server models, allowing the 
+client-side model to gain global generalization while 
+feeding back local characteristics to the server model.
+These approaches, however, typically require clients to 
+maintain multiple models, which may be impractical for 
+weak devices, and often rely on public or auxiliary data, 
+introducing privacy and robustness risks.
+Compression-enhanced distillation further reduces 
+communication load. QuPeD  [ 97] trains quantized stu -
+dent models on clients and aligns them with the global 
+model via distillation, achieving robust performance 
+under heterogeneous data and resource constraints, 
+albeit with inevitable degradation under aggressive quan -
+tization. FedCompress   [ 98] combines client-weight 
+
+Page 15 of 22
+Ma et al. Journal of Cloud Computing            (2026) 15:88 
+clustering with server-side self-distillation, reducing both 
+uplink and downlink costs without modifying the basic 
+aggregation protocol, though it assumes that the server 
+can access external unlabeled data.
+Overall, distillation-based transmission methods fol -
+low a “small-for-large” paradigm: lightweight models act 
+as communication proxies for larger models, effectively 
+reducing communication while retaining much of the 
+detection capability. This paradigm is particularly attrac -
+tive for federated IDS: lightweight students can be rapidly 
+deployed on edge devices to handle high-frequency traf -
+fic, while high-capacity models continue to learn com -
+plex attack patterns locally or in the cloud, enhancing 
+long-term robustness and coverage.
+Personalized modeling
+Due to substantial heterogeneity in network environ -
+ments, service types, and attack distributions, a single 
+global model often fails to satisfy diverse detection 
+requirements, particularly for edge nodes, few-sample 
+domains, and non-stationary environments. In practical 
+IDS deployment, local traffic patterns and attack surfaces 
+may evolve over time, making concept drift and client-
+specific adaptation central concerns. Personalized mod -
+eling addresses this limitation by adapting local models 
+on top of shared global knowledge, thereby enhancing 
+the practicality, stability, and long-term usability of feder-
+ated IDS across heterogeneous clients.
+This section reviews representative approaches from 
+four perspectives: full-parameter fine-tuning, selective 
+fine-tuning of layers or modules, adapter/prompt-based 
+personalization, and low-rank adaptation. We also dis -
+cuss the trade-off between personalization capability and 
+global collaboration. A summary of related work is pro -
+vided in Table  5.
+Full-parameter fine-tuning
+Full-parameter fine-tuning updates all model parameters 
+end-to-end on top of a pre-trained model. In a federated 
+setting, each client locally updates the complete model 
+and periodically uploads its parameters or gradients for 
+aggregation. This paradigm usually offers the strongest 
+adaptation capability but incurs substantial communica -
+tion and computation costs, and imposes strict memory 
+and compute requirements on client devices.
+FedKSeed   [ 99] is a representative method for com -
+pressed random reconstruction. By sharing random 
+seeds to generate perturbation vectors, clients only need 
+to upload seeds and scalar gradients, while the server 
+reconstructs approximate updates, significantly reducing 
+communication cost. Ferret  [100] further combines first-
+order optimization with low-dimensional projections to 
+retain the convergence speed of gradient-based meth -
+ods while preserving communication efficiency, allevi -
+ating the slow convergence issue of purely zeroth-order 
+schemes. These methods achieve extremely compact 
+communication and are well-suited to large models and 
+bandwidth-constrained environments, but they require 
+carefully maintained shared randomness and must bal -
+ance reconstruction accuracy against efficiency.
+OFMS-FT   [ 101] adopts direct full-parameter fine-
+tuning with full-gradient uploads: clients select candidate 
+models under limited memory, perform full-parameter 
+updates, and then upload gradients or parameter dif -
+ferences for bandwidth-aware aggregation. This type of 
+method can deliver accuracy close to ideal centralized 
+fine-tuning and is suitable for highly demanding tasks, 
+but still entails considerable communication and compu -
+tation overhead. Building on this line, FTFA and RTFA   
+[102] first obtain a global model via FedAvg and then 
+perform client-side full-parameter fine-tuning; RTFA 
+additionally introduces regularization to constrain model 
+drift and balance global and local objectives.
+Table 5 Summary of personalized modeling techniques
+Subcategory Refs. Scenario FL Type Model Contributions Limitations
+Full-parameter 
+fine-tuning
+[99–
+103]
+General Horizontal LLaMA, 
+CNN, MLP
+Random reconstruction; zeroth-order optimi-
+zation; full-parameter fine-tuning with strong 
+adaptation; online ensembling to mitigate 
+forgetting
+High bandwidth; Risk of forget-
+ting historical attack signatures; 
+requires shared randomness; 
+hard to support weak devices
+Selective 
+fine-tuning
+[104–
+108]
+General Horizontal ResNet, 
+CLIP , etc.
+Personalized top layers; gradient-importance-
+based layer selection; change-magnitude 
+masks for parameters
+Layer selection needs tuning; 
+unstable choices may intro-
+duce aggregation bias
+Adapter, prompt 
+fine-tuning
+[109–
+112]
+Multimodal Horizontal Trans-
+former, 
+CLIP
+Tensor-decomposed adapters; dual-
+adapter distillation; improved cross-domain 
+generalization
+Inference latency from extra 
+modules; distillation overhead
+[113–
+115]
+Vision, general Horizontal Trans-
+former, 
+ViT
+Spatio-temporal prompts; black-box prompt 
+evolution; server-generated prompts
+Limited expressive capacity; 
+prompt selection may be 
+unstable
+Low-rank 
+adaptation
+[116–
+124]
+General Horizontal LLaMA, 
+DistilBERT, 
+etc.
+Low-rank insertion; heterogeneous-rank ag-
+gregation; dual-LoRA personalization
+Rank misalignment affects 
+global accuracy; requires ad-
+ditional privacy protection
+
+Page 16 of 22
+Ma et al. Journal of Cloud Computing            (2026) 15:88 
+Fed-POE   [ 103] focuses on online personalization in 
+non-stationary environments. It integrates locally fine-
+tuned models with current and historical global models 
+through a product-of-experts ensemble, effectively miti -
+gating catastrophic forgetting. This improves adaptability 
+in dynamic distributions at the cost of additional storage 
+and inference computation.
+Full-parameter fine-tuning offers superior local adapta-
+tion capability and can fully exploit local data in highly 
+non-IID and dynamic environments. However, it suffers 
+from two fundamental issues: frequent full-parameter 
+updates incur substantial communication and storage 
+overhead, and intensive local training may lead to severe 
+deviation from the global model, increasing the risk of 
+catastrophic forgetting. Recent work partially alleviates 
+these bottlenecks through perturbation reconstruction, 
+low-dimensional projection, regularization, and online 
+ensembling, but how to balance communication cost 
+with adaptability without compromising the detection 
+baseline for historical attack signatures remains an open 
+problem.
+Selective fine-tuning
+Selective fine-tuning updates only a subset of parameters 
+while freezing the rest of the model, such as output lay -
+ers, biases, normalization statistics, or a few deeper or 
+intermediate layers. Compared with full-parameter fine-
+tuning, this paradigm trades reduced updates for signifi -
+cant savings in computation and communication, making 
+it naturally suitable for heterogeneous devices and band -
+width-constrained federated scenarios. Existing research 
+mainly progresses along two lines: structural decoupling 
+and adaptive selection.
+From a structural-decoupling perspective, the model is 
+explicitly partitioned into shared and personalized com -
+ponents, yielding stable personalization gains with mini -
+mal protocol changes. FedPer   [ 104] treats lower layers 
+as shared feature extractors participating in aggregation, 
+while upper layers remain local to capture user-specific 
+patterns. PartialFed  [106] observes that full initialization 
+with global parameters may overwrite local memory, thus 
+only selected layers are synchronized while the remaining 
+parameters continue from local history. FedAlt  [107] fur-
+ther splits parameters into shared and personalized parts 
+and optimizes them in an alternating fashion, improving 
+stability and memory efficiency.
+Adaptive-selection methods instead let data and train -
+ing dynamics determine which parameters to update, 
+aiming to achieve near full-parameter adaptation under 
+limited budget. Selective Layer Fine-tuning   [ 105] uses 
+local gradient norms and consistency regularization to 
+select the most beneficial layers under a compute budget 
+and introduces light coordination to avoid aggregation 
+bias. FedSelect   [ 108], inspired by the gradient lottery 
+ticket hypothesis, tracks parameter-change magnitudes 
+and gradually expands a personalized subnetwork, allow -
+ing different clients to form bounded yet distinct person -
+alization masks.
+Selective fine-tuning thus achieves efficient person -
+alization with limited updates: it reduces the load on 
+resource-constrained devices while still capturing site-
+specific attack variants on top of shared global represen -
+tations. However, it faces common challenges. Overly 
+rigid layer choices may limit adaptation to new threat 
+patterns, whereas adaptive schemes introduce extra over-
+head and potential instability. As layer-level and parame -
+ter-level selection strategies mature, selective fine-tuning 
+is expected to further strengthen the trade-off between 
+lightweight deployment and personalization, especially in 
+IDS scenarios facing frequent concept drift and polymor-
+phic attacks
+Adapter and prompt-based fine-tuning
+Adapter-based fine-tuning freezes the backbone and 
+only trains small, pluggable modules (e.g., adapters or 
+prompts), achieving task alignment and personalization 
+with minimal parameter overhead. In FL, this paradigm 
+is particularly attractive for heterogeneous and resource-
+limited environments due to its low communication foot-
+print and high composability.
+Adapter-based approaches emphasize the pattern of 
+“frozen backbone + small trainable modules. ” FedTT   
+[110] employs tensor-decomposed adapters to compress 
+updates, and further freezes part of the factors adaptively 
+to improve robustness across institutions. FedDAT  [109] 
+introduces bidirectional distillation between shared and 
+local adapters to reduce knowledge forgetting, while 
+FedCLIP  [ 111] uses attention-based adapters for cross-
+domain generalization and personalization. AdaFedSe -
+lecKD  [ 112] combines selective distillation with adapter 
+updates, updating local adapters only when global knowl-
+edge is deemed reliable. These methods aim to use small 
+modules to support transfer, striking a balance between 
+communication efficiency and stable aggregation.
+Prompt-based methods compress trainable capac -
+ity even further into a small number of vectors injected 
+into inputs or hidden layers, enabling fast personaliza -
+tion without modifying backbone weights. MetePFL   
+[113] leverages spatio-temporal prompts together with 
+graph-based aggregation to mitigate non-IID effects. 
+FedBPT   [114] applies zeroth-order evolutionary search 
+over prompt distributions in LLM, achieving extremely 
+low communication and storage overhead. pFedPG  [115] 
+allows the server to generate personalized prompts and 
+refine them using client feedback, enhancing cross-
+domain generalization. Prompt methods are highly 
+lightweight and often compatible with black-box mod -
+els, but their expressive power and convergence stability 
+
+Page 17 of 22
+Ma et al. Journal of Cloud Computing            (2026) 15:88 
+frequently require additional support from distillation or 
+generative mechanisms.
+Some work, such as Sun   [ 125], unifies bias tun -
+ing, adapters, and prompts into a single framework, 
+allowing systems to flexibly choose parameter subsets 
+given resource constraints and task requirements. This 
+modular design offers a “switchboard” for deployment: 
+prompts can be preferred when bandwidth is tight, while 
+adapters or hybrid schemes can be activated when stron -
+ger expressiveness is needed.
+Overall, adapter and prompt-based fine-tuning lever -
+age small parameter increments to unlock transfer ben -
+efits: adapters provide structured adjustments, while 
+prompts encode local traffic contexts. In multi-source, 
+dynamically evolving IDS scenarios, this allows fast adap-
+tation under tight bandwidth and preserves local threat 
+landscapes through modular memory. The key challenges 
+lie in maintaining stable convergence and long-term 
+adaptability under extremely small parameter budgets, 
+and in designing mechanisms for adaptive module and 
+granularity selection across resource-constrained IoT 
+and edge devices.
+Low-rank adaptation
+Low-rank adaptation (LoRA) inserts trainable low-rank 
+decompositions into weight matrices while keeping back-
+bone parameters frozen. Unlike adapters, LoRA does not 
+introduce additional forward paths; instead, it adds resid-
+ual low-rank updates directly to existing weights, which 
+can be merged at inference time. This “low-rank patch -
+ing” paradigm enables parameter-efficient adaptation 
+without altering model structure and has strong potential 
+for federated fine-tuning of large models.
+Existing LoRA-based federated methods can be 
+grouped into three categories. The first focuses on homo-
+geneous ranks , where all clients adopt LoRA modules 
+with the same rank, making aggregation straightforward. 
+FedIT  [116] applies LoRA for instruction tuning of large 
+language models on clients and aggregates LoRA param -
+eters via FedAvg, significantly reducing the cost of fed -
+erated LLM training. Kim  [ 117] and Guo  [ 118] further 
+refine aggregation: the latter observes that LoRA matri -
+ces A and B exhibit different behaviors (with A more 
+global and B more personalized), and aggregates only A 
+while retaining B locally to mitigate aggregation error 
+and improve stability under non-IID distributions.
+The second category targets heterogeneous ranks , 
+allowing clients to choose different ranks based on their 
+resources and data, at the cost of dimension mismatch 
+and aggregation noise. SLoRA  [119] uses sparse fine-tun-
+ing followed by singular value decomposition to provide 
+better low-rank initialization, alleviating convergence 
+issues in heterogeneous environments. HeLoRA   [ 120] 
+proposes two complementary solutions: context-based 
+padding with adaptive weighting to align different ranks 
+for aggregation, and distillation-based deep mutual 
+learning to achieve “parameter-agnostic” collaboration. 
+FLoRA  [121] further addresses aggregation noise by pro-
+posing a stacking-based aggregation scheme that stabi -
+lizes LoRA integration under heterogeneous ranks.
+The third category considers personalized ranks , tai -
+loring LoRA configurations to both resource and task 
+characteristics. ReCIT   [ 122] demonstrates that even 
+low-rank gradients can leak sensitive training data 
+through reconstruction attacks, highlighting the need for 
+stronger privacy mechanisms in parameter-efficient fine-
+tuning. FLFT   [ 123] showcases LoRA-based federated 
+tuning in sensitive domains such as defense, using limited 
+communication rounds to achieve cross-institution opti -
+mization. FDLoRA  [ 124] decomposes LoRA into global 
+and local components and adaptively fuses them, balanc -
+ing shared knowledge and personalized adaptation.
+LoRA-based tuning uses rank as a central control 
+dimension to flexibly trade off communication overhead, 
+personalization, and stability: homogeneous ranks facili -
+tate deployment and sharing, heterogeneous ranks bet -
+ter match real-world resource diversity, and personalized 
+ranks align with task-specific needs. However, challenges 
+remain in noise-free aggregation under heterogeneity, 
+preserving expressiveness at extremely low ranks, and 
+defending against privacy leakage. For the emerging gen -
+eration of LLM-based IDS, LoRA offers a critical solution 
+to the memory bottleneck on edge devices. By freezing 
+the massive backbone parameters, it effectively prevents 
+Out-of-Memory errors, making it feasible to deploy 
+foundation-model-level detection capabilities—previ -
+ously reserved for cloud centers—directly onto resource-
+constrained edge gateways.
+Conclusion and outlook
+This survey reviews recent advances in FL-based IDS 
+from a model optimization perspective. Distinct from 
+architecture-centric studies, we organize the literature 
+around three tightly coupled methodological dimensions: 
+aggregation for heterogeneous knowledge integration, 
+communication-efficient transmission under deployment 
+constraints, and personalization for client-specific adap -
+tation in non-IID and dynamic environments. Across 
+these dimensions, we compare representative meth -
+ods and highlight how their interactions jointly shape 
+detection fidelity, communication cost, robustness, and 
+deployability in FL-IDS.
+Aggregation mechanisms: conclusion and outlook
+Aggregation is fundamental to federated IDS and directly 
+affects global model accuracy and convergence stability. 
+Classical synchronous aggregation methods are simple 
+and theoretically well grounded, but they struggle with 
+
+Page 18 of 22
+Ma et al. Journal of Cloud Computing            (2026) 15:88 
+scalability in the presence of computational heteroge -
+neity, non-IID distributions, and unstable communica -
+tion. To address these limitations, a series of improved 
+strategies—such as asynchronous aggregation, semi-
+synchronous aggregation, and heterogeneous-model 
+aggregation—have been proposed   [ 126, 127]. These 
+methods alleviate the impact of stragglers, enable cross-
+model collaboration, and enhance robustness, but they 
+also introduce new challenges, including performance 
+oscillation, increased algorithmic and system complexity, 
+and in some cases reliance on auxiliary public data  [128].
+Transmission optimization: conclusion and outlook
+Communication efficiency is a decisive factor for the 
+practical deployment of federated IDS. Quantization, 
+compression, and delta updates can significantly reduce 
+transmitted bits, while distillation and pruning further 
+enhance adaptability in heterogeneous environments. 
+Pruning, in particular, has shown strong potential in IDS 
+tasks due to its high compression ratio and interpretabil -
+ity   [129]. Nevertheless, most existing methods rely on 
+static compression strategies that do not adapt to evolv -
+ing attack traffic patterns or changing task difficulty, 
+potentially causing degraded detection performance for 
+minority attacks or long-term deployments. Moreover, 
+some solutions depend on additional modules or external 
+data sources, increasing deployment overhead.
+Personalized modeling: conclusion and outlook
+Personalization aims to address the inadequacy of a 
+single global model under non-IID distributions. Full-
+parameter fine-tuning provides the strongest adaptability 
+but incurs excessive communication and computation 
+costs. Selective fine-tuning strikes a balance between 
+efficiency and performance, though its fixed layer-selec -
+tion design may limit flexibility. Lightweight approaches 
+such as adapter-based tuning and LoRA offer effective 
+transfer and adaptation with minimal overhead   [ 130]. 
+Overall, personalization has demonstrated clear ben -
+efits in improving detection coverage and reducing false 
+alarms, yet challenges remain, including instability under 
+dynamic environments, sensitivity to local data quality, 
+and limited cross-domain generalization.
+Future research directions
+Although aggregation, transmission, and personaliza -
+tion provide a useful model-optimization lens for FL-
+IDS, practical deployment will increasingly depend on 
+how these dimensions are co-designed with resource 
+scheduling, task offloading, service orchestration, and 
+broader security management in real cloud–edge systems  
+[131]. Recent adjacent studies on serverless FL resource 
+optimization, traffic-aware edge offloading, SLA-aware 
+orchestration, VM threat prediction, and malicious-user 
+identification further indicate that model design alone 
+is insufficient to ensure robust and deployable federated 
+security systems   [ 132]. Future research may proceed 
+along the following directions:
+Coupling-aware heterogeneous aggregation:  Future 
+FL-IDS aggregation should move beyond homogeneous 
+averaging and explicitly optimize the interaction among 
+structural heterogeneity, asynchronous participation, 
+and trustworthiness of updates. Transfer-based aggrega -
+tion, shared representation alignment, and utility-aware 
+weighting may help integrate heterogeneous models 
+without suppressing minority attack patterns. At the 
+same time, aggregation policies should become more 
+aware of rare-attack coverage, stale updates, and poi -
+soning robustness, rather than focusing only on average 
+convergence.
+Adaptive and attack-aware transmission optimiza -
+tion: Communication-efficient FL-IDS should not rely 
+on static compression policies. Instead, quantization 
+level, pruning rate, delta-update frequency, and sketching 
+intensity should adapt to attack intensity, traffic volatility, 
+client capability, and latency requirements. In particular, 
+future work should study how to reduce communica -
+tion load while preserving subtle anomaly cues, so that 
+compression does not disproportionately harm stealthy 
+attacks, low-frequency events, or long-horizon detection 
+tasks.
+Drift-aware and parameter-efficient personaliza -
+tion: Personalization remains essential because local 
+traffic patterns, service contexts, and attack surfaces 
+evolve over time. Future research should design adaptive 
+module insertion, layer selection, mask update, and rank 
+adjustment mechanisms that allow clients to dynamically 
+decide how much knowledge should be shared globally 
+and how much should remain local. A promising direc -
+tion is to combine parameter-efficient tuning with drift 
+detection and lightweight cross-client transfer, thereby 
+improving local adaptability without incurring the full 
+cost of end-to-end retraining.
+Resource-aware orchestration and offloading for 
+cloud–edge FL-IDS:  Model optimization alone does not 
+determine deployability. In realistic cloud–edge systems, 
+FL-IDS must also coordinate where training, inference, 
+and security services are executed, how communication 
+and compute resources are sliced, and when tasks should 
+be offloaded or deferred. Recent studies on serverless 
+federated resource optimization, traffic-aware mobile 
+edge offloading, and SLA-aware adaptive service orches -
+tration show that scheduling and orchestration policies 
+can directly affect delay, bandwidth efficiency, and system 
+robustness. Integrating these mechanisms with FL-IDS is 
+therefore an important step toward deployment-oriented 
+optimization.
+
+Page 19 of 22
+Ma et al. Journal of Cloud Computing            (2026) 15:88 
+Realistic testbeds, benchmarks, and broader secu -
+rity validation:  Current FL-IDS evaluations are still 
+dominated by static datasets and simplified simulations. 
+Future studies should move toward realistic cloud–edge 
+testbeds, online attack streams, and benchmarks that 
+jointly evaluate detection fidelity, communication over -
+head, concept-drift adaptation, and robustness to unre -
+liable or malicious participants. Adjacent cloud-security 
+studies on VM threat prediction, workload-aware secure 
+resource management, malicious-agent identification, 
+quantum malicious-user prediction, and federated mali -
+cious-user prediction suggest that future FL-IDS bench -
+marks should also consider infrastructure risk, user 
+trustworthiness, and secure data-distribution dynamics 
+as part of broader deployment validation  [48, 49].
+In summary, the next stage of FL-IDS research should 
+move from isolated method improvement toward 
+deployment-oriented co-optimization. The central chal -
+lenge is not a simple balance among accuracy, efficiency, 
+and adaptability, but the joint optimization of detection 
+fidelity, communication cost, robustness to unreliable 
+updates, adaptation under concept drift, resource-aware 
+orchestration, and realistic system validation. Addressing 
+these coupled trade-offs is essential for enabling reliable, 
+scalable, and privacy-preserving next-generation IDS.
+Acknowledgements
+The review was supported by the National Natural Science Foundation 
+of China (no.62272126), the Fundamental Research Funds for the Central 
+Universities.
+Author contributions
+Ma conceived the overall survey framework, conducted the literature review 
+and analysis, and drafted the manuscript. Yang contributed to the collection 
+and categorization of related works, assisted in the technical analysis of 
+aggregation, communication, and personalization methods, and participated 
+in manuscript revision. Ling contributed to the discussion of intrusion 
+detection systems and federated learning backgrounds, and provided critical 
+feedback on the organization and clarity of the survey. Wang supervised the 
+research, provided conceptual guidance and technical insights, and critically 
+reviewed and revised the manuscript. All authors have read and approved the 
+final manuscript.
+Funding
+National Natural Science Foundation of China (No. 62272126).
+Data availability
+No datasets were generated or analysed during the current study.
+Code availability
+Not applicable.
+Materials availability
+Not applicable.
+Declarations
+Ethics approval and consent to participate
+Not applicable.
+Consent for publication
+All authors have read and approved the final manuscript and consent to its 
+publication.
+Competing interests
+The authors declare no competing interests.
+Received: 15 December 2025 / Accepted: 8 April 2026
+References
+1. Barja-Martinez S, Aragüés-Peñalba M, Munné-Collado Í, Lloret-Gallego P , Bul-
+lich-Massagué E, Villafafila-Robles R (2021) Artificial intelligence techniques 
+for enabling big data services in distribution networks: a review. Renewable 
+Sustain Energy Rev 150:111459.  h t t p  s : /  / d o i  . o  r g /  1 0 .  1 0 1 6  / j  . r s e r . 2 0 2 1 . 1 1 1 4 5 9
+2. Yi T, Chen X, Zhu Y, Ge W, Han Z (2023) Review on the application of deep 
+learning in network attack detection. J Educ Chang Network Comput Appl 
+212:103580.  h t t p  s : /  / d o i  . o  r g /  1 0 .  1 0 1 6  / j  . j n c a . 2 0 2 2 . 1 0 3 5 8 0
+3. Abdulganiyu OH, Ait Tchakoucht T, Saheed, Saheed YK (2023) A systematic 
+literature review for network intrusion detection system (ids). Int J Inf Secur 
+22(5):1125–1162.  h t t p  s : /  / d o i  . o  r g /  1 0 .  1 0 0 7  / s  1 0 2 0 7 - 0 2 3 - 0 0 6 8 2 - 2
+4. Abdel-Basset M, Hawash H, Chakrabortty RK, Ryan MJ (2021) Semi-supervised 
+spatiotemporal deep learning for intrusions detection in iot networks. IEEE 
+Internet Things J 8(15):12251–12265.  h t t p  s : /  / d o i  . o  r g /  1 0 .  1 1 0 9  / J  I O T . 2 0 2 1 . 3 0 6 0 8 
+7 8
+5. Zhang C, Xie Y, Bai H, Yu B, Li W, Gao Y (2021) A survey on federated learning. 
+Knowl-Based Syst 216:106775.  h t t p  s : /  / d o i  . o  r g /  1 0 .  1 0 1 6  / j  . k n  o s y  s . 2 0  2 1  . 1 0 6 7 7 5
+6. McMahan B, Moore E, Ramage D, Hampson S, Arcas BA (2017) Communica-
+tion-efficient learning of deep networks from decentralized data. In: Artificial 
+intelligence and statistics. PMLR, pp 1273–1282
+7. Nguyen DC, Ding M, Pathirana PN, Seneviratne A, Li J, Vincent Poor H (2021) 
+Federated learning for internet of things: a comprehensive survey. IEEE Com-
+mun Surv Tutorials 23(3):1622–1658.  h t t p  s : /  / d o i  . o  r g /  1 0 .  1 1 0 9  / C  O M S T . 2 0 2 1 . 3 0 
+7 5 4 3 9
+8. Almanifi ORA, Chow CO, Tham ML, Chuah JH, Kanesan J (2023) Communica-
+tion and computation efficiency in federated learning: a survey. Internet 
+Things 22:100742.  h t t p  s : /  / d o i  . o  r g /  1 0 .  1 0 1 6  / j  . i o t . 2 0 2 3 . 1 0 0 7 4 2
+9. Bhavsar MH, Bekele YB, Roy K, Kelly JC, Limbrick D (2024) Fl-ids: federated 
+learning-based intrusion detection system using edge devices for transporta-
+tion iot. IEEE Access. 12:52215–52226.  h t t p  s : /  / d o i  . o  r g /  1 0 .  1 1 0 9  / A  C C E  S S .  2 0 2 4  . 3  
+3 8 6 6 3 1
+10. Friha O, Ferrag MA, Shu L, Maglaras L, Choo K-KR, Nafaa M (2022) Felids: feder-
+ated learning-based intrusion detection system for agricultural internet of 
+things. J Parallel Distrib Comput 165:17–31.  h t t p  s : /  / d o i  . o  r g /  1 0 .  1 0 1 6  / j  . j p d c . 2 0 2 
+2 . 0 3 . 0 0 3
+11. Choi Y, Ben-Othman J, Cho S, Kim H (2025) A sustainable 3d cube surveillance 
+and pedestrian monitoring framework for green ai theme park. In: IEEE 
+Network
+12. Kim H, Kim H, Guizani, Guizani M (2025) A resting drone-enabled surveillance 
+framework for real-time monitoring with resource efficiency in iot-based 
+smart city. IEEE Internet Things J 12(16):33995–34006.  h t t p  s : /  / d o i  . o  r g /  1 0 .  1 1 0 9  
+/ J  I O T . 2 0 2 5 . 3 5 7 7 6 5 5
+13. Umer MF, Sher M, Bi Y (2017) Flow-based intrusion detection: techniques and 
+challenges. Comput Secur 70:238–254.  h t t p  s : /  / d o i  . o  r g /  1 0 .  1 0 1 6  / j  . c o s e . 2 0 1 7 . 0 5 
+. 0 0 9
+14. Pontes CFT, De Souza MMC, Gondim JJC, Bishop M, Marotta MA (2021) A new 
+method for flow-based network intrusion detection using the inverse potts 
+model. IEEE Trans Netw Serv. Manage 18(2):1125–1136.  h t t p  s : /  / d o i  . o  r g /  1 0 .  1 1 0 
+9  / T  N S M . 2 0 2 1 . 3 0 7 5 5 0 3
+15. Landauer M, Skopik F, Frank M, Hotwagner W, Wurzenberger M, Rauber 
+A (2023) Maintainable log datasets for evaluation of intrusion detection 
+systems. IEEE Trans Dependable Secure Comput 20(4):3466–3482.  h t t p  s : /  / d o i  . 
+o  r g /  1 0 .  1 1 0 9  / T  D S C . 2 0 2 2 . 3 2 0 1 5 8 2
+16. Hadem P , Saikia DK, Moulik S (2021) An sdn-based intrusion detection 
+system using svm with selective logging for ip traceback. Comput Networks 
+191:108015.  h t t p  s : /  / d o i  . o  r g /  1 0 .  1 0 1 6  / j  . c o  m n e  t . 2 0  2 1  . 1 0 8 0 1 5
+17. Liu J, Simsek M, Kantarci B et al (2022) Collaborative feature maps of networks 
+and hosts for ai-driven intrusion detection. In: Proceedings of IEEE GLOBE-
+COM 2022, pp 2662–2667
+18. Kiflay A, Tsokanos A, Fazlali M, Kirner R (2024) Network intrusion detection 
+leveraging multimodal features. Array 22:100349.  h t t p  s : /  / d o i  . o  r g /  1 0 .  1 0 1 6  / j  . a r  r 
+a y  . 2 0 2  4 .  1 0 0 3 4 9
+19. Moustafa N, Keshk M, Choo K-KR, Lynar T, Camtepe S, Whitty M (2021) Dad: a 
+distributed anomaly detection system using ensemble one-class statistical 
+
+Page 20 of 22
+Ma et al. Journal of Cloud Computing            (2026) 15:88 
+learning in edge networks. Futu Gene Com Sys 118:240–251.  h t t p  s : /  / d o i  . o  r g /  
+1 0 .  1 0 1 6  / j  . f u  t u r  e . 2 0  2 1  . 0 1 . 0 1 1
+20. Ferrag MA, Maglaras L, Ahmim A, Derdour M, Janicke H (2020) RDTIDS: rules 
+and decision tree-based intrusion detection system for internet-of-things 
+networks. Future Internet 12(3):44.  h t t p  s : /  / d o i  . o  r g /  1 0 .  3 3 9 0  / fi    1 2 0 3 0 0 4 4
+21. ElSayed MS, Le-Khac NA, Albahar MA, Jurcut A (2021) A novel hybrid model 
+for intrusion detection systems in sdns based on cnn and a new regulariza-
+tion technique. J Educ Chang Network Comput Appl 191:103160.  h t t p  s : /  / d o i  . 
+o  r g /  1 0 .  1 0 1 6  / j  . j n c a . 2 0 2 1 . 1 0 3 1 6 0
+22. Li Y, Xiang Z, Bastian ND et al (2024) Ids-agent: an llm agent for explainable 
+intrusion detection in iot networks. In: Proceedings of the NeurIPS 2024 
+Workshop on Open-World Agents
+23. Al-Janabi M, Ismail MA, Ali, Ali AH (2021) Intrusion detection systems, issues, 
+challenges, and needs. IJCIS 14(1):560–571.  h t t p  s : /  / d o i  . o  r g /  1 0 .  2 9 9 1  / i  j c i s . d . 2 1 0 
+1 0 5 . 0 0 1
+24. AbdulRahman S, Tout H, Ould-Slimane H, Mourad A, Talhi C, Guizani M (2021) 
+A survey on federated learning: the journey from centralized to distributed 
+on-site learning and beyond. IEEE Internet Things J 8(7):5476–5497.  h t t p  s : /  / d 
+o i  . o  r g /  1 0 .  1 1 0 9  / J  I O T . 2 0 2 0 . 3 0 3 0 0 7 2
+25. Huang W, Li T, Wang D, Du S, Zhang J, Huang T (2022) Fairness and accuracy 
+in horizontal federated learning. Inf Sci 589:170–185.  h t t p  s : /  / d o i  . o  r g /  1 0 .  1 0 1 6  / 
+j  . i n s . 2 0 2 1 . 1 2 . 1 0 2
+26. Liu Y, Kang Y, Zou T, Pu Y, He Y, Ye X, Ouyang Y, Zhang Y-Q, Yang Q (2024) Verti-
+cal federated learning: concepts, advances, and challenges. IEEE Trans Knowl 
+Data Eng 36(7):3615–3634.  h t t p  s : /  / d o i  . o  r g /  1 0 .  1 1 0 9  / T  K D E . 2 0 2 4 . 3 3 5 2 6 2 8
+27. Liu Y, Kang Y, Xing C, Chen T, Yang Q (2020) A secure federated transfer learn-
+ing framework. IEEE Intell Syst 35(4):70–82.  h t t p  s : /  / d o i  . o  r g /  1 0 .  1 1 0 9  / M  I S . 2 0 2 0 . 
+2 9 8 8 5 2 5
+28. Wen J, Zhang Z, Lan Y, Cui Z, Cai J, Zhang W (2023) A survey on federated 
+learning: challenges and applications. Int J Mach Learn Cyber. 14(2):513–535.  
+h t t p  s : /  / d o i  . o  r g /  1 0 .  1 0 0 7  / s  1 3 0 4 2 - 0 2 2 - 0 1 6 4 7 - y
+29. Beltrán ETM, Pérez MQ, Sánchez PMS, Bernal SL, Bovet G, Pérez MG, Pérez 
+GM, Celdrán AH (2023) Decentralized federated learning: fundamentals, state 
+of the art, frameworks, trends, and challenges. IEEE Commun Surv Tutorials 
+25(4):2983–3013.  h t t p  s : /  / d o i  . o  r g /  1 0 .  1 1 0 9  / C  O M S T . 2 0 2 3 . 3 3 1 5 7 4 6
+30. Lee J, Oh J, Lim S et al (2020) TornadoAggregate: accurate and scalable feder-
+ated learning via the ring-based architecture. arXiv preprint arXiv:2012.03214
+31. Nguyen J, Malik K, Zhan H et al (2022) Federated learning with buffered asyn-
+chronous aggregation. In: Proceedings of the 25th International Conference 
+on Artificial Intelligence and Statistics (AISTATS), pp 3581–3607
+32. Abd Elaziz M, Fares IA, Dahou A, Shrahili M (2025) Federated learning frame-
+work for iot intrusion detection using tab transformer and nature-inspired 
+hyperparameter optimization. Front Big Data 8:1526480.  h t t p  s : /  / d o i  . o  r g /  1 0 .  3 
+3 8 9  / f  d a t a . 2 0 2 5 . 1 5 2 6 4 8 0
+33. Zhang C, Zhang W, Wu Q, Fan P , Fan Q, Wang J, Letaief KB (2025) Distributed 
+deep reinforcement learning-based gradient quantization for federated 
+learning enabled vehicle edge computing. IEEE Internet Things J 12(5):4899–
+4913.  h t t p  s : /  / d o i  . o  r g /  1 0 .  1 1 0 9  / J  I O T . 2 0 2 4 . 3 4 4 7 0 3 6
+34. Wei K, Li J, Ma C, Ding M, Chen W, Wu J, Tao M, Poor HV (2023) Personalized 
+federated learning with differential privacy and convergence guarantee. IEEE 
+Trans Inf Forensic Secur 18:4488–4503.  h t t p  s : /  / d o i  . o  r g /  1 0 .  1 1 0 9  / T  I F S . 2 0 2 3 . 3 2 9 
+3 4 1 7
+35. Cai Y, Ding W, Xiao Y, Yan Z, Liu X, Wan Z (2024) Secfed: a secure and efficient 
+federated learning based on multi-key homomorphic encryption. IEEE Trans 
+Dependable Secure Comput 21(4):3817–3833.  h t t p  s : /  / d o i  . o  r g /  1 0 .  1 1 0 9  / T  D S C . 
+2 0 2 3 . 3 3 3 6 9 7 7
+36. Zhang H, Ye J, Huang W, Liu X, Gu J (2025) Survey of federated learning in 
+intrusion detection. J Parallel Distrib Comput 195:104976.  h t t p  s : /  / d o i  . o  r g /  1 0 .  1 
+0 1 6  / j  . j p d c . 2 0 2 4 . 1 0 4 9 7 6
+37. Campos EM, Saura PF, González-Vidal A, Hernández-Ramos JL, Bernabé JB, 
+Baldini G, Skarmeta A (2022) Evaluating federated learning for intrusion 
+detection in internet of things: review and challenges. Comput Networks 
+203:108661.  h t t p  s : /  / d o i  . o  r g /  1 0 .  1 0 1 6  / j  . c o  m n e  t . 2 0  2 1  . 1 0 8 6 6 1
+38. Agrawal S, Sarkar S, Aouedi O, Yenduri G, Piamrat K, Alazab M, Bhattacharya S, 
+Maddikunta PKR, Gadekallu TR (2022) Federated learning for intrusion detec-
+tion system: concepts, challenges and future directions. Comput Commun 
+195:346–361.  h t t p  s : /  / d o i  . o  r g /  1 0 .  1 0 1 6  / j  . c o  m c o  m . 2 0  2 2  . 0 9 . 0 1 2
+39. Belenguer A, Pascual J, Navaridas, Navaridas J (2022) Göwfeda novel feder-
+ated network intrusion detection system. arXiv preprint arXiv:2204.12443.  h t t 
+p  s : /  / d o i  . o  r g /  1 0 .  2 1 3 9  / s  s r n . 4 2 6 1 8 0 7
+40. Wardana AA, Sukarno P (2025) Taxonomy and survey of collaborative 
+intrusion detection system using federated learning. ACM Comput Surv 
+57(4):1–36.  h t t p  s : /  / d o i  . o  r g /  1 0 .  1 1 4 5  / 3  7 0 1 7 2 4
+41. Hernandez-Ramos J, Karopoulos G, Chatzoglou E et al (2023) Intrusion detec-
+tion based on federated learning: a systematic review. ACM Comput Surv. 
+Early access
+42. Buyuktanir B, Altinkaya Ş, Karatas Baydogmus G, Yildiz K (2025) Federated 
+learning in intrusion detection: advancements, applications, and future direc-
+tions. Clust Comput 28(7):1–25.  h t t p  s : /  / d o i  . o  r g /  1 0 .  1 0 0 7  / s  1 0 5 8 6 - 0 2 5 - 0 5 3 2 5 - w
+43. Song Q, Yang J, Mohajer A (2025) Multi-objective resource optimization in 
+uav-enabled heterogeneous cellular networks using serverless federated 
+learning and power-domain noma. Trans Emerging Tel Tech 36(8):70210.  h t t p  
+s : /  / d o i  . o  r g /  1 0 .  1 0 0 2  / e  t t . 7 0 2 1 0
+44. Mohajer A, Hajipour J, Leung VCM (2025) Dynamic offloading in mobile edge 
+computing with traffic-aware network slicing and adaptive td3 strategy. IEEE 
+Commun Lett 29(1):95–99.  h t t p  s : /  / d o i  . o  r g /  1 0 .  1 1 0 9  / L  C O M M . 2 0 2 4 . 3 5 0 1 9 5 6
+45. Mohajer A, Mirzaei A, Darabi M, Fernando X (2026) Joint sla-aware task 
+offloading and adaptive service orchestration with graph-attentive multi-
+agent reinforcement learning. IEEE Trans Netw Serv Manage 23:3737–3754.  h 
+t t p  s : /  / d o i  . o  r g /  1 0 .  1 1 0 9  / T  N S M . 2 0 2 6 . 3 6 7 3 1 8 8
+46. Saxena D, Gupta I, Gupta R, Singh AK, Wen X (2023) An ai-driven vm threat 
+prediction model for multi-risks analysis-based cloud cybersecurity. IEEE 
+Trans Syst ManCybern Syst 53(11):6815–6827.  h t t p  s : /  / d o i  . o  r g /  1 0 .  1 1 0 9  / T  S M C . 
+2 0 2 3 . 3 2 8 8 0 8 1
+47. Gupta R, Saxena D, Gupta I, Makkar A, Singh AK (2022) Quantum machine 
+learning driven malicious user prediction for cloud network communications. 
+IEEE Netw Lett 4(4):174–178.  h t t p  s : /  / d o i  . o  r g /  1 0 .  1 1 0 9  / L  N E T . 2 0 2 2 . 3 2 0 0 7 2 4
+48. Gupta K, Saxena D, Gupta R, Singh AK (2024) Maids: malicious agent identi-
+fication-based data security model for cloud environments. Clust Comput 
+27(5):6167–6184.  h t t p  s : /  / d o i  . o  r g /  1 0 .  1 0 0 7  / s  1 0 5 8 6 - 0 2 3 - 0 4 2 6 3 - 9
+49. Gupta K, Saxena D, Gupta R, Kumar J, Singh AK (2024) Fedmup: federated 
+learning driven malicious user prediction model for secure data distribution 
+in cloud environments. Appl. Soft Comput 157:111519.  h t t p  s : /  / d o i  . o  r g /  1 0 .  1 0 1 
+6  / j  . a s o c . 2 0 2 4 . 1 1 1 5 1 9
+50. Pillutla K, Kakade SM, Harchaoui Z (2022) Robust aggregation for federated 
+learning. IEEE Trans Signal Process 70:1142–1154.  h t t p  s : /  / d o i  . o  r g /  1 0 .  1 1 0 9  / T  S P . 
+2 0 2 2 . 3 1 5 3 1 3 5
+51. Chen M, Shlezinger N, Poor HV, Eldar YC, Cui S (2021) Communication-effi-
+cient federated learning. Proc Natl Acad Sci USA 118(17):2024789118.  h t t p  s : /  / 
+d o i  . o  r g /  1 0 .  1 0 7 3  / p  n a s . 2 0 2 4 7 8 9 1 1 8
+52. Tan AZ, Yu H, Cui L, Yang Q (2023) Towards personalized federated learning. 
+IEEE Trans Neural Netw Learn Syst 34(12):9587–9603.  h t t p  s : /  / d o i  . o  r g /  1 0 .  1 1 0 9  / 
+T  N N L S . 2 0 2 2 . 3 1 6 0 6 9 9
+53. Kalapaaking AP , Khalil I, Rahman MS, Atiquzzaman M, Yi X, Almashor M (2023) 
+Blockchain-based federated learning with secure aggregation in trusted 
+execution environment for internet-of-things. IEEE Trans Ind Inf 19(2):1703–
+1714.  h t t p  s : /  / d o i  . o  r g /  1 0 .  1 1 0 9  / T  I I . 2 0 2 2 . 3 1 7 0 3 4 8
+54. Chen X, Zhu G, Deng Y, Fang Y (2022) Federated learning over multihop 
+wireless networks with in-network aggregation. IEEE Trans Wireless Commun 
+21(6):4622–4634.  h t t p  s : /  / d o i  . o  r g /  1 0 .  1 1 0 9  / T  W C . 2 0 2 2 . 3 1 6 8 5 3 8
+55. Deng Y, Lyu F, Ren J et al (2021) Fair: quality-aware federated learning with 
+precise user incentive and model aggregation. In: Proceedings of IEEE INFO-
+COM 2021 – IEEE Conference on Computer Communications, pp 1–10
+56. Li Z, Lin T, Shang X et al (2023) Revisiting weighted aggregation in federated 
+learning with neural networks. In: Proceedings of the 40th International 
+Conference on Machine Learning (ICML), pp 19767–19788
+57. Zhao L, Jiang J, Feng B, Wang Q, Shen C, Li Q (2022) Sear: secure and efficient 
+aggregation for byzantine-robust federated learning. IEEE Trans Dependable 
+Secure Comput 19(5):3329–3342.  h t t p  s : /  / d o i  . o  r g /  1 0 .  1 1 0 9  / T  D S C . 2 0 2 1 . 3 0 9 3 7 1 
+1
+58. Wang Y, Fu H, Kanagavelu R et al (2024) An aggregation-free federated learn-
+ing for tackling data heterogeneity. In: Proceedings of the IEEE/CVF Confer-
+ence on Computer Vision and Pattern Recognition (CVPR), pp 26233–26242
+59. Xie C, Koyejo S, Gupta I (2019) Asynchronous federated optimization. arXiv 
+preprint arXiv:1903.03934
+60. Xu H, Zhang Z, Di S et al (2024) FedFa: a fully asynchronous training paradigm 
+for federated learning. arXiv preprint arXiv:2404.11015
+61. Iakovidou C, Kim K (2024) Asynchronous federated stochastic optimiza-
+tion for heterogeneous objectives under arbitrary delays. arXiv preprint 
+arXiv:2405.10123
+
+Page 21 of 22
+Ma et al. Journal of Cloud Computing            (2026) 15:88 
+62. Ma X, Wen C, Wen T (2021) An asynchronous and real-time update paradigm 
+of federated learning for fault diagnosis. IEEE Trans Ind Inf 17(12):8531–8540.  
+h t t p  s : /  / d o i  . o  r g /  1 0 .  1 1 0 9  / T  I I . 2 0 2 1 . 3 0 6 3 4 8 2
+63. Hu CH, Chen Z, Larsson EG (2023) Scheduling and aggregation design for 
+asynchronous federated learning over wireless networks. IEEE J Sel Areas 
+Commun 41(4):874–886.  h t t p  s : /  / d o i  . o  r g /  1 0 .  1 1 0 9  / J  S A C . 2 0 2 3 . 3 2 4 2 7 1 9
+64. Liang F, Yang Q, Liu R, Wang J, Sato K, Guo J (2022) Semi-synchronous feder-
+ated learning protocol with dynamic aggregation in internet of vehicles. IEEE 
+Trans Veh Technol 71(5):4677–4691.  h t t p  s : /  / d o i  . o  r g /  1 0 .  1 1 0 9  / T  V T . 2 0 2 2 . 3 1 4 8 8 7 
+2
+65. You L, Liu S, Chang Y, Yuen C (2022) A triple-step asynchronous federated 
+learning mechanism for client activation, interaction optimization, and 
+aggregation enhancement. IEEE Internet Things J 9(23):24199–24211.  h t t p  s : /  / 
+d o i  . o  r g /  1 0 .  1 1 0 9  / J  I O T . 2 0 2 2 . 3 1 8 8 5 5 6
+66. Liu J, Wang JH, Rong C, Xu Y, Yu T, Wang J (2021) Fedpa: an adaptively partial 
+model aggregation strategy in federated learning. Comput Networks 
+199:108468.  h t t p  s : /  / d o i  . o  r g /  1 0 .  1 0 1 6  / j  . c o  m n e  t . 2 0  2 1  . 1 0 8 4 6 8
+67. hen Z, Liao W, Hua K, Lu C, Yu W (2021) Towards asynchronous federated 
+learning for heterogeneous edge-powered internet of things. Digit Commun 
+Networks 7(3):317–326.  h t t p  s : /  / d o i  . o  r g /  1 0 .  1 0 1 6  / j  . d c a n . 2 0 2 1 . 0 4 . 0 0 1
+68. Zhou X, Liang W, Kawai A, Fueda K, She J, Wang KI-K (2024) Adaptive segmen-
+tation enhanced asynchronous federated learning for sustainable intelligent 
+transportation systems. IEEE Trans Intell Transp Syst 25(7):6658–6666.  h t t p  s : /  / 
+d o i  . o  r g /  1 0 .  1 1 0 9  / T  I T S . 2 0 2 4 . 3 3 6 2 0 5 8
+69. Wang J, Zeng S, Long Z et al (2023) Knowledge-enhanced semi-supervised 
+federated learning for aggregating heterogeneous lightweight clients in iot. 
+In: Proceedings of the 2023 SIAM International Conference on Data Mining 
+(SDM), pp 496–504
+70. Cho YJ, Manoel A, Joshi G et al (2022) Heterogeneous ensemble knowl-
+edge transfer for training large models in federated learning. arXiv preprint 
+arXiv:2204.12703
+71. Wu J, Liu Q, Huang Z et al (2021) Hierarchical personalized federated learning 
+for user modeling. In: Proceedings of the Web Conference 2021, pp 957–968
+72. Alam S, Liu L, Yan M et al (2022) Fedrolex: model-heterogeneous federated 
+learning with rolling sub-model extraction. Adv Neural Inf Process Syst 
+35:29677–29690
+73. Zhu Z, Hong J, Zhou J (2021) Data-free knowledge distillation for heteroge-
+neous federated learning. In: Proceedings of the 38th International Confer-
+ence on Machine Learning (ICML), pp 12878–12889
+74. Hai T, Sarkar A, Aksoy M, Karmakar R, Manna S, Prasad A (2024) Elevating 
+security and disease forecasting in smart healthcare through artificial neural 
+synchronized federated learning. Clust Comput 27(6):7889–7914.  h t t p  s : /  / d o i  . 
+o  r g /  1 0 .  1 0 0 7  / s  1 0 5 8 6 - 0 2 4 - 0 4 3 5 6 - z
+75. Wang Z, Shu Y, Liao H, Zhou Z, Lv L, Zhang L, Mumtaz S, Guizani M (2025). 
+Edge-end cooperative network resource allocation with time synchroniza-
+tion awareness for federated learning-based distributed energy regulation. 
+IEEE Trans. Smart Grid 16(3):2671–2682. Early access.  h t t p  s : /  / d o i  . o  r g /  1 0 .  1 1 0 9  / 
+T  S G . 2 0 2 5 . 3 5 2 6 4 3 7
+76. Jhunjhunwala D, Gadhikar A, Joshi G et al (2021) Adaptive quantization of 
+model updates for communication-efficient federated learning. In: ICASSP 
+2021 – 2021 IEEE International Conference on Acoustics, Speech and Signal 
+Processing (ICASSP), pp 3110–3114
+77. Liu L, Zhang J, Song S, Letaief KB (2023) Hierarchical federated learning with 
+quantization: convergence analysis and system design. IEEE Trans Wireless 
+Commun 22(1):2–18.  h t t p  s : /  / d o i  . o  r g /  1 0 .  1 1 0 9  / T  W C . 2 0 2 2 . 3 1 9 0 5 1 2
+78. Shlezinger N, Chen M, Eldar YC et al (2020) Federated learning with quantiza-
+tion constraints. In: ICASSP 2020 – 2020 IEEE International Conference on 
+Acoustics, Speech and Signal Processing (ICASSP), pp 8851–8855
+79. Shlezinger N, Chen M, Eldar YC, Poor HV, Cui S (2021) Uveqfed: universal vec-
+tor quantization for federated learning. IEEE Trans Signal Process 69:500–514.  
+h t t p  s : /  / d o i  . o  r g /  1 0 .  1 1 0 9  / T  S P . 2 0 2 0 . 3 0 4 6 9 7 1
+80. Amiri MM, Gunduz D, Kulkarni SR, Poor HV (2020) Federated learning with 
+quantized global model updates. arXiv preprint arXiv:2006.10672
+81. Reisizadeh A, Mokhtari A, Hassani H et al (2020) Fedpaq: a communicationef-
+ficient federated learning method with periodic averaging and quantization. 
+In: Proceedings of the 23rd International Conference on Artificial Intelligence 
+and Statistics (AISTATS), pp 2021–2031
+82. Zhang F, Liu X, Wei Q, Zhai D, Lin S, Jiang J, Ji X (2024) Communication- 
+efficient federated learning via model update distillation. OpenReview. 
+Onlinemanuscript
+83. Malekijoo A, Fadaeieslam MJ, Malekijou H et al (2021) FedZip: a compression 
+framework for communication-efficient federated learning. arXiv preprint 
+arXiv:2102.01593
+84. Jiang Z, Xu Y, Xu H, Wang Z, Liu J, Chen Q, Qiao C (2024) Computation and 
+communication efficient federated learning with adaptive model pruning. 
+IEEE Trans Mob Comput 23(3):2003–2021.  h t t p  s : /  / d o i  . o  r g /  1 0 .  1 1 0 9  / T  M C . 2 0 2 3 . 
+3 2 4 7 7 9 8
+85. Lin R, Xiao Y, Yang TJ et al (2022) Federated pruning: improving neural net-
+work efficiency with federated learning. arXiv preprint arXiv:2209.06359
+86. Yu S, Nguyen P , Anwar A et al (2023) Heterogeneous federated learning using 
+dynamic model pruning and adaptive gradient. In: Proceedings of the 2023 
+IEEE/ACM 23rd International Symposium on Cluster, Cloud and Internet 
+Computing (CCGrid), pp 322–330
+87. Xu Y, Xiao M, Wu J, Gao G, Li D, Xu H, Zhang T (2025). Enhancing decentralized 
+federated learning with model pruning and adaptive communication. IEEE 
+Trans Ind Inf 21(1):70–84. Early access.  h t t p  s : /  / d o i  . o  r g /  1 0 .  1 1 0 9  / T  I I . 2 0 2 4 . 3 4 2 4 4 
+9 7
+88. Jiang Y, Wang S, Valls V, Ko BJ, Lee W-H, Leung KK, Tassiulas L (2023) Model 
+pruning enables efficient federated learning on edge devices. IEEE Trans 
+Neural Netw Learn Syst 34(12):10374–10386.  h t t p  s : /  / d o i  . o  r g /  1 0 .  1 1 0 9  / T  N N L S . 
+2 0 2 2 . 3 1 6 6 1 0 1
+89. Zhou G, Li Q, Liu Y, Zhao Y, Tan Q, Yao S, Xu K (2024) Fedpage: pruning adap-
+tively toward global efficiency of heterogeneous federated learning. IEEE/
+ACM Trans Netw 32(3):1873–1887.  h t t p  s : /  / d o i  . o  r g /  1 0 .  1 1 0 9  / T  N E T . 2 0 2 3 . 3 3 2 8 6 3 
+2
+90. Vahidian S, Morafah M, Lin B (2021) Personalized federated learning by struc-
+tured and unstructured pruning under data heterogeneity. In: Proceedings 
+of the 2021 IEEE 41st International Conference on Distributed Computing 
+Systems Workshops (ICDCSW), pp 27–34
+91. Wang H, Liu Z, Hoshino K et al (2025) FedPaI: achieving extreme spar-
+sity in federated learning via pruning at initialization. arXiv preprint 
+arXiv:2504.00308
+92. Rabbani T, Feng B, Bornstein M et al (2021) ComFetch: federated learn-
+ing of large networks on constrained clients via sketching. arXiv preprint 
+arXiv:2109.08346
+93. Rothchild D, Panda A, Ullah E et al (2020) Fetchsgd: communication-efficient 
+federated learning with sketching. In: Proceedings of the 37th International 
+Conference on Machine Learning (ICML), pp 8253–8265
+94. Wu C, Wu F, Lyu L, Huang Y, Xie X (2022) Communication-efficient federated 
+learning via knowledge distillation. Nat Commun 13(1):2032.  h t t p  s : /  / d o i  . o  r g /  
+1 0 .  1 0 3 8  / s  4 1 4 6 7 - 0 2 2 - 2 9 7 6 3 - x
+95. Xie L, Lin M, Luan T et al (2024) MH-PFLID: model heterogeneous personal-
+ized federated learning via injection and distillation for medical data analysis. 
+arXiv preprint arXiv:2405.06822
+96. Fan T, Ma G, Kang Y et al (2024) FedMKT: federated mutual knowledge trans-
+fer for large and small language models. arXiv preprint arXiv:2406.02224
+97. Ozkara K, Singh N, Data D et al (2021) Quped: quantized personalization via 
+distillation with applications to federated learning. Adv Neural Inf Process 
+Syst 34:3622–3634
+98. Tsouvalas V, Saeed A, Ozcelebi T et al (2024) Communication-efficient feder-
+ated learning through adaptive weight clustering and server-side distillation. 
+In: ICASSP 2024 – 2024 IEEE International Conference on Acoustics, Speech 
+and Signal Processing (ICASSP), pp 5805–5809
+99. Qin Z, Chen D, Qian B et al (2023) Federated full-parameter tuning of billion-
+sized language models with communication cost under 18 kilobytes. arXiv 
+preprint arXiv:2312.06353
+100. Shu Y, Hu W, Ng SK et al (2024) Ferret: federated full-parameter tuning at scale 
+for large language models. arXiv preprint arXiv:2409.06277
+101. Ghari PM, Shen Y (2024) Budgeted online model selection and fine-tuning via 
+federated learning. arXiv preprint arXiv:2401.10478
+102. Cheng G, Chadha K, Duchi J (2021) Fine-tuning is fine in federated learning. 
+arXiv preprint arXiv:2108.07313
+103. Ghari PM, Shen Y (2024) Personalized federated learning with mixture of 
+models for adaptive prediction and model fine-tuning. Adv Neural Inf Pro-
+cess Syst 37:92155–92183
+104. Arivazhagan MG, Aggarwal V, Singh AK et al (2019) Federated learning with 
+personalization layers. arXiv preprint arXiv:1912.00818
+105. Sun Y, Xie Y, Ding B et al (2024) Exploring selective layer fine-tuning in feder-
+ated learning. arXiv preprint arXiv:2408.15600
+106. Sun B, Huo H, Yang Y et al (2021) Partialfed: cross-domain personalized 
+federated learning via partial initialization. Adv Neural Inf Process Syst 
+34:23309–23320
+
+Page 22 of 22
+Ma et al. Journal of Cloud Computing            (2026) 15:88 
+107. Pillutla K, Malik K, Mohamed AR et al (2022) Federated learning with partial 
+model personalization. In: Proceedings of the 39th International Conference 
+on Machine Learning (ICML), pp 17716–17758
+108. Tamirisa R, Xie C, Bao W et al (2024) Fedselect: personalized federated learn-
+ing with customized selection of parameters for fine-tuning. In: Proceedings 
+of the IEEE/CVF Conference on Computer Vision and Pattern Recognition 
+(CVPR), pp 23985–23994
+109. Chen H, Zhang Y, Krompass D et al (2024) Feddat: an approach for founda-
+tion model finetuning in multi-modal heterogeneous federated learning. 
+In: Proceedings of the AAAI Conference on Artificial Intelligence, vol 38. pp 
+11285–11293
+110. Ghiasvand S, Yang Y, Xue Z et al (2024) Communication-efficient and 
+tensorized federated fine-tuning of large language models. arXiv preprint 
+arXiv:2410.13097
+111. Lu W, Hu X, Wang J et al (2023) FedCLIP: fast generalization and personaliza-
+tion for CLIP in federated learning. arXiv preprint arXiv:2302.13485
+112. Feng X, Feng X, Du X et al (2024) Adapter-based selective knowledge distil-
+lation for federated multi-domain meeting summarization. IEEE/ACM Trans 
+Audio Speech Lang Process. Early access
+113. Chen S, Long G, Shen T et al (2023) Prompt federated learning for weather 
+forecasting: toward foundation models on meteorological data. arXiv pre-
+print arXiv:2301.09152
+114. Sun J, Xu Z, Yin H et al (2023) FedBPT: efficient federated black-box prompt 
+tuning for large language models. arXiv preprint arXiv:2310.01467
+115. Yang FE, Wang CY, Wang YCF (2023) Efficient model personalization in 
+federated learning via client-specific prompt generation. In: Proceedings 
+of the IEEE/CVF International Conference on Computer Vision (ICCV), pp 
+19159–19168
+116. Zhang J, Vahidian S, Kuo M et al (2024) Towards building the federatedgpt: 
+federated instruction tuning. In: ICASSP 2024 – 2024 IEEE International Con-
+ference on Acoustics, Speech and Signal Processing (ICASSP), pp 6915–6919
+117. Kim Y, Kim J, Mok WL et al (2023) Client-customized adaptation for param-
+eterefficient federated learning. In: Findings of the association for computa-
+tional linguistics: aCL 2023. pp 1159–1172
+118. Guo P , Zeng S, Wang Y et al (2024) Selective aggregation for low-rank adapta-
+tion in federated learning. arXiv preprint arXiv:2410.01463
+119. Babakniya S, Fabian Z, He C, Soltanolkotabi M, Avestimehr S (2023) A data-
+free approach to mitigate catastrophic forgetting in federated class incre-
+mental learning for Vision tasks. Adv Neural Inf Process Syst 36:66408–66425
+120. Fan B, Su X, Tarkoma S, Hui P (2025) HeLoRA: LoRA-heterogeneous federated 
+fine-tuning for foundation models. ACM Trans Internet Technol 25(2):1–22.  h t 
+t p  s : /  / d o i  . o  r g /  1 0 .  1 1 4 5  / 3  7 2 3 8 7 7
+121. Wang Z, Shen Z, He Y et al (2024) FLORA: federated fine-tuning large 
+language models with heterogeneous low-rank adaptations. arXiv preprint 
+arXiv:2409.05976
+122. Xie J, He R, Li S et al (2025) ReCIT: reconstructing full private data from 
+gradient in parameter-efficient fine-tuning of large language models. arXiv 
+preprint arXiv:2504.20570
+123. Tao Y, Yang R, Zeng K, Yin C, Lu Y, Lu W, Shi Y, Wang B, Huang B (2025). Early 
+access.: Flft: a large-scale pre-training model distributed fine-tuning method 
+that integrates federated learning strategies. IEEE Access. 13:56439–56453.  h t 
+t p  s : /  / d o i  . o  r g /  1 0 .  1 1 0 9  / A  C C E  S S .  2 0 2 5  . 3  5 4 9 8 1 9
+124. Qi J, Luan Z, Huang S et al (2024) FDLoRA: personalized federated learning of 
+large language model via dual LoRA tuning. arXiv preprint arXiv:2406.07925
+125. Sun G, Mendieta M, Yang T, Chen C (2022). Exploring parameter-efficient 
+fine-tuning for improving communication efficiency in federated learning. 
+OpenReview preprint
+126. Xu C, Qu Y, Xiang Y, Gao L (2023) Asynchronous federated learning on hetero-
+geneous devices: a survey. Comput Sci Rev 50:100595.  h t t p  s : /  / d o i  . o  r g /  1 0 .  1 0 1 
+6  / j  . c o  s r e  v . 2 0  2 3  . 1 0 0 5 9 5
+127. Liu S, Yu Y, Zong Y, Yeoh PL, Guo L, Vucetic B, Duong TQ, Li Y (2024) Delay 
+and energy-efficient asynchronous federated learning for intrusion detec-
+tion in heterogeneous industrial internet of things. IEEE Internet Things J 
+11(8):14739–14754.  h t t p  s : /  / d o i  . o  r g /  1 0 .  1 1 0 9  / J  I O T . 2 0 2 3 . 3 3 4 4 4 5 7
+128. Pouriyeh S, Shahid O, Parizi RM, Sheng QZ, Srivastava G, Zhao L, Nasajpour 
+M (2022) Secure smart communication efficiency in federated learning: 
+achievements and challenges. Appl Sci 12(18):8980.  h t t p  s : /  / d o i  . o  r g /  1 0 .  3 3 9 0  / a  
+p p 1 2 1 8 8 9 8 0
+129. Liu S, Yu G, Yin R, Yuan J (2021) Adaptive network pruning for wireless feder-
+ated learning. IEEE Wireless Commun Lett 10(7):1572–1576.  h t t p  s : /  / d o i  . o  r g /  1 
+0 .  1 1 0 9  / L  W C . 2 0 2 1 . 3 0 7 4 6 0 5
+130. Bian J, Peng Y, Wang L et al (2025) A survey on parameter-efficient fine-tuning 
+for foundation models in federated learning. arXiv preprint arXiv:2504.21099
+131. Allouah Y, El Mrini A, Guerraoui R et al (2024) Fine-tuning personalization in 
+federated learning to mitigate adversarial clients. Adv Neural Inf Process Syst 
+37:100816–100844
+132. Saxena D, Gupta R, Singh AK, Vasilakos AV (2024) Emerging vm threat predic-
+tion and dynamic workload estimation for secure resource management in 
+industrial clouds. IEEE Trans Automat Sci Eng 21(4):5837–5851.  h t t p s :   /  / d o  i .  o r  g  
+/  1 0  . 1 1   0 9  / T  A S E . 2  0 2 3 . 3 3 1 9 3 7 3
+Publisher’s Note
+Springer Nature remains neutral with regard to jurisdictional claims in 
+published maps and institutional affiliations.

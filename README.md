@@ -20,6 +20,18 @@ drift separately from controlled semi-synthetic diagnosis and adaptation results
 
 ## Run
 
+### Review demonstration
+
+A small local Streamlit interface is available in `streamlit_app.py`. It replays
+saved held-out scenarios through the actual diagnosis rule and shows plain-English
+decisions, including missed cases. It does not retrain models or connect to AWS.
+
+On the configured Windows machine, double-click `Start_Review_Demo.cmd`, then open
+<http://127.0.0.1:8501>. See `docs/review_demo.md` for setup and a short walkthrough.
+Optional interface dependencies are in `requirements-demo.txt`.
+
+### Research pipeline
+
 Use the supported Python version and install the pinned dependencies from `requirements.txt`. Then
 run:
 

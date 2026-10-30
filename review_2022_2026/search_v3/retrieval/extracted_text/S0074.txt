@@ -1,0 +1,1376 @@
+Interpretable intrusion detection 
+for IoT environments using a self-
+attention-based explainable AI 
+framework
+Kanta Prasad Sharma1, Tapsi Nagpal2, Tarak Vora3, Anupam Yadav4,  
+Muhammad Irsyad Abdullah5, B. Jayaprakash6, Aditya Kashyap7,8, G. Sridevi9, 
+A. Bhowmik10,11 & Bethelehem Burju Bukate12
+The rapid growth of Internet of Things (IoT) devices has introduced critical cybersecurity challenges 
+due to the large attack surface and diverse interconnected systems. This work proposes a novel self-
+attention deep neural network (SA-DNN) augmented with a learnable feature gating (LFG) mechanism. 
+The LFG component dynamically emphasizes security-relevant features during training, while 
+suppressing redundant data. This architecture enables seamless, end-to-end feature optimization. 
+It enhances the robustness of the model across varied intrusion scenarios without the need for 
+conventional manual or filter-based feature selection. The self-attention module efficiently captures 
+long-range relationships within network traffic, while the LFG mechanism boosts the adaptability of 
+feature representations. The framework is explainable through shapley additive explanations (SHAP) 
+and local interpretable model-agnostic explanations (LIME) and provides transparency in intrusion 
+detection decisions. Evaluations on IoT datasets BoT-IoT and N-BaIoT show superior performance 
+of the proposed method over baseline and state-of-the-art methods, achieving accuracy values of 
+99.3% and 99.6%, respectively. Additional experiments on the general network dataset UNSW-NB15 
+demonstrate strong generalizability with 97.9% accuracy. This confirms the robustness of the model 
+across diverse intrusion scenarios. The proposed approach provides a lightweight, scalable, and 
+interpretable solution with strong generalizability across IoT and broader network security settings.
+Keywords Self-attention mechanism, Deep neural networks, Explainable artificial intelligence, Internet of 
+things, IoT intrusion detection, Network security, Cybersecurity in IoT
+Recently, the IoT has become popular due to enhanced technology, increased access to the Internet, and the 
+generation of big data. But this growth has also come with increased risks, which can be noticed from the 
+emergence of intrusion detection systems (IDS) for IoT networks. IDS are highly useful for the detection of 
+suspicious or unusual activity in such networks, raising alarms that help deter the exploitation of compromised 
+devices. The distributed and massive nature of IoT networks, which include numerous and heterogeneous devices 
+used for different purposes, has created new problems associated with data storage, computational capabilities, 
+and security. Therefore, the creation of effective and responsive solutions is needed1–3.
+1Computer Science & Engineering, Amity University Greater Noida Campus, Noida, India. 2Department of 
+Computer Science and Engineering, Lingaya’s Vidyapeeth, Faridabad, India. 3Department of Civil Engineering, 
+Faculty of Engineering & Technology, Marwadi University Research Center, Marwadi University, Rajkot, 
+Gujarat, India. 4Department of Computer Engineering and Application, GLA University, Mathura 281406, India. 
+5Management and Science University, Shah Alam, Selangor, Malaysia. 6Department of Computer Science & IT, 
+School of Sciences, JAIN (Deemed to Be University), Bangalore, Karnataka, India. 7Centre for Research Impact 
+& Outcome, Chitkara University Institute of Engineering and Technology, Chitkara University, Rajpura, Punjab 
+140401, India. 8Sharda School of Engineering and Sciences, Sharda University, Knowledge Park III, Greater Noida, 
+Uttar Pradesh 201310, India. 9Department of CSE, Raghu Engineering College, Visakhapatnam, Andhra Pradesh 
+531162, India. 10Department of Additive Manufacturing, Mechanical Engineering, SIMATS, Saveetha Institute 
+of Medical and Technical Sciences, Thandalam, Chennai 602105, India. 11Division of Research and Development, 
+Lovely Professional University, Phagwara, Punjab, India. 12Faculty of Mechanical Engineering, Jimma Institute of 
+Technology, Jimma University, Jimma, Ethiopia. email: bethelhem.burju@ju.edu.et
+OPEN
+Scientific Reports |        (2025) 15:39937 1| https://doi.org/10.1038/s41598-025-23750-0
+www.nature.com/scientificreports
+
+
+On the basis of the applied model, traditional IDS techniques are broadly categorized into two types: those 
+based on signature matching and those based on anomaly detection. The main strength of signature-based 
+methods is that they rely on specific patterns of attack. Previous work shows difficulties in handling zero-day 
+attacks, and such approaches involve trade-offs, including considerable storage and computation requirements, 
+making them unfit for IoT 4. Conversely, anomaly-based IDS methods identify variations from normal traffic 
+patterns and thus can detect new attack patterns. However, anomaly-based systems often generate high false 
+positive rates, as benign anomalies may also be flagged as malicious activities, highlighting the need for advanced 
+detection methodologies5.
+The proliferation of IoT devices has increased the potential for cyberattacks due to heterogeneous devices, 
+limited computational resources, and dynamic network environments. Existing IDS solutions struggle with 
+zero-day attacks, high false positives, and the need for manual feature selection, thereby creating a need for a 
+robust, automated, and explainable intrusion detection framework.
+IoT networks span across various layers of the Open Systems Interconnection (OSI) model, where each 
+layer is unique in terms of risk and attack surface. At the physical layer, potential adversarial behaviors include 
+jamming and eavesdropping, where transmission of data may be disrupted or confidentiality compromised, 
+respectively. The data link layer can face problems like collisions and replay attacks, which interfere with the 
+rules used to send packets 6. The network layer, responsible for moving data between devices, is vulnerable 
+to sinkhole and Sybil attacks that can make the network unreliable. Likewise, at the transport layer, which is 
+responsible for delivering data reliably, DoS and session hijacking attacks can flood the system or intrude and 
+take over an unauthorized session, respectively. Finally, the application layer, which connects directly with users, 
+is often targeted by malware, phishing, and ransomware attacks that try to steal data or disrupt services7,8.
+This scenario can be visualized in Fig.  1, which illustrates the integration of IoT architecture with the OSI 
+model, highlighting how data flows from physical devices to applications. It also shows where deep learning 
+models operate within the application layer for tasks such as intrusion detection and predictive analytics.
+New machine learning (ML) and deep learning (DL) methods also offer potential solutions to these 
+difficulties. These techniques help design systems that are capable of learning across multiple layers of the OSI 
+model to provide better ways of detecting attacks 9,10. In particular, the application of attention mechanisms 
+improves IDS performance because they allow models to focus on important features and dependencies in IoT 
+Fig. 1. Mapping of OSI Layers to IoT architecture with deep learning model integration.
+ 
+Scientific Reports |        (2025) 15:39937 2| https://doi.org/10.1038/s41598-025-23750-0
+www.nature.com/scientificreports/
+
+network data. This capability is necessary for detecting complex attack patterns while excluding excessive noise 
+and false alarms11. Consequently, this research on intrusion detection proposes an attention-based deep learning 
+approach for dynamic and resource-constrained IoT environments.
+In contrast to traditional approaches, this model avoids the use of filter-based feature selection by employing 
+an end-to-end learning framework that independently extracts relevant features from IoT-specific datasets. 
+Applying attention mechanisms helps the model achieve better results in identifying attacks across all layers 
+of the OSI model and enhance protection against many types of cyber threats. Moreover, the adoption of post-
+hoc interpretability tools such as SHAP and LIME is useful for decision-making, since they make it easier to 
+explain the results to other stakeholders and build trust in the system. For better practical usability, the suggested 
+approach is evaluated on IoT-related dataset as well as on non-IoT datasets, offering a scalable, efficient, and 
+explainable technique to secure networks.
+While several recent works have leveraged deep learning and attention-based models for IoT intrusion 
+detection, most existing approaches still suffer from static feature selection, limited interpretability, and 
+restricted validation across heterogeneous datasets. To address these gaps, our work introduces a dynamic 
+LFG mechanism within a Self-Attention framework, incorporates explainability through SHAP and LIME, and 
+validates performance on both IoT-specific and general-purpose datasets. These aspects distinguish our approach 
+from prior studies and establish its novelty in terms of adaptability, interpretability, and generalizability.
+Although the primary focus of this research is intrusion detection in IoT environments, we additionally 
+evaluate the framework on the UNSW-NB15 dataset. Unlike BoT-IoT and N-BaIoT, which are IoT-specific, 
+UNSW-NB15 captures a broader spectrum of modern network intrusions. Its inclusion allows us to examine 
+the cross-domain adaptability of the proposed SA-DNN + LFG model and to demonstrate that the framework is 
+effective not only for IoT security but also for general-purpose intrusion detection scenarios.
+The main contribution of this work has been elucidated below:
+ 1. We propose a novel Self-Attention-based Deep Neural Network (SA-DNN) integrated with a Learnable Fea-
+ture Gating (LFG) mechanism that adaptively filters redundant information and emphasizes discriminative 
+features in IoT intrusion detection.
+ 2. We incorporate SHAP and LIME frameworks to enhance transparency and interpretability of the model, 
+thereby improving trust and accountability for security analyst.
+ 3. We validate the proposed framework on IoT datasets (BoT-IoT and N-BaIoT) as well as the general network 
+dataset (UNSW-NB15), demonstrating its robustness and generalizability across diverse intrusion scenarios.
+ 4. We analyze the feasibility of deploying the model on resource-constrained IoT devices, highlighting its scal-
+ability and suitability for real-time environments.
+The organization of the paper can be explained as follows: Section "Related works" discusses the existing solutions 
+proposed for an intrusion detection framework. Section " Proposed methodology" elaborates on the building 
+blocks involved in the design of the proposed methodology. Then, Sect.  "Results and discussion"  describes the 
+results and discussion. Finally, Sect. " Conclusion and future work" concludes the research work along with its 
+future directions.
+Related works
+Intrusion detection systems (IDS) for IoT have undergone significant development, with diverse approaches 
+ranging from classical machine learning to deep learning and distributed paradigms. This section reviews 
+important studies, pointing out both their strengths and weaknesses, and explains how our proposed SA-
+DNN + LFG framework positions into this context.
+Kumar et al.12 proposed a unified IDS framework that brought multiple detection systems together under one 
+structure. This modular design improved flexibility but it also added complexity and computational overhead, 
+which limited its scalability. In recent years, deep learning has gained attention in IDS because of its ability 
+to identify complex attack patterns. For example, Saba et al. 13 used CNNs and LSTMs to capture spatial and 
+temporal traffic features, achieving strong results in DDoS detection. However, their models required significant 
+resources make them difficult to deploy on IoT devices with limited capacity. Similarly, Awajan 14 showed that 
+deep neural networks could scale in large IoT environments, but their reliance on high-dimensional data 
+increased training time and reduced adaptability. These studies highlight the need for lightweight yet effective 
+deep learning approaches. This gap is addressed in this work using learnable feature gating, which reduces 
+redundancy without compromising detection accuracy.
+Graph-based methods have also been explored. Lo et al.15 proposed E-Graph SAGE, which is a GNN-based 
+framework to effectively capture spatial–temporal dependencies of multi-stage IoT attacks. Despite its strength 
+in modeling relationships, the framework faces scalability issues in large IoT networks with sparse samples. 
+Similarly, Li et al.16 applied semi-supervised learning with GANs (HDA-IDS) to detect outliers in skewed data 
+distributions. Although effective in handling imbalanced datasets, GAN training remains computationally 
+expensive. This limits the real-time applicability. Our proposed SA-DNN with attention avoids such overhead 
+by capturing long-range relationships efficiently, while the LFG module adaptively emphasizes discriminative 
+features to maintain scalability.
+Lightweight IDS designs, such as those by Azimjonov and Kim 17, optimized linear SVMs with feature 
+selection to balance accuracy and computational cost. However, these simplified models often lack the flexibility 
+to adapt to evolving attack types. Anwar et al. 18 addressed privacy concerns using federated learning, which 
+preserved data confidentiality by training models locally and aggregating updates centrally. While effective in 
+enhancing privacy and fault tolerance, this approach introduces challenges in communication overhead and 
+synchronization. Shahin et al.19 applied transfer learning to mitigate recalibration issues but its efficiency across 
+Scientific Reports |        (2025) 15:39937 3| https://doi.org/10.1038/s41598-025-23750-0
+www.nature.com/scientificreports/
+
+heterogeneous IoT datasets remains uncertain. By comparison, our framework not only reduces computational 
+cost through feature gating but also ensures interpretability with SHAP and LIME. This bridges the gap between 
+efficiency, adaptability, and transparency.
+Beyond these, optimization and distributed computing techniques have been explored to enhance IDS. Vakili 
+et al.20 combined Grey Wolf Optimization with MapReduce for scalable IoT service composition, while Heidari 
+et al.21 developed blockchain-based IDS for drone communication. These works demonstrated scalability and 
+trustworthiness but introduced energy overhead and limited real-world validation. Similarly, Amiri et al. 22,23 
+surveyed AI methods in IoT healthcare, and Zanbouri et al. 24 optimized blockchain-IIoT environments using 
+swarm intelligence. These contributions illustrate the breadth of AI applications but highlight persistent issues 
+of complexity, energy cost, and generalizability. Our SA-DNN + LFG specifically addresses these by offering a 
+lightweight and scalable IDS validated on multiple IoT and general datasets.
+Recent research has also advanced intrusion detection in IoT and related domains using collaborative and 
+federated learning approaches. For example, Khan et al.25 proposed a collaborative SRU network with dynamic 
+behaviour aggregation, aiming to reduce communication overhead and enhance explainability in smart 
+healthcare systems. Khan et al. 26 introduced a Federated-Boosting scheme for consumer IoT, which addresses 
+data imbalance and overfitting challenges while preserving device privacy through distributed training. Similarly, 
+Khan et al.27 presented Fed-Inforce-Fusion, a federated reinforcement-based intrusion detection framework for 
+Internet of Medical Things (IoMT) networks, which enhances privacy and security by leveraging reinforcement 
+learning for adaptive aggregation. These studies highlight the growing role of federated and distributed learning 
+for privacy-preserving, resource-efficient intrusion detection. However, they primarily focus on collaborative 
+learning paradigms, whereas our work distinguishes itself by employing a self-attention-based architecture with 
+learnable feature gating and post-hoc interpretability (SHAP and LIME) to provide a lightweight and transparent 
+IDS tailored to IoT environments.
+To complement the detailed discussion of key studies and foundational research, Table 1 provides 
+a comprehensive summary of the reviewed and additional relevant works, covering methods, datasets, 
+algorithms, and limitations. While prior deep learning and attention-based IDS approaches have advanced 
+intrusion detection, most still rely on static feature selection, lack interpretability, or have not been validated on 
+diverse datasets. In contrast, our proposed SA-DNN + LFG framework integrates a Self-Attention mechanism 
+with a novel Learnable Feature Gating module that dynamically filters redundant features and emphasizes 
+discriminative ones. This dual design enables the model to capture long-range dependencies while refining local 
+relevance, offering a more adaptive and robust solution for high-dimensional and noisy IoT traffic. Unlike earlier 
+studies, our work also incorporates SHAP and LIME for interpretability and validates performance not only on 
+IoT datasets (BoT-IoT and N-BaIoT) but also on the general UNSW-NB15 dataset, thereby demonstrating both 
+explainability and generalizability. These contributions distinguish our approach from existing literature and 
+establish its value as a scalable, trustworthy IDS solution for real-world IoT networks.
+Proposed methodology
+In this section, the phases involved in the proposed framework have been elucidated. The working of each phase 
+and the algorithm used in the corresponding phases has been discussed in the subsequent sub section. Figure 2 
+illustrates the components present in the proposed methodology to leverage about the interconnectivity among 
+them. Here, the BoT-IoT, N-BaIoT, and UNSW-NB15 datasets were processed independently, not merged. Each 
+dataset underwent the same sequence of preprocessing, feature extraction, sampling, and classification through 
+the SA-DNN + LFG model. For IoT-specific datasets (BoT-IoT and N-BaIoT), interpretability analysis was 
+conducted using SHAP and LIME to provide feature-level explanations. For UNSW-NB15, evaluation focused 
+on quantitative metrics to assess generalizability. This separation ensures dataset-specific evaluation and avoids 
+interpretability bias due to heterogeneous feature sets.
+It is important to note that the BoT-IoT, N-BaIoT, and UNSW-NB15 datasets were not merged at any stage. 
+Instead, the complete pipeline shown in Fig.  2 was executed independently for each dataset, ensuring dataset-
+specific training and evaluation. Results are therefore reported separately to provide a fair and transparent 
+comparison across benchmarks.
+Dataset description
+This study employs three publicly available datasets: N-BaIoT, BoT-IoT, and UNSW-NB15, for the training and 
+evaluation of the proposed SA-DNN + LFG model. These datasets were selected due to their comprehensiveness, 
+realistic representation of IoT and general-purpose network traffic, and wide acceptance as benchmarks in the 
+intrusion detection research community. BoT-IoT and N-BaIoT are IoT-specific datasets that capture realistic 
+smart device traffic under a variety of benign and attack scenarios, while UNSW-NB15 provides a broader 
+perspective by including diverse modern attack categories beyond IoT-specific threats. Together, these datasets 
+ensure that the proposed model is rigorously evaluated for both IoT environments and more general intrusion 
+detection scenarios.
+N-BaIoT dataset
+Meidan et al.5 established the N-BaIoT dataset for benchmark testing of IoT intrusion detection systems when 
+they made it publicly accessible through Kaggle in 2018. The tool functions as an industry-standard resource 
+to combat smart IoT device botnet attacks because it specifically focuses on this security problem. Nine 
+commercially available IoT devices composed of Edimax IP cameras and Philips B120N/10 baby monitors and 
+Wemo smart plugs underwent an infection process to create this dataset. Two dominating botnets in the IoT 
+field belong to them: Mirai and BASHLITE. The botnets conduct wide-ranging distributed denial-of-service 
+attacks through vulnerable IoT devices. The dataset contains more than 7 million time series records, each 
+Scientific Reports |        (2025) 15:39937 4| https://doi.org/10.1038/s41598-025-23750-0
+www.nature.com/scientificreports/
+
+characterized by 115 statistical features extracted from raw network traffic flows. These features include packet-
+level and connection-level statistics, such as:
+• Packet jitter and entropy (e.g., H_L0.01_mean, HH_jit_L0.1_mean)
+• Mutual information measures (e.g., MI_dir_L0.1_variance)
+• Directional statistics for inbound/outbound flows
+• Inter-arrival times, packet lengths, and flow durations
+The traffic is labeled into 11 categories: one benign class and 10 attack types, including gafgyt_combo, gafgyt_
+junk, gafgyt_scan, mirai_syn, mirai_udpplain, and more. Each attack type corresponds to a specific mode 
+of botnet exploitation, such as port scanning, TCP/UDP flooding, or malformed packet generation. These 
+categories were chosen based on real-world attack signatures and thus reflect practical threats in modern IoT 
+S. 
+No Authors & year Key contribution Techniques used Dataset Limitation
+1 Kumar et al.12 Unified IDS framework for IoT environments Ensemble ML techniques NSL-KDD Lack of temporal feature utilization
+2 Saba et al.13 Anomaly-based IDS using deep learning models CNN and RNN models NSL-KDD, CICIDS High false-positive rates in anomaly 
+detection
+3 Awajan14 Deep learning-based IDS for IoT networks Autoencoder-based deep learning NSL-KDD Difficulty in adapting to 
+heterogeneous IoT networks
+4 Lo et al.15 GNN-based IDS for IoT networks Graph Neural Networks IoT-specific Dataset Limited exploration of temporal 
+relationships
+5 Li et al.16 Semi-supervised IDS using CL-GAN Semi-supervised Conditional GAN UNSW-NB15 Reliance on partially labeled 
+datasets
+6 Azimjonov & 
+Kim17
+Lightweight IDS using Linear SVM and feature 
+selectors Linear SVM BoT-IoT Lack of scalability to large datasets
+7 Anwar et al.18 Federated IDS with differential privacy for IoT Federated Learning NSL-KDD Privacy concerns in distributed IDS 
+frameworks
+8 Shahin et al.19 AI-enabled IDS for Industrial IoT Ensemble DL models Custom IoT Dataset Insufficient evaluation on IoT-
+specific datasets
+9 Vakili et al.20
+Proposed a new method for service composition 
+in cloud-based IoT using Grey Wolf Optimization 
+and MapReduce
+Grey Wolf Optimization (GWO), 
+MapReduce framework
+Simulated cloud-IoT 
+environment
+Scalability tested only in simulation; 
+lacks real-world deployment results
+10 Amiri et al.22 Reviewed DL applications in IoT medical 
+informatics and diagnostics
+Systematic Literature Review 
+(SLR), CNN, RNN, DNN, Transfer 
+Learning
+Multiple medical 
+datasets (from 
+reviewed works)
+Challenges of model complexity, 
+edge device deployment not deeply 
+addressed
+11 Heidari et al.28 Introduced hybrid optimization for reliable data 
+aggregation in IIoT
+Hybrid Optimization (improved 
+WOA + PSO), Density Correlation 
+Degree
+Industrial IoT 
+benchmark datasets
+Performance under adversarial 
+network conditions not evaluated
+12 Heidari et al.21 Developed blockchain-enabled intrusion detection 
+system for Internet of Drones
+Blockchain, Radial Basis Function 
+Neural Network (RBF-NN)
+Synthetic drone 
+communication 
+datasets
+Energy overhead due to blockchain 
+and limited scalability for large 
+swarms
+13 Amiri et al.23 Surveyed nature-inspired algorithms in IoT-based 
+healthcare services
+PSO, ACO, GA, ABC, SLR 
+methodology
+Based on reviewed 
+literature (no new 
+dataset)
+No unified framework proposed for 
+integrating nature-inspired methods
+14 Zanbouri et al.24 Optimized blockchain-based IIoT with GSO-based 
+multi-objective method
+Glowworm Swarm Optimization 
+(GSO), Multi-objective 
+optimization
+Simulated 
+blockchain-IIoT 
+environment
+Limited real-time validation and 
+energy trade-off analysis
+15 Amiri, Heidari & 
+Navimipour, 29
+Provided an extensive review of AI techniques 
+aiding climate change mitigation across sectors
+AI models (ML, DL), optimization 
+strategies
+Multiple secondary 
+sources
+Lacked implementation-level 
+comparison or experimental 
+validation
+16 Asadi et al.30 Surveyed evolving botnet threats and defense 
+strategies in IoT
+AI-based anomaly detection, 
+Blockchain, SLR
+Not applicable 
+(review paper)
+Lacks experimental validation; 
+focuses only on surveyed techniques
+17 Abdullayeva & 
+Suleymanzade31
+Graph-based cyberattack detection in cloud 
+networks GCN, GraphSAGE Simulated cloud 
+traffic Limited cross-domain scalability
+18 Abdullayeva32 Unsupervised DDoS detection in E-gov clouds Clustering, Anomaly Detection Synthetic E-gov 
+traffic Low adaptability to new attacks
+19 Saheed & Misra33 Proposed CPS-IoT-PPDNN for resilient, privacy-
+preserving anomaly detection in CPS-enabled IoT
+Privacy-preserving DNN, 
+Explainable AI
+Edge-IIoTset and 
+X-IIoTID
+High computational complexity in 
+real-time environments
+20 Saheed, Omole & 
+Sabit34
+Introduced GA-mADAM-IIoT model for 
+lightweight threat detection in IIoT using 
+multivariate sensor data
+Genetic Algorithm, Attention, 
+LSTM IIoT sensor datasets Model performance may vary with 
+unseen anomalies
+21
+Saheed, 
+Abdulganiyu & 
+Tchakoucht35
+Developed a fine-tuned LSTM with a modified GA 
+for IoT intrusion detection with edge computing 
+integration
+Modified Genetic Algorithm, 
+LSTM
+UNSW-NB15, NSL-
+KDD
+Requires tuning for edge hardware 
+with limited resources
+22 Saheed & 
+Chukwuere36
+Designed Xaiensembletl-iov for zero-day botnet 
+detection using ensemble transfer learning
+Ensemble Transfer Learning, 
+Explainable AI CTU-13, TON_IoT Limited validation on real-time 
+vehicle data
+23 Saheed, Misra & 
+Chockalingam37
+Built an intrusion detection system using stacked 
+Autoencoder, DCNN, and LSTM for critical ICS Autoencoder, DCNN, LSTM ICS datasets Computational load could hinder 
+deployment in time-critical systems
+Table 1. Comparison analysis of existing solutions.
+ 
+Scientific Reports |        (2025) 15:39937 5| https://doi.org/10.1038/s41598-025-23750-0
+www.nature.com/scientificreports/
+
+networks. In this research, it prefers to use specifically utilized data from the Danmini Doorbell, which includes 
+both benign and malicious traffic related to multiple botnet attacks. This focused approach reduces complexity 
+while maintaining representative traffic patterns necessary for robust model evaluation.
+BoT-IoT dataset
+The BoT-IoT dataset, developed by the University of New South Wales, Canberra, is a comprehensive benchmark 
+dataset designed to evaluate intrusion detection systems within IoT environments. Generated in a realistic cyber 
+Fig. 2. Experimental workflow of the proposed SA-DNN + LFG framework.
+ 
+Scientific Reports |        (2025) 15:39937 6| https://doi.org/10.1038/s41598-025-23750-0
+www.nature.com/scientificreports/
+
+range setting, the dataset simulates a wide range of normal and malicious traffic involving various IoT devices 
+and services. It includes attack types such as Distributed Denial of Service, Denial of Service, OS and service 
+scanning, keylogging, and data exfiltration, all performed over multiple protocols like TCP , UDP , and HTTP . 
+The dataset is provided in multiple formats which includes packet captures, Argus flow files, and preprocessed 
+CSV files with a total of over 72 million records. Each entry in the BoT-IoT dataset is represented by 46 extracted 
+features, encompassing statistical, flow-based, and time-based characteristics. These features include packet size 
+statistics, flow duration, inter-arrival times, source/destination IPs and ports, and protocol flags, among others. 
+The dataset includes a class label identifying the traffic as either benign or one of several attack categories, 
+making it suitable for supervised learning approaches.
+UNSW-NB15 dataset
+To further evaluate the adaptability of the proposed framework beyond IoT-specific traffic, the UNSW-NB15 
+dataset was incorporated. This dataset was created at the Cyber Range Lab of the Australian Centre for Cyber 
+Security (ACCS) using the IXIA PerfectStorm tool to generate hybrid modern network traffic. It includes both 
+benign traffic and nine categories of malicious activities: Fuzzers, Analysis, Backdoors, DoS, Exploits, Generic 
+attacks, Reconnaissance, Shellcode, and Worms. These categories represent a diverse set of threat vectors, from 
+protocol misuse and reconnaissance to malware injection and shellcode execution.
+The dataset comprises approximately 2.54 million records with 49 features extracted using Argus and Bro-
+IDS tools. It is divided into a training set of 175,341 records and a test set of 82,332 records. Compared to 
+BoT-IoT and N-BaIoT, UNSW-NB15 is more challenging due to its overlap of attack classes, higher intra-class 
+variability, and greater similarity between benign and malicious flows. These characteristics make it an effective 
+benchmark for evaluating the generalizability, robustness, and resilience of intrusion detection frameworks.
+Data preprocessing
+To this end, in the proposed methodology, preprocessing techniques are applied to ensure that the IoT network 
+traffic datasets used in training the SA-DNN + LFG model are properly standardized and encoded, with class 
+distribution verified to be fairly balanced. The first steps include the elimination of some of the features in the 
+dataset that are not destined to assist in intrusion detection, including pkSeqID, seq, and subcategory. More 
+specific subcategories such as “Theft” are then removed in order to make the dataset even more relevant. Ports 
+represented in hexadecimal are converted to decimal format to standardize numerical features.
+Scaling
+StandardScaler is a preprocessing utility and normalizes the features so that they have a mean of zero and a 
+unit variance. This makes certain that the features participate as equal in the completion of model training so 
+that features with higher variance will not overwhelm others. Standardization is performed using the following 
+formula:
+ z = x − µ
+σ  (1)
+where:
+• z is the standardized value.
+• x is the original feature value.
+• μ is the mean of the feature values.
+• σ is the standard deviation of the feature values.
+By applying this transform the values are standardized to mean = 0 and standard deviation = 1 in shape of 
+normal probability distribution. This technique is particularly beneficial for machine learning models, especially 
+deep neural networks, as it accelerates convergence during training and improves performance by reducing 
+numerical instability.
+Feature extraction
+The feature extraction strategies differ across datasets due to the distinct nature of their traffic characteristics. 
+For the BoT-IoT dataset, correlation-based feature selection was employed, whereas for N-BaIoT, a Random 
+Forest–based technique was applied. For the UNSW-NB15 dataset, we retained the feature set provided by the 
+original creators, consisting of 49 statistical and flow-based attributes, which capture packet-level, time-based, 
+and content-based characteristics of network traffic. This approach preserves the heterogeneity of UNSW-NB15 
+and allows testing the generalizability of the proposed framework without additional feature engineering.
+BoT-IoT
+In the case of BoT-IoT dataset, features like Total Length of Fwd Packets, Flow Bytes/s, Fwd Packet Length 
+Mean and Fwd IAT Mean are considered. It has established that these features have a very high correlation 
+with the behavior of the network and can distinguish normal activities from such attack categories as DoS 
+and Reconnaissance. For example, Flow Bytes/s is an integrative parameter that reflects traffic load, and Fwd 
+IAT Mean describes temporal irregularities. By focusing on these critical features, CFS reduces computational 
+complexity and enhances the classification accuracy of the detection model.
+Scientific Reports |        (2025) 15:39937 7| https://doi.org/10.1038/s41598-025-23750-0
+www.nature.com/scientificreports/
+
+N-BaIoT
+Feature selection is performed by Random Forest algorithm for the N-BaIoT dataset because this algorithm 
+allows to judge the importance of features for classification tasks. This ensemble-based classifier gauges the 
+importance of each feature in deciding between normals and anomalies in IoT network traffic. The features 
+that were selected comprised of ‘H_L0.01_mean’ , ‘MI_dir_L0.01_mean’ , ‘H_L0.1_mean’ , ‘MI_dir_L0.1_mean’ , 
+‘H_L0.01_variance’ , ‘MI_dir_L0.01_variance’ , ‘MI_dir_L0.1_variance’ , ‘H_L1_mean’ , ‘H_L0.1_variance’ , and 
+‘HH_jit_L0.1_mean’, among others. These features represent statistical measures and mutual information values 
+that capture patterns in data, such as entropy and direction-based variance.
+UNSW-NB15
+The UNSW-NB15 dataset includes 49 features generated using the Argus and Bro-IDS tools, spanning categories 
+such as flow duration, packet size statistics, protocol flags, transaction content features, and connection behaviors. 
+Examples include dur (record total duration), sbytes (source-to-destination bytes), dbytes (destination-to-
+source bytes), spkts (source packets), dpkts (destination packets), and sttl/dttl (source/destination TTL values). 
+These features collectively capture traffic intensity, packet exchange behavior, and flow-level semantics. Since the 
+dataset is already balanced across multiple modern attack categories, no additional manual feature reduction 
+was performed. Instead, all 49 features were provided to the SA-DNN + LFG model, ensuring a fair assessment 
+of its adaptability to non-IoT traffic.
+Sampling process
+The datasets used in this work exhibit varying degrees of class imbalance. For BoT-IoT and N-BaIoT, severe 
+imbalance exists between majority classes (e.g., normal traffic or DDoS) and minority classes (e.g., Keylogging, 
+Data Exfiltration, gafgyt_combo). To address this, we applied a combination of random oversampling and 
+random undersampling strategies. For UNSW-NB15, however, the dataset already provides a reasonably 
+balanced distribution across its nine major attack categories (e.g., DoS, Exploits, Fuzzers, Backdoors, Shellcode, 
+Worms, etc.) and normal traffic. Therefore, no additional resampling was applied to UNSW-NB15, allowing us 
+to preserve the dataset’s native distribution for evaluating cross-domain generalizability.
+Random oversampling
+The random oversampling approach has been applied to increase the frequency of minority classes. For example, 
+in the datasets, attack categories like Data Exfiltration or Keylogging might have far fewer samples compared 
+to normal traffic or DDoS attacks. Oversampling duplicates these minority class instances to ensure their 
+representation matches the majority classes. For the case of N-BaIoT dataset, minority classes like gafgyt_combo 
+(59,718 samples before sampling) were increased using random oversampling to achieve a uniform distribution 
+of 100,000 samples each. This process added more instances to the minority classes, improving their presence in 
+the dataset and allowing the model to learn their behaviour effectively.
+Random undersampling
+It is also noted that after the oversampling, there is still quite imbalance in the dataset the reason being that 
+normal traffic dominates most of the network connections. To do so, undersampling was carried on all classes 
+and all of them were brought to a fixed level. For example, if each attack type was oversampled to 72,919 samples, 
+normal traffic was undersampled to this same number. For the case of N-BaIoT dataset, classes such as mirai_
+udp which had 237,665 samples before sampling were reduced through random undersampling to a class size of 
+100,000 samples. This process helped to reduce the dominance of majority classes, ensuring that the model does 
+not bias toward the larger classes during training.
+Data splits
+For all datasets, the samples were randomly shuffled and split into 70% training, 15% validation, and 15% 
+testing sets. Stratified sampling was applied where applicable to preserve class distributions. For UNSW-NB15, 
+stratification was performed across all attack categories to ensure balanced evaluation.
+Learnable feature gating layer
+The ability of the proposed model can be enhanced by prioritize the discriminative features from the high-
+dimensional IoT traffic data. This study incorporates a Learnable Feature Gating layer before the classification 
+stage. Unlike traditional feature selection techniques, the LFG layer enables the network to dynamically learn 
+which features to emphasize or suppress during training through gradient-based optimization.
+After applying random over-and under-sampling to balance the class distribution, the sampled feature 
+vectors are passed through the LFG layer. This module applies a gating mechanism, where each input feature is 
+modulated by a learnable gate value between 0 and 1. The gate values are determined by a shallow neural layer 
+trained jointly with the rest of the model.
+Mathematically, given an input feature vector x = [x1,x2 ,…, xn] the LFG layer computes a gated output x’ as:
+ x ′
+i = gi · x i for i =1 ,2, ...,n  (2)
+where gi = σ(W x
+i + bi) is the learnable gate for feature xi, Wi and bi are trainable parameters, and σ is the 
+sigmoid activation function that ensures the gate values remain between 0 and 1.
+Integrating the LFG layer into the SA-DNN framework improves its attention mechanism by ensuring that 
+only the most relevant features contribute significantly to the final decision. The overall model remains fully 
+differentiable and end-to-end trainable.
+Scientific Reports |        (2025) 15:39937 8| https://doi.org/10.1038/s41598-025-23750-0
+www.nature.com/scientificreports/
+
+Classification
+To address such challenges in intrusion detection in IoT networks, there is a proposed more enhanced model 
+called Self-Attention Deep Neural Network. It incorporates self-attention mechanisms to prioritize significant 
+patterns within the dataset and eliminate noise, enabling accurate classification of network traffic into predefined 
+categories.
+Architecture of SA-DNN
+The SA-DNN architecture begins with an input layer that shares preprocessed features; for instance, normalized 
+numerical representation of attributes of a specific network. Several fully connected layers then ensue, and they 
+establish representations of features of progressively higher order through non-linear relations. These layers are 
+mathematically defined as:
+ z = W· x′
+i + b (3)
+where, z is the layer output, W is weights matrix, x′
+i is the input vector and b is the bias term. Dropout layers are 
+interspersed to mitigate overfitting by randomly deactivating neurons during training.
+A distinctive aspect of SA-DNN is the integration of a self-attention layer. This layer computes attention 
+scores to focus on the most relevant interactions between features. The attention mechanism operates as follows:
+ 
+Attention(Q ,K ,V)= sof tmax
+(
+QK T
+√dk
+)
+V  (4)
+Here, Q, K and V are the query, key, and value matrices derived from the input features, and d k represents 
+the dimensionality of the key vector. This mechanism identifies and emphasizes critical temporal and spatial 
+dependencies in IoT traffic. The final output layer employs a softmax activation function to produce class 
+probabilities, determining the likelihood of each traffic sample belonging to specific attack or normal categories:
+ 
+P (y = c| x)= eze
+∑
+jezj  (5)
+This produces the likelihood of each sample belonging to specific categories, such as Normal traffic or various 
+attack types. The model is trained by minimizing the categorical cross entropy loss function:
+ 
+L = −
+N∑
+i=1
+C∑
+c=1
+Yi,clog ˆYi,c (6)
+where N is the number of samples, C is the number of classes, Yi,c is the true label, and ˆYi,c is the predicted 
+probability. W eight updates are performed using gradient descent:
+ W → W − η ∂L
+∂W  (7)
+where η is the learning rate. This iterative optimization process ensures that the model converges to an optimal 
+set of parameters, enabling it to classify IoT network traffic with high accuracy while minimizing false positives.
+The SA-DNN + LFG model has seven stages which unite deep learning components with attention and gating 
+systems to boost IoT network intrusion detection. The input layer processes normalized and preprocessed 
+feature vectors whose dimensions depend on the dataset while using ReLU activation between three dense layers 
+with neuron counts of 128 followed by 64 followed by 32 respectively. The dropout layer rate set to 0.3 exists after 
+each dense layer to stop overfitting. A Multi-Head Self-Attention layer with four heads and 16-dimensional key/
+query/value vectors follows, enabling the model to focus on critical inter-feature dependencies. Outputs from 
+the MHSA are concatenated, passed through a feedforward sub-layer, and normalized. Next, the Latent Feature 
+Gating module applies a sigmoid-activated gating mechanism to filter irrelevant latent features, improving 
+the signal-to-noise ratio. A batch normalization layer further stabilizes training. The final classification block 
+includes a dense layer with 16 neurons with ReLU activation function, followed by an output layer using softmax 
+activation. The number of output classes is equivalent to five for BoT-IoT and up to eleven for N-BaIoT. This 
+architecture, by combining attention and latent gating with dense representations, captures complex attack 
+patterns and improves classification performance across diverse IoT datasets.
+Notably, the architectural choices, including the use of four attention heads with 16-dimensional key, query, 
+and value vectors along with a lightweight gating mechanism, were intentionally selected to ensure computational 
+efficiency and enable deployment on resource-constrained IoT devices.
+Hyperparameter tuning process
+Hyperparameter tuning was performed through manual experimentation, guided by empirical observations on 
+the validation set. Different combinations of key hyperparameters were tested, and the ones yielding optimal 
+accuracy and generalization performance were selected. The final chosen values are shown below in the Table 2.
+Scientific Reports |        (2025) 15:39937 9| https://doi.org/10.1038/s41598-025-23750-0
+www.nature.com/scientificreports/
+
+Explainable AI models
+SHAP
+SHAP explains predictions by computing Shapley values, which represent each feature’s marginal contribution 
+toward the model output. For a model f(x), the SHAP value for a feature i is calculated as:
+ 
+ϕi =
+∑
+S⊆ N \{i}
+|S|!(|N|−| S |− 1)!
+|N |! [f (S ∪{ i})− f (S)] (8)
+where, S is a subset of features excluding i, N is the set of all features, f(S) is the model’s prediction considering 
+only the features in S. In our work, SHAP highlights the most influential features in IoT traffic (e.g., protocol 
+type, port number), thereby improving interpretability of the SA-DNN + LFG model.
+LIME
+LIME provides local explanations by approximating the complex model f with a simpler interpretable model g in 
+the neighborhood of a given sample x. This is formalized as:
+ 
+Explanation (x)= argmin
+g∈G
+L (f, g, πx)+Ω( g) (9)
+where, g is the surrogate interpretable model, G is the set of interpretable models, L(f, g, πx) measures how well g 
+approximates f locally around x, πx defines the locality around x, and Ω(g)  enforces simplicity on g. In our work, 
+LIME identifies why individual IoT traffic samples are classified as benign or malicious, complementing SHAP 
+with case-specific interpretability.
+To provide a clear overview of the proposed framework, Algorithm 1 summarizes the step-by-step process 
+from data preprocessing to model evaluation.
+Hyperparameter Value
+Learning rate 0.0005
+Batch size 64
+Optimizer Adam
+Dropout rate 0.3
+Attention heads 4
+Epochs 50
+Activation function ReLU
+Weight initialization Xavier
+Table 2. Hyperparameters and its tuned values.
+ 
+Scientific Reports |        (2025) 15:39937 10| https://doi.org/10.1038/s41598-025-23750-0
+www.nature.com/scientificreports/
+
+Algorithm 1. Intrusion Detection in IoT Networks using SA-DNN+LFG
+Computational complexity analysis
+The proposed SA-DNN + LFG framework involves three major components: preprocessing, feature selection, 
+and classification. Preprocessing and feature extraction operations are linear in nature and scale as O(N·F), 
+where N is the number of samples and F is the number of features. The Learnable Feature Gating (LFG) layer 
+introduces only a lightweight overhead of O(F), since each feature is gated independently. The self-attention 
+mechanism, which forms the core of SA-DNN, has a time complexity of O(F2·d) and space complexity of O(F2), 
+where d is the dimensionality of the query vectors. The dense layers contribute an additional cost of O(N·F·H), 
+where H denotes the hidden neurons.
+During training, the total complexity can be approximated as: O(E·N·(F2 + F·H)), where E is the number of 
+epochs. Inference scales linearly with the feature dimension (O(F·H + F2)), which ensures efficiency for real-time 
+intrusion detection. The design of the SA-DNN + LFG, including the lightweight gating and compact attention 
+module, makes the framework inherently suitable for deployment in resource-constrained IoT environments.
+Scientific Reports |        (2025) 15:39937 11| https://doi.org/10.1038/s41598-025-23750-0
+www.nature.com/scientificreports/
+
+Explainability and model transparency
+The interpretability of the SA-DNN + LFG model is significantly enhanced using SHAP and LIME, which 
+contribute to greater trust, accountability, and transparency in the decision-making process of intrusion 
+detection systems. These techniques provide both quantitative and qualitative insights. SHAP delivers a global 
+view by identifying the most influential features across all predictions. This helps security analysts understand 
+which traffic attributes such as flow duration, packet count and TCP flags consistently influence classification 
+outcomes. This enables better system tuning and policy development. LIME provides local interpretability by 
+perturbing the input and approximating the model’s behavior around a specific instance. This helps justify why 
+a given case was flagged as malicious and supports incident response teams in root-cause analysis. Together, 
+SHAP and LIME increase trust in deep learning models that are often perceived as black boxes. By making 
+the detection rationale auditable and explainable, these methods support model validation, debugging, and 
+potential regulatory compliance in security-critical IoT deployments. In IoT intrusion detection, it’s important 
+to understand why the system flags certain network events as malicious, helping security analysts make informed 
+decisions. To this end, the proposed SA-DNN combined with the LFG framework incorporates Explainable 
+Artificial Intelligence techniques, specifically SHAP and LIME, to provide both global and local interpretability 
+of the model’s predictions. By integrating SHAP and LIME, the SA-DNN combined with LFG model achieves 
+not only high detection performance but also interpretability of its outcomes. This dual perspective enables 
+global understanding of how features affect model behavior, along with localized justifications for specific 
+predictions. These interpretability features contribute to better trust among cybersecurity professionals and 
+facilitate debugging and refinement of the system during deployment. As such, explainability is a core aspect 
+of the proposed framework, supporting both technical robustness and practical usability in real-world IoT 
+intrusion detection scenarios.
+Results and discussion
+The experiments were conducted on Google Colab Pro, utilizing an NVIDIA Tesla T4 GPU with 15.36  GB 
+VRAM, CUDA Version 12.2, and approximately 13.29  GB of system RAM. The environment also provided 
+113 GB disk space, ensuring efficient handling of data-intensive tasks and reducing computational overhead. To 
+evaluate the effectiveness of the proposed SA-DNN enhanced with a Learnable Feature Gating (LFG) module, 
+experimental testing was carried out on two IoT-specific benchmark datasets, BoT-IoT and N-BaIoT, which 
+capture realistic IoT attack scenarios. In addition, to examine the generalizability of the model beyond IoT 
+environments, we extended the evaluation to the UNSW-NB15 dataset, a widely used intrusion detection 
+benchmark that contains diverse and modern attack types. This combination of IoT and non-IoT datasets allows 
+us to validate both the suitability of the model for resource-constrained IoT networks and its adaptability to 
+broader cybersecurity contexts.
+Each experiment was repeated 10 times with different random seeds, and the reported results represent the 
+mean and standard deviation of accuracy, precision, recall, and F1-score across these runs. This protocol ensures 
+statistical reliability and avoids performance fluctuations due to stochastic training effects.
+It is important to note that explainability experiments using SHAP and LIME were restricted to the IoT-
+specific datasets (BoT-IoT and N-BaIoT). This decision reflects their direct relevance to IoT environments and 
+avoids interpretability bias due to heterogeneous feature sets in non-IoT benchmarks like UNSW-NB15. For 
+UNSW-NB15, we therefore focus on quantitative results and generalizability analysis, while reserving detailed 
+feature attribution discussions for IoT scenarios where model transparency is most critical, as elaborated in 
+Subsect. " Generalizability testing on UNSW-NB15 dataset " (Generalizability Testing). The performance 
+metrics considered include accuracy, precision, recall, and F1-score, which were calculated using their standard 
+formulations:
+ Accuracy= TP + TN
+TP + TN + FN + FP  (10)
+ P recision= TP
+TP + FP  (11)
+ Recall= TP
+TP + FN  (12)
+ F 1− measure = 2·P recision·Recall
+P recision+ Recall (13)
+The combination of these metrics provides a holistic evaluation framework. While accuracy gives a macro-
+level view, precision and recall delve into class-wise performance, and F1-score serves as a robust summary 
+indicator. These metrics collectively ensure that the model is not only accurate but also reliable in detecting a 
+wide spectrum of cyberattacks under real-world network conditions. To reduce overfitting common in deep 
+learning models on complex IoT data, the SA-DNN + LFG architecture incorporates several regularization 
+techniques. Dropout layers were strategically inserted after key dense layers to randomly deactivate a portion of 
+neurons during training, thereby reducing dependency on specific features and improving generalization. Batch 
+Normalization was employed to stabilize and accelerate training by normalizing activations, which indirectly 
+contributes to regularization. Furthermore, early stopping based on validation loss was used to halt training 
+when performance no longer improved, effectively preventing the model from overfitting on the training set. 
+These measures collectively enhance the robustness and generalizability of the proposed model in real world IoT 
+environments.
+Scientific Reports |        (2025) 15:39937 12| https://doi.org/10.1038/s41598-025-23750-0
+www.nature.com/scientificreports/
+
+Using BoT-IoT dataset
+The experimental results for the BoT-IoT dataset are evaluated in this subsection. Table 3 presents the class-
+wise performance of SA-DNN and SA-DNN + LFG on the BoT-IoT dataset. The results are reported as 
+mean ± standard deviation over 10 independent runs to demonstrate statistical stability.
+Table 3 demonstrates the effectiveness of integrating the Learnable Feature Gating mechanism into the SA-
+DNN model for IoT intrusion detection. By dynamically emphasizing discriminative features and suppressing 
+irrelevant ones, the SA-DNN + LFG model achieves consistent improvements across all attack classes on the BoT-
+IoT dataset. Notably, F1-scores for harder-to-detect classes like Theft and Reconnaissance increased from 92.5 
+to 94.2% and from 95.3 to 96.5%, respectively, highlighting better generalization without overfitting. Moreover, 
+the deviation in both the cases is ≤ 0.6 except for recall value of SA-DNN for reconnaissance. This deviation is 
+even less in SA-DNN + LFG compared to SA-DNN model. The less deviation indicates the better stability of 
+the model. This enhancement was achieved without modifying the explainability framework, preserving the 
+transparency of model predictions. The results confirm that the LFG integration significantly boosts detection 
+performance while maintaining interpretability, making the model more robust and effective for real-world IoT 
+environments.
+The generated confusion matrix for the BoT-IoT dataset using the SA-DNN + LFG model illustrates strong 
+classification performance across all four classes such as Normal, DoS, Reconnaissance, and Theft in the Fig. 3. 
+The majority of instances are accurately predicted along the diagonal, indicating high true positive rates. 
+Specifically, the model correctly classified 381,250 out of 382,550 Normal instances, 328,850 out of 330,112 DoS 
+attacks, all 107 Reconnaissance instances, and 18,137 out of 18,163 Theft cases. Misclassifications are minimal, 
+with only a small number of Normal and DoS samples being confused with each other or misclassified as Theft, 
+and a few Theft instances misclassified as Normal or DoS. This distribution demonstrates the model’s robustness 
+and improved generalization after incorporating the Learnable Feature Gating layer, effectively reducing false 
+positives and enhancing detection accuracy across both frequent and infrequent attack types.
+The graphs shown in Fig.  4 presented illustrate the effectiveness of the proposed model enhancement, 
+incorporating the LFG module into the baseline SA-DNN by comparing training and testing accuracy and loss 
+over 15 epochs. From the accuracy comparison, it is evident that the inclusion of LFG consistently improves 
+both train and test accuracies, with the test accuracy reaching approximately 95 percent, outperforming the 
+baseline SA-DNN which only attains around 91 percent. Similarly, the loss comparison graph shows a significant 
+reduction in both train and test loss when LFG is applied, indicating better convergence and generalization. These 
+improvements validate the core research contribution: the integration of LFG enhances feature representation, 
+leading to more effective learning and improved model performance. This demonstrates that the LFG module not 
+only accelerates the training process but also contributes to higher predictive accuracy and reduced overfitting, 
+confirming its utility in strengthening the underlying SA-DNN architecture.
+Further, the explainability experiments using SHAP and LIME are discussed. Figures  5, 6, 7, 8, 9, 10, 11 
+and 12 display the top 13 influential features using generic labels (e.g., feature_1). To enhance interpretability, 
+Table 4 maps these generic labels to the actual dataset features from BoT-IoT, along with their corresponding 
+cybersecurity significance.
+SHAP explanation
+The SHAP waterfall plot given in the Fig. 5 explains the contribution of individual features to the predicted value 
+of a machine learning model for a specific instance. Starting from the base value E [f(X)] = 0.419 , the average 
+model output across all samples), the features sequentially add or subtract from this value to reach the final 
+prediction (f(x) = 0.999). Positive contributions (red bars) from features like ‘Feature_4’ (+ 0.5) and ‘Feature_13’ 
+(+ 0.17) push the prediction higher, while negative contributions (blue bars) from features like ‘Feature_6’ 
+(− 0.21) and ‘Feature_10’ (− 0.06) pull it lower. According to Fig.  5, feature 4 has the highest positive partial 
+dependence. This plot provides an interpretable breakdown of how each feature influences the prediction, with 
+the cumulative effect of all contributions leading to the final output.
+The example of the SHAP waterfall plot in the Fig. 6 shows the contribution of each feature to the prediction 
+of a machine learning model for the instance belonging to “DoS” class. The base value E[f(X)]= 0.268 represents 
+the average model output across all samples, and the features sequentially add or subtract from this value to reach 
+the final predicted value (f(x) = 1). The bars to the right are contribution of each feature where positive bars are 
+pushing the prediction to higher value and negative bars are pulling the value lower, as observed the contribution 
+Class Model Accuracy (%) Precision (%) Recall (%) F1-measure (%)
+Normal
+SA-DNN 98.6 ± 0.3 97 ± 0.4 98.2 ± 0.3 97.6 ± 0.25
+SA-DNN + LFG 99.0 ± 0.2 98.2 ± 0.3 98.8 ± 0.1 98.5 ± 0.16
+Dos
+SA-DNN 97.7 ± 0.6 97.2 ± 0.5 97.3 ± 0.4 97.3 ± 0.32
+SA-DNN + LFG 98.6 ± 0.3 97.3 ± 0.4 98.1 ± 0.3 97.7 ± 0.25
+Reconnaissance
+SA-DNN 96.7 ± 0.4 94.8 ± 0.6 95.8 ± 0.8 95.3 ± 0.5
+SA-DNN + LFG 97.4 ± 0.3 96.2 ± 0.5 96.9 ± 0.4 96.5 ± 0.32
+Theft
+SA-DNN 94.5 ± 0.5 91.8 ± 0.2 93.2 ± 0.6 92.5 ± 0.31
+SA-DNN + LFG 97.1 ± 0.3 93.6 ± 0.6 94.8 ± 0.5 94.2 ± 0.39
+Table 3. Performance analysis of the BoT-IoT Dataset.
+ 
+Scientific Reports |        (2025) 15:39937 13| https://doi.org/10.1038/s41598-025-23750-0
+www.nature.com/scientificreports/
+
+from ‘Feature_10’ is 0.33 the highest positive contribution and from ‘Feature_4’ is − 0.27 the highest negative 
+contribution while contribution from ‘Feature_6’ is 0.32 and from ‘Feature_7’ is − 0.05. The cumulative effect of 
+all feature contributions explains how the model arrived at the final output, providing a clear understanding of 
+feature importance for this class.
+The SHAP waterfall plot given in the Fig. 7 concerning with the “Reconnaissance” class shows the distribution of 
+features’ importance for the instance prediction by the model. For the average model output, (E[f(X) ]=0 .261), 
+then the feature contributions are cumulatively added/deducted to obtain the final prediction (f(x) = 0). The most 
+significant feature is Feature_11, which contributes -0.26, reducing the prediction substantially. Other features 
+have negligible contributions, indicated by values near 0 (either positive or negative). This indicates that 
+Feature_11 is the dominant factor driving the prediction toward 0 for this instance, while the remaining features 
+collectively have little to no impact. The plot highlights the sparse contribution of features in determining the 
+final outcome for this class.
+The SHAP waterfall plot shows in the Fig.  8 for the “Theft” class illustrates the contribution of individual 
+features to the model’ s prediction for a specific instance. The prediction begins at the base value (E[f(X)] = 0.598), 
+which represents the average model output across all instances. Sequentially, feature contributions are added 
+or subtracted to arrive at the final prediction (f(x) = 0.001). Key negative contributors (blue bars) include 
+‘Feature_10’ (− 0.23), ‘Feature_6’ (− 0.21), and ‘Feature_4’ (− 0.11), which collectively reduce the prediction 
+significantly. A single positive contributor, ‘Feature_11’ (+ 0.2), partially offsets these reductions. Other 
+features, such as ‘Feature_12’ (− 0.09) and ‘Feature_2’ (− 0.07), also contribute negatively, further decreasing the 
+prediction. Minor contributions from features like ‘Feature_5’ (+ 0.03) and others have minimal impact. The 
+plot highlights that the final prediction of (f(x) = 0.001) is primarily driven by the dominant negative effects of 
+‘Feature_10’ and ‘Feature_6’ , with limited influence from other features. This visualization underscores the most 
+impactful factors leading to the low model output for the “Theft” class.
+Fig. 3. Confusion matrix for the BoT-IoT dataset.
+ 
+Scientific Reports |        (2025) 15:39937 14| https://doi.org/10.1038/s41598-025-23750-0
+www.nature.com/scientificreports/
+
+Fig. 5. Waterfall plot for normal class using SHAP .
+ 
+Fig. 4. Performance analysis of the model using BoT-IoT dataset.
+ 
+Scientific Reports |        (2025) 15:39937 15| https://doi.org/10.1038/s41598-025-23750-0
+www.nature.com/scientificreports/
+
+LIME explanation
+Turning to the “Normal” class of the LIME explanation the strength of the features for the particular instance 
+and their impact on the model’s result is illustrated in the Fig. 9. Positive contributions toward “Normal” class are 
+marked with green bars while negative contributions are marked with red bars. In this case, ‘Feature_13 <  = − 0.64’ 
+contributes the most positively to the prediction, followed by other features like ‘Feature_3 > 0.72’ , 
+‘Feature_11 > 0.01’ , ‘Feature_7 > 0.42’ , and ‘Feature_1 <  = − 0.09’ . These features strengthen the confidence in 
+predicting the instance as "Normal." On the other hand, ‘Feature_8 > − 0.01’ negatively impacts the prediction the 
+most, pulling it away from the “Normal” class, along with smaller negative contributions from conditions such 
+as ‘Feature_4 > − 0.55’ , ‘− 1.10 < Feature_2 <  = − 0.01’ , ‘Feature_12 > 1.30’ , and ‘− 1.05 < Feature_14 <  = 0.90’ . This 
+explanation highlights how specific feature values influence the model’s output, with the green contributions 
+supporting the “Normal” prediction and the red ones detracting from it.
+The LIME explanation of the “DoS” class in the Fig. 10 demonstrates the scenario of the unique characteristics 
+affect the model for an example case. In this visualization, green bars indicate features contributing positively 
+toward the “DoS” class prediction, while red bars represent features detracting from it. ‘Feature_8 > − 0.01’ 
+provides the most significant positive contribution to the “DoS” class prediction, followed by features such 
+as ‘Feature_3 > 0.72’ , ‘Feature_7 > 0.42’ , ‘Feature_11 > 0.01’ , and ‘Feature_10 > 0.56’ . All these features are very 
+important in enhancing the confidence level of the prediction of the “DoS” class. On the other hand, the term 
+‘Feature_13 <  = − 0.64’ provides the greatest negative impact or genuinely drags the prediction degree away 
+from the “DoS” class. Additional negative contributions, though smaller in magnitude, are observed from 
+‘Feature_4 > − 0.55’ , ‘Feature_1 <  = − 0.09’ , and ‘− 1.10 < Feature_2 <  = 0.01’ . This explanation highlights the 
+dynamic interplay of feature contributions, where positive factors strengthen the prediction for the “DoS” class, 
+and negative factors weaken it.
+Figure 11 displays a local explanation for “Class_2” in a machine learning model. A bar chart illustrates the 
+impact of different features on the model’s prediction for “Class_2” . Red bars indicate positive influence, with 
+longer bars signifying greater impact. Features with green bars negatively influence the prediction. “Feature_3” 
+has the most significant positive influence, while “Feature_12” has the strongest negative influence. Some 
+features, like “Feature_0” , exhibit influence within specific value ranges. This visualization helps identify crucial 
+features affecting the model’s classification of “Class_2” .
+This bar chart shown in the Fig.  12 visualizes the local explanation for the classification of “theft” using the 
+LIME method. The chart shows the influence of different features on the model’s prediction for the “theft” class. 
+Fig. 6. Waterfall plot for DoS class using SHAP .
+ 
+Scientific Reports |        (2025) 15:39937 16| https://doi.org/10.1038/s41598-025-23750-0
+www.nature.com/scientificreports/
+
+Red bars indicate features that positively contribute to the prediction, while green bars represent features with 
+a negative influence. Feature 8 has the most significant positive influence on the “theft” prediction, followed by 
+Feature_1 and Feature_3. Conversely, Feature_12 has the strongest negative influence, followed by Feature_9 
+and Feature_2. Some features, such as Feature_0, have a positive influence when their values fall within a specific 
+range (between 0.19 and 0.94 in this case).
+Using N-BaIoT dataset
+The results outlined in Table 5 reflect the performance of the SA-DNN model with the addition of the LFG 
+(Local Feature Graph) technique. The results are presented in the format of mean ± standard deviation.
+The results presented in Table 5 indicate the noticeable accuracy values. Also, the low deviation values 
+confirm the consistency of the proposed framework. The deviation in both the cases is ≤ 0.6 except for precision 
+value of SA-DNN for Gafgyt-Combo and Mirai-Scan. This deviation is even less in SA-DNN + LFG compared 
+to SA-DNN model.
+While the model continues to face minor challenges in classifying some of the 11 classes, the inclusion of 
+LFG has significantly strengthened its ability to capture intricate local features, resulting in better classification 
+performance. The benign class still shows the highest metrics, primarily due to its distinct behavior and patterns. 
+Gafgyt-Scan and Gafgyt-Junk classes experience slightly lower performance, which is still influenced by the 
+imbalance between classes. However, the integration of LFG has enhanced the model’s precision and recall across 
+most classes, allowing it to more effectively minimize false positives and negatives. This upgradation strengthens 
+the model’s generalization capabilities, especially in handling class imbalance and diverse data distributions, 
+further improving its robustness and accuracy in classification tasks.
+The accuracy and loss curves reveal the effectiveness of the proposed SA-DNN model enhanced with Local 
+Feature Grouping. As shown in the Fig.  13, the SA-DNN + LFG consistently outperforms the baseline SA-
+DNN across all epochs in both training and testing accuracy, indicating better generalization capability. The 
+model achieves over 97% test accuracy by the 15th epoch, surpassing the standard SA-DNN’s performance. 
+Simultaneously, the loss curves confirm the stability and convergence of the enhanced model, with a notably 
+faster reduction in training and test loss. This suggests that the integration of LFG facilitates more discriminative 
+feature learning, leading to improved robustness and reduced overfitting. The superior accuracy and lower loss 
+across epochs emphasize the reliability of the model under realistic IoT botnet scenarios. This performance 
+gain demonstrates the advantage of incorporating structured feature enhancement within the deep learning 
+framework.
+Fig. 7. Waterfall plot for reconnaissance class using SHAP .
+ 
+Scientific Reports |        (2025) 15:39937 17| https://doi.org/10.1038/s41598-025-23750-0
+www.nature.com/scientificreports/
+
+The confusion matrix illustrates in the Fig. 14 strong classification performance across all eleven classes in the 
+N-BaIoT dataset. High values along the diagonal, particularly for benign, mirai ack, and mirai udpplain (each 
+exceeding 99,000 correct predictions), demonstrate the model’s ability to accurately distinguish between normal 
+and malicious traffic. Misclassifications are minimal and primarily confined to similar attack types, reflecting 
+the model’s capability to handle overlapping behavior patterns. This confirms the robustness, scalability, and 
+reliability of the proposed detection approach in identifying diverse IoT botnet attacks with high precision and 
+low error rates. The consistent performance of the model across both benign and attack classes highlights its 
+generalization strength. Such results implicitly validate the effectiveness of the adopted deep learning strategy 
+and feature representation in learning complex temporal-spatial attack signatures.
+SHAP explanation
+The feature importance as shown in the SHAP waterfall plot (Fig.  15) for instance explains the contribution of 
+the different features to the model prediction for the data instance of N-BaIoT. Adding the contribution terms 
+such as MI_dir_L0.1_variance (-0.15) and H_L0.01_mean (+ 0.2) based on base probability (average probability 
+of all classes here is 0.5) we get our final predicted probability. For instance, if the final output is 0.65 for the 
+‘mirai_udp’ class, then variables with a positive contribution are represented in green and those with a negative 
+contribution, in red, so that, say the green area corresponding to ‘H_L0.01_mean’ is greater than that of the red 
+area of ‘MI_dir_L0.1_variance’ . Other features like ‘H_L1_mean’ (+ 0.1) and ‘MI_dir_L0.01_mean’ (-0.05) might 
+also play a role, showcasing the cumulative effect of feature contributions on the prediction.
+LIME explanation
+The bar chart (Fig. 16) of LIME explanation for the particular instance shows important characteristics which 
+influence the model prediction. For instance, depending upon the class to be predicted, such a feature as ‘MI_
+dir_L0.01_mean’ will have a positive weight (+ 0.25 meaning it is strongly pushing to this class), while ‘H_
+L0.1_mean’ will have a negative weight (- 0.1, meaning it is pushing away from this class). Other components 
+such as ‘H_L0.1_variance’ intensifies the positive impact by a standard difference of 0.15 while ‘MI_dir_L0.1_
+variance’ weakens the positive impact a standard difference of -0.05. In the plot, the relative contributions of 
+each feature to the final SMO model probability of 0.7 for the ‘gafgyt_udp’ class are shown the way that they 
+are cumulatively built. This detailed visualization enhances understanding of feature importance and model 
+behavior for individual data points.
+Fig. 8. Waterfall plot for theft class using SHAP .
+ 
+Scientific Reports |        (2025) 15:39937 18| https://doi.org/10.1038/s41598-025-23750-0
+www.nature.com/scientificreports/
+
+Fig. 10. LIME explanation for DoS Class.
+ 
+Fig. 9. LIME explanation for normal class.
+ 
+Scientific Reports |        (2025) 15:39937 19| https://doi.org/10.1038/s41598-025-23750-0
+www.nature.com/scientificreports/
+
+Fig. 12. LIME explanation for theft class.
+ 
+Fig. 11. LIME explanation for reconnaissance class.
+ 
+Scientific Reports |        (2025) 15:39937 20| https://doi.org/10.1038/s41598-025-23750-0
+www.nature.com/scientificreports/
+
+Robustness evaluation under adversarial conditions and noisy environments
+To assess the resilience of the proposed SA-DNN + LFG model, additional experiments were conducted under 
+two challenging scenarios: adversarial perturbations and varying levels of input noise. These tests were designed 
+to simulate real-world conditions where attackers may attempt to evade detection through subtle feature 
+manipulations or where IoT traffic data may be degraded due to signal noise, packet loss, or sensor inaccuracies. 
+For adversarial robustness, a Fast Gradient Sign Method based attack was simulated by introducing perturbations 
+with ε-values ranging from 0.01 to 0.1. The model retained an average detection accuracy above 89% up to 
+ε = 0.05, demonstrating significant resistance to gradient-based evasion tactics. Beyond this threshold, accuracy 
+gradually declined, but the performance degradation remained more graceful compared to conventional DNN 
+baselines. In parallel, Gaussian noise with standard deviations (σ) of 0.01, 0.05, and 0.1 was injected into the 
+feature vectors of both benign and malicious samples to simulate sensor-level distortions and environmental 
+noise. The model maintained detection accuracy above 92% for σ = 0.05 and showed less than a 4% drop in F1-
+score across all tested noise levels.
+The graph (Fig. 17) shows that the SA-DNN + LFG model maintains high accuracy under mild to moderate 
+adversarial attacks and Gaussian noise, with performance gradually decreasing as perturbation intensity 
+Class Model Accuracy (%) Precision (%) Recall (%) F1-measure (%)
+Benign
+SA-DNN 99.2 ± 0.3 99.4 ± 0.2 99.0 ± 0.4 99.2 ± 0.22
+SA-DNN + LFG 99.7 ± 0.2 99.8 ± 0.1 99.6 ± 0.3 99.7 ± 0.16
+Gafgyt-Combo
+SA-DNN 94.8 ± 0.6 94.5 ± 0.9 95.1 ± 0.6 94.8 ± 0.54
+SA-DNN + LFG 97.2 ± 0.4 97.0 ± 0.4 97.4 ± 0.2 97.2 ± 0.22
+Gafgyt-Junk
+SA-DNN 93.1 ± 0.6 92.7 ± 0.3 93.5 ± 0.3 93.1 ± 0.21
+SA-DNN + LFG 95.8 ± 0.4 95.4 ± 0.4 96.1 ± 0.2 95.7 ± 0.22
+Gafgyt-Scan
+SA-DNN 91.8 ± 0.6 91.4 ± 0.6 92.2 ± 0.6 91.8 ± 0.42
+SA-DNN + LFG 94.3 ± 0.4 94.0 ± 0.6 94.6 ± 0.4 94.3 ± 0.36
+Gafgyt-TCP
+SA-DNN 96.7 ± 0.6 96.4 ± 0.3 96.9 ± 0.5 96.6 ± 0.29
+SA-DNN + LFG 98.1 ± 0.3 97.9 ± 0.5 98.3 ± 0.1 98.1 ± 0.26
+Gafgyt-UDP
+SA-DNN 96.0 ± 0.4 95.6 ± 0.5 96.3 ± 0.3 95.9 ± 0.29
+SA-DNN + LFG 97.6 ± 0.2 97.3 ± 0.2 97.8 ± 0.4 97.5 ± 0.22
+Mirai-ACK
+SA-DNN 98.1 ± 0.5 98.0 ± 0.4 98.3 ± 0.6 98.2 ± 0.36
+SA-DNN + LFG 99.0 ± 0.4 98.8 ± 0.4 99.2 ± 0.2 99.0 ± 0.22
+Mirai-Scan
+SA-DNN 97.5 ± 0.6 97.2 ± 0.7 97.7 ± 0.4 97.5 ± 0.40
+SA-DNN + LFG 98.6 ± 0.1 98.3 ± 0.2 98.8 ± 0.4 98.5 ± 0.22
+Mirai-SYN
+SA-DNN 97.2 ± 0.5 96.9 ± 0.4 97.5 ± 0.3 97.2 ± 0.25
+SA-DNN + LFG 98.4 ± 0.5 98.1 ± 0.5 98.6 ± 0.2 98.3 ± 0.27
+Mirai-UDP
+SA-DNN 96.5 ± 0.4 96.2 ± 0.6 96.7 ± 0.5 96.4 ± 0.39
+SA-DNN + LFG 97.9 ± 0.2 97.6 ± 0.5 98.1 ± 0.3 97.8 ± 0.29
+Mirai-UDPPlain
+SA-DNN 94.5 ± 0.3 94.2 ± 0.3 94.8 ± 0.4 94.5 ± 0.25
+SA-DNN + LFG 96.8 ± 0.6 96.5 ± 0.2 97.0 ± 0.5 96.7 ± 0.27
+Table 5. Performance analysis of the model using N-BaIoT Dataset.
+ 
+Generic label Actual feature Cybersecurity interpretation
+feature_1 dur (flow duration) Long/abnormal flow durations are indicators of DoS/DDoS attacks
+feature_2 sbytes (source-to-destination bytes) High outbound byte volumes suggest data exfiltration or flooding
+feature_3 dbytes (destination-to-source bytes) Large inbound traffic volumes may indicate volumetric attacks
+feature_4 spkts (source packets) Excessive packet counts often signal DoS/flooding
+feature_5 dpkts (destination packets) High response packets can reflect reconnaissance scanning
+feature_6 smeansz (mean packet size source) Abnormal packet size patterns point to fuzzing or malformed traffic
+feature_7 dmeansz (mean packet size destination) Helps identify exploit attempts using irregular payloads
+feature_8 sjit (source jitter) Timing irregularities reveal stress caused by DoS or probing
+feature_9 djit (destination jitter) Fluctuating jitter often signals malicious flooding attempts
+feature_10 proto (protocol type) Certain attacks exploit protocol-specific weaknesses
+feature_11 sttl (source TTL) Abnormal TTLs often indicate spoofed or manipulated packets
+feature_12 dttl (destination TTL) Inconsistencies in TTL hint at evasion or spoofing
+feature_13 ct_state_ttl (state-TTL combinations) Captures abnormal connection states common in scanning
+Table 4. Mapping of generic feature labels to actual dataset features and their interpretation.
+ 
+Scientific Reports |        (2025) 15:39937 21| https://doi.org/10.1038/s41598-025-23750-0
+www.nature.com/scientificreports/
+
+Fig. 14. Confusion matrix for the N-BaIoT dataset.
+ 
+Fig. 13. Performance analysis of the N-BaIoT dataset.
+ 
+Scientific Reports |        (2025) 15:39937 22| https://doi.org/10.1038/s41598-025-23750-0
+www.nature.com/scientificreports/
+
+increases. This demonstrates the inherent robustness of the model and its ability to handle real-world 
+uncertainties effectively. These outcomes highlight the effectiveness of the multihead self-attention mechanism 
+and LFG in filtering out irrelevant perturbations and maintaining discriminative feature integrity.
+Fig. 16. Overall waterplot for N-BaIoT using LIME.
+ 
+Fig. 15. Overall waterfall plot for N-BaIoT using SHAP .
+ 
+Scientific Reports |        (2025) 15:39937 23| https://doi.org/10.1038/s41598-025-23750-0
+www.nature.com/scientificreports/
+
+Interpretability analysis using SHAP and LIME: quantitative and qualitative insights
+To ensure transparency and trustworthiness in intrusion detection outcomes, SHAP and LIME were employed 
+to interpret the predictions made by the SA-DNN + LFG model. These tools helped uncover which features most 
+influenced specific detection decisions, enabling a deeper understanding of the model’s behavior.
+Quantitative assessment
+Feature attribution values generated by SHAP were aggregated across the dataset to determine globally influential 
+features. For the N-BaIoT dataset, features such as packet_size_variance, flow_duration, and dst_port_entropy 
+consistently received high SHAP values, indicating their strong relevance in identifying attack patterns. A feature 
+importance ranking derived from SHAP showed over 85% alignment with LIME-based local explanations across 
+multiple samples, validating consistency between global and local interpretability. Additionally, an average SHAP 
+contribution threshold (≥ 0.015) was used to filter the top 10 impactful features. Detection performance using 
+only these top features remained within 4% of the full model, suggesting that explanations can guide effective 
+dimensionality reduction or model simplification without sacrificing accuracy.
+Qualitative assessment
+Visualizations from LIME provided case-specific insights by highlighting feature contributions for individual 
+predictions say for instance: classifying Mirai-Attack traffic, LIME revealed how high flow_rate and low ttl_
+variance played decisive roles. These qualitative insights allow security analysts to validate predictions and trace 
+decision logic in post-analysis workflows, supporting operational deployment in critical environments.
+Impact and future directions
+The insights derived from SHAP and LIME not only enhance model interpretability but also offer actionable 
+guidance for refining intrusion detection strategies. For instance, features repeatedly shown to have minimal 
+contribution could be pruned to reduce model complexity. Conversely, dominant features can inform future 
+research focused on embedding domain knowledge into feature engineering or attention mechanisms. Moreover, 
+these tools lay a foundation for adaptive IDS systems where model updates are driven by explainability feedback 
+loops, improving resilience and transparency over time.
+Generalizability testing on UNSW-NB15 dataset
+To assess cross-domain adaptability of the proposed SA-DNN + LFG framework beyond IoT-specific traffic, we 
+evaluated the model on the UNSW-NB15 dataset (a general network-intrusion benchmark). Each experiment 
+was repeated 10 times with different random seeds, and reported values are the mean ± standard deviation across 
+these runs. This experiment uses the same preprocessing pipeline and model configuration described in Sect. 
+"Proposed methodology", but the UNSW-NB15 test is intended as a generalizability check rather than an IoT-
+specific interpretability study.
+Table 6 provides the class-wise performance of SA-DNN and SA-DNN + LFG on UNSW-NB15 (mean ± SD). 
+The results demonstrate that SA-DNN + LFG maintains robust detection capabilities and low variance on a non-
+IoT dataset, confirming its cross-domain stability and practical applicability.
+Fig. 17. analysis of adversarial attacks for SA-DNN + LFG model.
+ 
+Scientific Reports |        (2025) 15:39937 24| https://doi.org/10.1038/s41598-025-23750-0
+www.nature.com/scientificreports/
+
+The results in Table 6 confirm that the proposed SA-DNN + LFG framework maintains consistently high 
+detection performance across all major attack categories in UNSW-NB15. Particularly strong improvements 
+were observed for complex classes such as Backdoors, Shellcode, and Worms, which are often difficult to detect 
+due to their low occurrence rates and diverse signatures. The lower standard deviation values across repeated 
+runs further demonstrate the stability and robustness of the model. These findings reinforce the generalizability 
+of the proposed framework, showing that although it was designed for IoT-specific environments, it can 
+effectively extend to heterogeneous non-IoT datasets as well.
+Comparative analysis with baseline ML and DL models
+This section presents a comparative performance analysis between the proposed SA-DNN + LFG model and 
+baseline machine learning models (Logistic Regression, Support Vector Machine, Random Forest) as well as 
+deep learning models (CNN, LSTM, BiLSTM + Attention). The comparison for the experiments on the BoT-IoT, 
+N-BaIoT, and UNSW-NB15 datasets are presented in Tables 7, 8 and 9, respectively.
+Observed trade-off
+• Traditional machine learning models like RF and XGBoost performed reasonably well in terms of accuracy 
+and precision, but lagged in recall, especially on underrepresented attack classes.
+• Deep learning models such as LSTM and CNN-LSTM improved the recall and F1-scores, due to their se -
+quence modeling capabilities, but incurred higher training time and were susceptible to overfitting without 
+adequate regularization.
+• The proposed SA-DNN + LFG model outperformed all baseline methods, achieving superior accuracy 
+across both IoT-specific datasets (BoT-IoT: 99.3% and N-BaIoT: 99.6%) and a general-purpose dataset (UN-
+SW-NB15: 97.9%). This demonstrated the model’s strong generalizability across diverse attack vectors. The 
+Model Accuracy (%) Precision (%) Recall (%) F1-Score (%)
+Logistic Regression 88.6 87.2 89.1 88.1
+Support Vector Machine (RBF) 91.5 90.8 92.1 91.4
+Random Forest 93.2 92.8 93.5 93.1
+CNN 95.8 95.3 96.0 95.6
+LSTM 96.4 96.0 96.7 96.3
+BiLSTM + Attention 97.2 97.0 97.4 97.2
+Proposed SA-DNN + LFG 99.3 ± 0.2 99.1 ± 0.3 99.4 ± 0.2 99.2 ± 0.18
+Table 7. Performance comparison of the proposed model with baseline models for experiments on BoT-IoT 
+dataset.
+ 
+Class Model Accuracy (%) Precision (%) Recall (%) F1-measure (%)
+Normal
+SA-DNN 96.8 ± 0.3 96.2 ± 0.4 96.8 ± 0.3 96.5 ± 0.25
+SA-DNN + LFG 98.1 ± 0.2 97.6 ± 0.3 98.1 ± 0.2 97.9 ± 0.18
+Fuzzers
+SA-DNN 95.5 ± 0.4 95.1 ± 0.5 95.6 ± 0.4 95.4 ± 0.32
+SA-DNN + LFG 97.6 ± 0.3 97.0 ± 0.4 97.4 ± 0.3 97.2 ± 0.25
+Analysis
+SA-DNN 94.1 ± 0.5 93.8 ± 0.6 94.3 ± 0.5 94.1 ± 0.39
+SA-DNN + LFG 96.9 ± 0.4 96.3 ± 0.5 96.7 ± 0.4 96.5 ± 0.32
+Backdoors
+SA-DNN 93.5 ± 0.5 92.9 ± 0.6 93.5 ± 0.5 93.2 ± 0.39
+SA-DNN + LFG 96.5 ± 0.4 95.6 ± 0.5 96.1 ± 0.4 95.9 ± 0.32
+DoS
+SA-DNN 95.9 ± 0.4 95.2 ± 0.5 95.7 ± 0.4 95.5 ± 0.32
+SA-DNN + LFG 97.8 ± 0.3 97.1 ± 0.4 97.6 ± 0.3 97.4 ± 0.25
+Exploits
+SA-DNN 96.1 ± 0.4 95.4 ± 0.5 95.9 ± 0.4 95.7 ± 0.32
+SA-DNN + LFG 97.9 ± 0.3 97.3 ± 0.4 97.8 ± 0.3 97.6 ± 0.25
+Generic
+SA-DNN 95.6 ± 0.4 95.0 ± 0.5 95.5 ± 0.4 95.3 ± 0.32
+SA-DNN + LFG 97.5 ± 0.3 96.9 ± 0.4 97.3 ± 0.3 97.1 ± 0.25
+Reconnaissance
+SA-DNN 94.7 ± 0.5 94.1 ± 0.6 94.6 ± 0.5 94.4 ± 0.39
+SA-DNN + LFG 96.8 ± 0.4 96.2 ± 0.5 96.7 ± 0.4 96.5 ± 0.32
+Shellcode
+SA-DNN 93.8 ± 0.5 93.2 ± 0.6 93.7 ± 0.5 93.5 ± 0.39
+SA-DNN + LFG 96.4 ± 0.4 95.5 ± 0.5 96.0 ± 0.4 95.8 ± 0.32
+Worms
+SA-DNN 92.9 ± 0.6 92.4 ± 0.7 92.9 ± 0.6 92.7 ± 0.46
+SA-DNN + LFG 96.1 ± 0.4 95.0 ± 0.6 95.5 ± 0.5 95.3 ± 0.39
+Table 6. Performance analysis of the model using N-BaIoT dataset.
+ 
+Scientific Reports |        (2025) 15:39937 25| https://doi.org/10.1038/s41598-025-23750-0
+www.nature.com/scientificreports/
+
+model’s performance was further enhanced by attention-driven feature learning and label-wise fusion guided 
+by class relevance.
+Tables 7, 8 and 9 report the comparative performance of baseline ML and DL models against the proposed SA-
+DNN + LFG across BoT-IoT, N-BaIoT, and UNSW-NB15 datasets. The proposed SA-DNN + LFG significantly 
+outperforms ML models like Logistic Regression, Support Vector Machine, and Random Forest, which achieved 
+a maximum F1-score of 93.1% for BoT-IoT, 94.1% for N-BaIoT, and 93% for UNSW-NB15, but lack the ability to 
+model temporal and inter-feature dependencies. In contrast, SA-DNN + LFG achieved an F1-score of 99.2% for 
+BoT-IoT, 99.5% for N-BaIoT and 97.5% for UNSW-NB15, reflecting robust detection of complex attack patterns.
+Compared to deep learning models, CNN and LSTM models performed well with F1-scores ranging 
+between 95.3 and 97.0% across datasets, while BiLSTM with Attention pushed this further to 97.2% for BoT-
+IoT, 97.6% for N-BaIoT, and 96.9% for UNSW-NB15. However, the proposed SA-DNN + LFG surpasses these 
+with a notable margin which is up to 2.3% improvement, enabled by its self-attention-driven architecture and 
+the Linear Feature Gating module that dynamically emphasizes informative features. From a computational 
+perspective, SA-DNN + LFG maintains efficient resource utilization. Average training time per epoch was 28 s 
+for BoT-IoT, 34 s for N-BaIoT, and 44 s for UNSW-NB15, with peak training memory remained below 6 GB 
+and inference latency per instance below 3 ms on an NVIDIA Tesla T4 GPU. This is considerably more efficient 
+than BiLSTM + Attention, which typically consumes more memory due to dual sequence processing and incurs 
+latency in the range of 5–8 ms per instance. Thus, SA-DNN + LFG delivers a strong balance between detection 
+performance and computational scalability. While UNSW-NB15 demonstrates that the model generalizes well 
+to broader intrusion detection scenarios, its efficiency and low-latency inference make it particularly suitable 
+for real-time deployment in resource-constrained IoT environments, outperforming both conventional and 
+modern IDS baselines.
+Computational overhead and resource efficiency
+The proposed SA-DNN + LFG framework was implemented with four attention heads and 16-dimensional key, 
+query, and value vectors, striking a balance between expressiveness and efficiency. This compact configuration 
+enables modeling of complex inter-feature dependencies without incurring the quadratic scaling overhead typical 
+of larger attention architectures. While Sect. " Computational complexity analysis" established the theoretical 
+lightweight complexity of the framework, this section presents the corresponding empirical validation.
+All experiments were conducted on Google Colab Pro, leveraging an NVIDIA Tesla T4 GPU (15.36 GB GPU 
+memory, 13.29 GB system RAM, CUDA 12.2). The average training time per epoch was approximately 28 s for 
+the BoT-IoT dataset, 34 s for N-BaIoT, and 44 s for UNSW-NB15. Peak memory usage during training remained 
+below 6 GB, and inference latency per instance was consistently under 3 ms, demonstrating the feasibility of near 
+real-time deployment even on moderate edge hardware.
+Compared with traditional filter-based feature selection methods such as Chi-square, mutual information, 
+or ReliefF , which provide low-cost preprocessing but fail to capture temporal and nonlinear dependencies, 
+the proposed approach integrates feature relevance learning directly into the model. This design removes the 
+Model Accuracy (%) Precision (%) Recall (%) F1-score (%)
+Logistic regression 88.3 87.1 88.6 87.8
+SVM (RBF) 91.2 90.5 91.8 91.1
+Random forest 93.1 92.7 93.4 93
+CNN 95.4 95 95.7 95.3
+LSTM 96.1 95.7 96.4 96
+BiLSTM + Attention 96.9 96.6 97.2 96.9
+Proposed SA-DNN + LFG 97.9 ± 0.3 97.2 ± 0.3 97.7 ± 0.3 97.5 ± 0.21
+Table 9. Performance comparison of the proposed model with baseline models for experiments on UNSW-
+NB15 dataset.
+ 
+Model Accuracy (%) Precision (%) Recall (%) F1-Score (%)
+Logistic Regression 89.2 88.5 89.6 89.1
+Support Vector Machine (RBF) 91.9 91.2 92.4 91.8
+Random Forest 94.1 93.7 94.5 94.1
+CNN 96.5 96.1 96.7 96.4
+LSTM 97.0 96.8 97.2 97.0
+BiLSTM + Attention 97.6 97.4 97.8 97.6
+Proposed SA-DNN + LFG 99.6 ± 0.1 99.4 ± 0.2 99.7 ± 0.1 99.5 ± 0.11
+Table 8. Performance comparison of the proposed model with baseline models for experiments on N-BaIoT 
+Dataset.
+ 
+Scientific Reports |        (2025) 15:39937 26| https://doi.org/10.1038/s41598-025-23750-0
+www.nature.com/scientificreports/
+
+dependency on external feature engineering and allows dynamic adaptation to heterogeneous data distributions 
+during both training and inference. Furthermore, the modularity of the attention mechanism permits pruning 
+or reconfiguration for lightweight deployment on resource-constrained devices without retraining the full 
+architecture.
+From a practical standpoint, False Positive Rate (FPR) is a critical factor in intrusion detection systems. 
+Excessive false alarms create alert fatigue and degrade operational efficiency. The SA-DNN + LFG achieves a 
+substantially reduced FPR of 0.5% on BoT-IoT, 0.3% on N-BaIoT, and 0.8% on UNSW-NB15, consistently 
+outperforming baselines such as BiLSTM + Attention (≈2%) and conventional classifiers like SVM and Random 
+Forest (> 4%). By minimizing unnecessary alerts while maintaining high detection accuracy, the proposed 
+framework ensures precision, reliability, and trustworthiness, making it suitable for deployment in both IoT-
+specific and general network intrusion detection contexts. These empirical observations reinforce the theoretical 
+analysis by confirming that the framework’s lightweight design translates into practical efficiency for real-world 
+IoT environments.
+Comparison with state-of-the-art methods
+To evaluate the effectiveness of the proposed approach, a performance comparison with State-of-the-Art 
+methods is conducted. The comparison of recent IDS methods and proposed method evaluated on BoT-IoT, 
+N-BaIoT, and UNSW-NB15 is presented in Table 10.
+Table 10 presents a comparative analysis of state-of-the-art IDS methods evaluated on BoT-IoT, N-BaIoT, and 
+UNSW-NB15. Prior works such as Gu and Lu38 (SVM with Naïve Bayes embedding) and Kabir et al.39 (stacking-
+based IDS) reported accuracies of 93.75% and 96.24% on UNSW-NB15, respectively. Ensemble and hybrid deep 
+learning approaches by Thakkar and Lohiya 40, Wardana et al. 42, and Al-Shurbaji et al. 43 achieved 96–99% on 
+IoT datasets, while recent neural models such as Naeem et al.44 and Logeswari et al.45 pushed performance close 
+to 99%. Nonetheless, the proposed SA-DNN + LFG attained 99.3% (BoT-IoT), 99.6% (N-BaIoT), and 97.9% 
+(UNSW-NB15), surpassing existing state-of-the-art methods. These results validate the dual advantage of high 
+accuracy and generalizability, confirming the robustness of our approach across both IoT-specific and general-
+purpose IDS benchmarks.
+Conclusion and future work
+In this work, we developed an interpretable intrusion detection framework for IoT environments by integrating 
+SA-DNN with LFG mechanism. The proposed SA-DNN + LFG model demonstrated high accuracy on IoT-
+specific datasets, achieving 99.3% on BoT-IoT and 99.6% on N-BaIoT, and maintained strong generalizability 
+on the broader UNSW-NB15 dataset with 97.9% accuracy. The model’s stability was further confirmed by 
+reporting mean and standard deviation values across multiple experimental runs. For the IoT-specific datasets, 
+SHAP and LIME were employed to provide interpretability of predictions, thereby enhancing transparency in 
+feature contributions and decision-making. These results collectively validate the effectiveness, robustness, and 
+explainability of the proposed framework for IoT intrusion detection, while demonstrating its adaptability to 
+broader network intrusion scenarios.
+In future work, we plan to extend the evaluation to additional datasets such as IoT-23 and TON_IoT to 
+further assess cross-domain adaptability. We also plan to investigate adaptive learning strategies, including 
+reinforcement learning for dynamic adaptation to evolving attack patterns and federated learning for privacy-
+preserving distributed training. These extensions are expected to strengthen the scalability and practical 
+applicability of the framework in real-world IoT environments.
+Data availability
+The datasets used in this study are all publicly available benchmark datasets: BoT-IoT:   h t t p s :  / / w w w .  k a g g l e  . c o 
+m / d  a t a s e  t s / v i g  n e s h v e  n k a t e s  w a r a n / b o t - i o t - N - B a I o T:   h t t p s :  / / w w w .  k a g g l e  . c o m / d  a t a s e  t s / m k a  s h i f n /  n b a i o t  - D a t a 
+s e t - U N S W - N B 1 5:  h t t p s :   /  / w w  w . k a g g l  e . c  o m  / d a t a s  e  t s / m  r w e l l s  d a  v i d  / u  n s w - n b 1 5. All datasets are properly cited 
+Author (Y ear) Key technique/architecture Dataset used Accuracy (%)
+Gu and Lu38 Support Vector Machine with Naïve Bayes feature embedding UNSW-NB15 93.75%
+Kabir et al.39 Stacking Anomaly-based Intrusion Detection System UNSW-NB15 96.24%
+Thakkar and Lohiya,40 Ensemble-Learning-based Deep Neural Network BoT-IoT and UNSW-NB15 98.99% (BoT-IoT) and 96.7% 
+(UNSW-NB15)
+Altunay and Albayrak41 CNN + LSTM architecture UNSW-NB15 93.21% (for Binary Classification) and 
+92.9% (for multi-class classification)
+Wardana et al.42 Ensemble averaging deep neural network N-BaIoT 97.21%
+Al-Shurbaji et al.43 BoT-EnsID-An Ensemble approach for Botnet detection BoT-IoT 97%
+Naeem et al.44 Hybrid CNN-BiLSTM + Attention Mechanism N-BaIoT 99%
+Logeswari et al.45 Capsule Networks + Attention Augmented RNN + QPSO + ANFIS BoT-IoT 98.6%
+Proposed (SA-DNN + LFG) Self-Attention DNN + Learnable Feature Gating (LFG) BoT-IoT, N-BaIoT, 
+UNSW-NB15
+99.3% (BoT-IoT), 99.6% (N-BaIoT), 
+and 97.9% (UNSW-NB15)
+Table 10. Comparison of State-of-the-Art IDS methods evaluated on BoT-IoT, N-BaIoT, and UNSW-NB15.
+ 
+Scientific Reports |        (2025) 15:39937 27| https://doi.org/10.1038/s41598-025-23750-0
+www.nature.com/scientificreports/
+
+within the manuscript and were used solely for the purpose of computational analysis. No new datasets were 
+generated in this study.
+Received: 23 May 2025; Accepted: 8 October 2025
+References
+ 1. Hamad, S. A., Sheng, Q. Z., Zhang, W . E. & Nepal, S. Realizing an internet of secure things: A survey on issues and enabling 
+technologies. IEEE Commun. Surv. Tutor. 22(2), 1372–1391 (2020).
+ 2. Farooq, M. S. et al. A survey on the role of industrial IOT in manufacturing for implementation of smart industry. Sensors 23(21), 
+8958 (2023).
+ 3. Ahmid, M. & Kazar, O. A comprehensive review of the internet of things security. J. Appl. Secur. Res. 18(3), 289–305 (2023).
+ 4. Alzubi, O. A. A deep learning-based frechet and dirichlet model for intrusion detection in IWSN. J. Intell. Fuzzy Syst.  42(2), 
+873–883 (2022).
+ 5. Meidan, Y . et al. N-BaIoT: Network-based detection of IoT botnet attacks using deep autoencoders. IEEE Pervasive Comput. 17(3), 
+12–22 (2018).
+ 6. Anitha, A. A. & Arockiam, L. A review on intrusion detection systems to secure IoT networks. Int. J. Comput. Netw. Appl. 9(1), 
+38–50 (2022).
+ 7. Aouedi, O. et al. A survey on intelligent Internet of Things: Applications, security, privacy, and future directions. IEEE Commun. 
+Surv. Tutor. 27(2), 1238–1292 (2024).
+ 8. Lombardi, M., Pascale, F . & Santaniello, D. Internet of things: A general overview between architectures, protocols and applications. 
+Information 12(2), 87 (2021).
+ 9. Halbouni, A. et al. Machine learning and deep learning approaches for cybersecurity: A review. IEEE Access 10, 19572–19585 
+(2022).
+ 10. Kasongo, S. M. A deep learning technique for intrusion detection system using a recurrent neural networks based framework. 
+Comput. Commun. 199, 113–125 (2023).
+ 11. Alzubi, O. A., Alzubi, J. A., Qiqieh, I. & Al-Zoubi, A. M. An IoT intrusion detection approach based on salp swarm and artificial 
+neural network. Int. J. Network Manage 35(1), e2296 (2025).
+ 12. Kumar, V ., Das, A. K. & Sinha, D. UIDS: a unified intrusion detection system for IoT environment. Evol. Intel. 14(1), 47–59 (2021).
+ 13. Saba, T., Rehman, A., Sadad, T., Kolivand, H. & Bahaj, S. A. Anomaly-based intrusion detection system for IoT networks through 
+deep learning model. Comput. Electr. Eng. 99, 107810 (2022).
+ 14. Awajan, A. A novel deep learning-based intrusion detection system for IOT networks. Computers 12(2), 34 (2023).
+ 15. Lo, W . W ., Layeghy, S., Sarhan, M., Gallagher, M., & Portmann, M. E-graphsage: A graph neural network based intrusion detection 
+system for IoT. In NOMS 2022–2022 IEEE/IFIP Network Operations and Management Symposium 1–9. (IEEE, 2022).
+ 16. Li, S. et al. Hda-ids: A hybrid dos attacks intrusion detection system for iot by using semi-supervised cl-gan. Expert Syst. Appl. 238, 
+122198 (2024).
+ 17. Azimjonov, J. & Kim, T. Designing accurate lightweight intrusion detection systems for IoT networks using fine-tuned linear SVM 
+and feature selectors. Comput. Secur. 137, 103598 (2024).
+ 18. Anwar, S. S., Asaduzzaman, & Sarker, I. H. A differential privacy aided DeepFed intrusion detection system for IoT applications. 
+Secur. Priv. 7(6), 445 (2024).
+ 19. Shahin, M., Maghanaki, M., Hosseinzadeh, A. & Chen, F . F . Advancing network security in industrial IoT: A deep dive into AI-
+enabled intrusion detection systems. Adv. Eng. Inform. 62, 102685 (2024).
+ 20. Vakili, A. et al. A new service composition method in the cloud-based internet of things environment using a grey wolf optimization 
+algorithm and MapReduce framework. Concurr. Comput. Pract. Exp. 36(16), e8091 (2024).
+ 21. Heidari, A., Navimipour, N. J. & Unal, M. A secure intrusion detection platform using blockchain and radial basis function neural 
+networks for internet of drones. IEEE Internet Things J. 10(10), 8445–8454 (2023).
+ 22. Amiri, Z., Heidari, A., Navimipour, N. J., Esmaeilpour, M. & Y azdani, Y . The deep learning applications in IoT-based bio-and 
+medical informatics: a systematic literature review. Neural Comput. Appl. 36(11), 5757–5797 (2024).
+ 23. Amiri, Z., Heidari, A., Zavvar, M., Navimipour, N. J. & Esmaeilpour, M. The applications of nature-inspired algorithms in Internet 
+of Things-based healthcare service: A systematic literature review. Trans. Emerg. Telecommun. Technol. 35(6), e4969 (2024).
+ 24. Zanbouri, K. et al. A GSO-based multi-objective technique for performance optimization of blockchain-based industrial Internet 
+of things. Int. J. Commun. Syst. 37(15), e5886 (2024).
+ 25. Khan, I. A. et al. A novel collaborative SRU network with dynamic behaviour aggregation, reduced communication overhead and 
+explainable features. IEEE J. Biomed. Health Inform. 28(6), 3228–3235 (2024).
+ 26. Khan, I. A., Pi, D., Kamal, S., Alsuhaibani, M. & Alshammari, B. M. Federated-boosting: a distributed and dynamic boosting-
+powered cyber-attack detection scheme for security and privacy of consumer IoT. IEEE Trans. Consum. Electron. 71(2), 6340–6347 
+(2024).
+ 27. Khan, I. A. et al. Fed-inforce-fusion: A federated reinforcement-based fusion model for security and privacy protection of IoMT 
+networks against cyber-attacks. Inf. Fus. 101, 102002 (2024).
+ 28. Heidari, A., Shishehlou, H., Darbandi, M., Navimipour, N. J. & Y alcin, S. A reliable method for data aggregation on the industrial 
+internet of things using a hybrid optimization algorithm and density correlation degree. Clust. Comput. 27(6), 7521–7539 (2024).
+ 29. Amiri, Z., Heidari, A. & Navimipour, N. J. Comprehensive survey of artificial intelligence techniques and strategies for climate 
+change mitigation. Energy 308, 132827 (2024).
+ 30. Asadi, M., Jamali, M. A. J., Heidari, A. & Navimipour, N. J. Botnets unveiled: A comprehensive survey on evolving threats and 
+defense strategies. Trans. Emerg. Telecommun. Technol. 35(11), e5056 (2024).
+ 31. Abdullayeva, F . & Suleymanzade, S. Cyber security attack recognition on cloud computing networks based on graph convolutional 
+neural network and graphsage models. Results Control Optim. 15, 100423 (2024).
+ 32. Abdullayeva, F . J. Distributed denial of service attack detection in E-government cloud via data clustering. Array 15, 100229 (2022).
+ 33. Saheed, Y . K. & Misra, S. CPS-IoT-PPDNN: A new explainable privacy preserving DNN for resilient anomaly detection in cyber-
+physical systems-enabled IoT networks. Chaos Solitons Fractals 191, 115939 (2025).
+ 34. Saheed, Y . K., Omole, A. I. & Sabit, M. O. GA-mADAM-IIoT: A new lightweight threats detection in the industrial IoT via genetic 
+algorithm with attention mechanism and LSTM on multivariate time series sensor data. Sens. Int. 6, 100297 (2025).
+ 35. Saheed, Y . K., Abdulganiyu, O. H. & Ait Tchakoucht, T. Modified genetic algorithm and fine-tuned long short-term memory 
+network for intrusion detection in the internet of things networks with edge capabilities. Appl. Soft Comput. 155, 111434 (2024).
+ 36. Saheed, Y . K. & Chukwuere, J. E. Xaiensembletl-iov: A new explainable artificial intelligence ensemble transfer learning for zero-
+day botnet attack detection in the internet of vehicles. Results Eng. 24, 103171 (2024).
+ 37. Saheed, Y . K., Misra, S., & Chockalingam, S. Autoencoder via DCNN and LSTM models for intrusion detection in industrial 
+control systems of critical infrastructures. In 2023 IEEE/ACM 4th International Workshop on Engineering and Cybersecurity of 
+Critical Systems (EnCyCriS). 9–16. (IEEE, 2023).
+Scientific Reports |        (2025) 15:39937 28| https://doi.org/10.1038/s41598-025-23750-0
+www.nature.com/scientificreports/
+
+ 38. Gu, J. & Lu, S. An effective intrusion detection approach using SVM with naïve Bayes feature embedding. Comput. Secur. 103, 
+102158 (2021).
+ 39. Kabir, M. H., Rajib, M. S., Rahman, A. S. M. T., Rahman, M. M., & Dey, S. K. Network intrusion detection using unsw-nb15 
+dataset: Stacking machine learning based approach. In 2022 International Conference on Advancement in Electrical and Electronic 
+Engineering (ICAEEE) 1–6. (IEEE, 2022).
+ 40. Thakkar, A. & Lohiya, R. Attack classification of imbalanced intrusion data for IoT network using ensemble-learning-based deep 
+neural network. IEEE Internet Things J. 10(13), 11888–11895 (2023).
+ 41. Altunay, H. C. & Albayrak, Z. A hybrid CNN+ LSTM-based intrusion detection system for industrial IoT networks. Eng. Sci. 
+Technol. Int. J. 38, 101322 (2023).
+ 42. Wardana, A. A., Kołaczek, G., Warzyński, A. & Sukarno, P . Ensemble averaging deep neural network for botnet detection in 
+heterogeneous Internet of Things devices. Sci. Rep. 14(1), 3878 (2024).
+ 43. Al-Shurbaji, T. et al. BoT-EnsIDS: Approach for detecting IoT Botnet attacks leveraging bio-inspired based ensemble feature 
+selection and hybrid deep learning model. Alex. Eng. J. 129, 744–767 (2025).
+ 44. Naeem, A., Khan, M. A., Alasbali, N., Ahmad, J., Khattak, A. A., & Khan, M. S. Efficient IoT Intrusion Detection with an Improved 
+Attention-Based CNN-BiLSTM Architecture. arXiv preprint arXiv:2503.19339 (2025). 
+ 45. Logeswari, G., Roselind, J. D., Tamilarasi, K. & Nivethitha, V . A comprehensive approach to intrusion detection in IoT environments 
+using hybrid feature selection and multi-stage classification techniques. IEEE Access 13, 24970–24987 (2025).
+Author contributions
+KPS, AY: Writing, conceptualization TN, TV: Data collection, analysis JB, AK: Software, figure preparation MIA, 
+GS: Supervision, methodology AB, BBB: Review writing, funding.
+Funding
+No funding.
+Competing interests
+The authors declare no competing interests.
+Additional information
+Correspondence and requests for materials should be addressed to B.B.B.
+Reprints and permissions information is available at www.nature.com/reprints.
+Publisher’s note Springer Nature remains neutral with regard to jurisdictional claims in published maps and 
+institutional affiliations.
+Open Access  This article is licensed under a Creative Commons Attribution-NonCommercial-NoDerivatives 
+4.0 International License, which permits any non-commercial use, sharing, distribution and reproduction in 
+any medium or format, as long as you give appropriate credit to the original author(s) and the source, provide 
+a link to the Creative Commons licence, and indicate if you modified the licensed material. Y ou do not have 
+permission under this licence to share adapted material derived from this article or parts of it. The images or 
+other third party material in this article are included in the article’s Creative Commons licence, unless indicated 
+otherwise in a credit line to the material. If material is not included in the article’s Creative Commons licence 
+and your intended use is not permitted by statutory regulation or exceeds the permitted use, you will need to 
+obtain permission directly from the copyright holder. To view a copy of this licence, visit  h t t p : / / c r e a t i v e c o m m o 
+n s . o r g / l i c e n s e s / b y - n c - n d / 4 . 0 /     .  
+© The Author(s) 2025 
+Scientific Reports |        (2025) 15:39937 29| https://doi.org/10.1038/s41598-025-23750-0
+www.nature.com/scientificreports/

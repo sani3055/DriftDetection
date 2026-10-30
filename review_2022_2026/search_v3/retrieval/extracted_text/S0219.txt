@@ -1,0 +1,1649 @@
+TYPE Original Research
+PUBLISHED 05 October 2026
+DOI 10.3389/frai.2026.1875321
+OPEN ACCESS
+EDITED BY
+Milos Antonijevic,
+Singidunum University, Serbia
+REVIEWED BY
+Naheem Noah,
+University of Denver, United States
+Ugochukwu Onwudebelu,
+Alex Ekwueme Federal University,
+Ndufu- Alike, Nigeria
+*CORRESPONDENCE
+Samuel Kim
+aspasiaai771@gmail.com
+RECEIVED 07 May 2026
+REVISED 11 July 2026
+ACCEPTED 16 July 2026
+PUBLISHED 05 October 2026
+CITATION
+Alam P, Rahaman MA, Shamim JU,
+Refat SH, Ahmed W, Roy P, Reza S and
+Kim S (2026) Machine learning
+approaches for phishing detection and
+cybersecurity awareness in digital
+infrastructure.
+Front. Artif. Intell. 9:1875321.
+doi: 10.3389/frai.2026.1875321
+COPYRIGHT
+© 2026 Alam, Rahaman, Shamim, Refat,
+Ahmed, Roy, Reza and Kim. This is an
+open-access article distributed under the
+terms of theCreative Commons
+Attribution License (CC BY).T h eu s e ,
+distribution or reproduction in other
+forums is permitted, provided the
+original author(s) and the copyright
+owner(s) are credited and that the
+original publication in this journal is
+cited, in accordance with accepted
+academic practice. No use, distribution
+or reproduction is permitted which does
+not comply with these terms.
+Machine learning approaches for
+phishing detection and
+cybersecurity awareness in digital
+infrastructure
+Parves Alam1, Md Azizul Rahaman1, Jubayer Uddin Shamim1,
+Shakhawat Hossain Refat1,W a l iA h m e d2, Pappu Roy1,
+Shaon Reza3 and Samuel Kim4*
+1Graduate School of Technology (GST), Touro University, New York, NY, United States,2Department of
+Computer Science, University of Bridgeport, Bridgeport, CT, United States,3Department of Computer
+Science, University Geomatika Malaysia, Kuala Lumpur, Malaysia,4Department of Computer Science,
+Stanford University, Stanford, CA, United States
+Introduction: Phishing remains a dominant socio-technical threat to digital
+infrastructure, serving as an entry vector for credential-theft, ransomware,
+and supply-chain incidents. The machine learning literature on phishing-URL
+detection remains fragmented across heterogeneous datasets, inconsistent
+leakage controls, and explanation pipelines seldom cross-validated by
+independent attribution methods.
+Methods: An end-to-end, leakage-controlled machine learning framework was
+developed over a balanced corpus of 11,430 instances and 87 engineered URL-
+lexical, HTML-content, and external-reputation features, with all preprocessing
+transforms ﬁt on the training partition only. Eleven heterogeneous classiﬁers
+were benchmarked; the best classical model (LightGBM) was repurposed
+as a deterministic feature extractor whose out-of-fold posterior probabilities
+augmented the input to a hybrid CNN-BiLSTM. Statistical signiﬁcance was
+assessedviaWilcoxonsigned-ranktestswithHolm-Bonferronicorrectionon10-
+fold cross-validationF
+1 scores, and two explainable-AI methods (Tree SHAP and
+Permutation Importance) were applied alongside ablation studies.
+Results: LightGBM attained F1 = 0.9699 and AUC = 0.9943, signiﬁcantly
+outperforming every other classiﬁer (p ≤ 0.002) except XGBoost (p = 0.375).
+The CNN-BiLSTM hybrid attainedF1 = 0.9652 and recall = 0.9703. SHAP and
+Permutation Importance agreed on 11 of 15 top-ranked features, separating
+external-reputation indicators (Google indexing, page rank, domain age, web
+traffic) from URL-lexical complexity indicators (length, dots, hyphens, phishing
+hints).
+Discussion: Strict leakage control conﬁrms that the attainable performance
+is intrinsically high rather than artifactual. The convergent dual-method
+explanations translate into six candidate cybersecurity-awareness guidelines for
+end-user training, connecting technical detection to the human factors that
+shape enterprise security posture.
+KEYWORDS
+CNN-BiLSTM, cybersecurity awareness, explainable artiﬁcial intelligence, gradient
+boosting, machinelearning,phishing detection,SHAP, Wilcoxon signed-rank test
+Frontiersin ArtiﬁcialIntelligence 01 frontiersin.org
+
+Alam et al. 10.3389/frai.2026.1875321
+1 Introduction
+Thedemocratizationofonlineservices,themigrationofcritical
+infrastructuretocloud-nativearchitectures,andthepost-pandemic
+normalization of remote work have collectively transformed
+the attack surface of contemporary digital infrastructure
+(Anti-PhishingWorkingGroup, 2023 ). Within this expanded
+surface, phishing has consolidated its position as the dominant
+threat vector. The Anti-Phishing Working Group reports that
+the volume of unique phishing sites observed quarterly has
+roughly tripled over the past 5 years, and the Verizon Data Breach
+Investigations Report identiﬁes phishing as the initial-access
+mechanism for a majority of conﬁrmed credential-theft and
+ransomware incidents ( Verizon, 2023). Although phishing is
+fundamentally a social-engineering attack that exploits the trust
+heuristics of human users, the technical artifact through which
+the attack is delivered, namely the URL, is suﬃciently rich in
+distributional structure to enable automated detection through
+machinelearning( Aljofeyetal.,2022 ).
+The literature on machine learning-based phishing detection
+now spans more than a decade. Early approaches relied on hand-
+craftedblacklistsandrule-basedheuristicsoverURLstrings,which
+suﬀered from poor generalization to unseen domains and required
+continual manual curation (Prakashetal., 2010). The introduction
+of supervised learning over engineered features, including URL
+length, special-character counts, sub-domain depth, and the
+presence of brand-mimicking tokens, substantially improved
+coverageandisthemethodologicaltraditionintowhichthepresent
+study falls (Mohammadetal., 2014 ; ¸Sahingozetal., 2019 ). More
+recently, deep-learning approaches that ingest raw URL strings
+via convolutional and recurrent encoders have shown competitive
+performance, particularly when trained on very large corpora
+(Leetal., 2018 ; Tajaddodianfaretal., 2020 ). Hybrid models that
+fuse engineered features with learned representations occupy a
+middle ground and have been reported to combine the data
+eﬃciency of the former with the representational ﬂexibility of the
+latter(Ozcanetal.,2023 ).
+Despite this maturity, three methodological problems recur
+with suﬃcient frequency to warrant systematic attention. First, the
+leakage problem: a non-trivial fraction of published pipelines ﬁt
+feature-selection or scaling transforms on the union of training
+and test data, which inﬂates reported metrics and confounds
+comparativeclaims( Kaufmanetal.,2012 ).Second,thesigniﬁcance
+problem: model rankings are typically reported on point estimates
+of accuracy or F
+1-score, with little attention to whether the
+observed gaps survive the noise of cross-validation. The Wilcoxon
+signed-rank test is the appropriate non-parametric instrument for
+this purpose (Demšar, 2006), but its use remains uneven in the
+cybersecurity machine learning literature. Third, the explainability
+problem: while SHAP (LundbergandLee, 2017) and permutation-
+based attributions (Breiman, 2001) are now standard tools, single-
+method explanations are vulnerable to method-speciﬁc artifacts,
+and convergent attributions across orthogonal frameworks are
+seldomreported.
+The present study is motivated by the conjunction of
+these three concerns and by an additional, application-oriented
+observation: The machine learning literature on phishing rarely
+closes the loop between predictive ﬁndings and the actionable
+cybersecurity-awareness recommendations that constitute the
+strongestpracticaldefenseagainstphishing.End-usersusceptibility
+to phishing is repeatedly shown to be the binding constraint on
+enterprise security posture (Jampenetal., 2020), and any technical
+detection pipeline that does not surface its ﬁndings in a form
+pedagogically useful for training programmes leaves a substantial
+fractionofitspotentialvalueunrealised.
+Against this background, the contributions of this study
+are 4-fold. First, the study develops and empirically validates
+a complete, leakage-controlled machine learning pipeline for
+phishing-URLdetectionoverabalancedcorpusof11,430URLsand
+87 engineered features. Second, it benchmarks 11 heterogeneous
+classiﬁers spanning linear, tree-based, ensemble, instance-based,
+probabilistic, and shallow-neural-network paradigms and veriﬁes
+the statistical signiﬁcance of the resulting performance gradient
+through Wilcoxon signed-rank tests on 10-fold cross-validationF
+1
+scores. Third, it proposes a hybrid CNN–BiLSTM architecture in
+whichthebest-performingclassicalmodelservesasadeterministic
+featureextractor,supplyingposterior-probabilityaugmentationsto
+thedeepnetwork,anddemonstratesthatthishybridattainsarecall-
+favorable operating point of practical security value. Fourth, it
+conducts dual-method explainable-AI analysis using Tree SHAP
+and Permutation Importance, documents strong inter-method
+agreement, and translates the convergent explanations into a
+compact set of cybersecurity-awareness rules suitable for end-
+user training. A series of ablation studies isolates the marginal
+contribution of each major design choice. The remainder of
+the study is structured as follows: Section 2 surveys related
+work; Section 3 details the proposed methodology; Section 4
+reports the experimental results, including ablation analyses;
+Section 5 discusses the implications for cybersecurity awareness;
+andSection6concludes.
+We state the scope of the contribution precisely to avoid
+overclaiming. None of the individual ingredients, leakage-
+controlled preprocessing, Wilcoxon-based comparison, posterior
+augmentation, CNN–BiLSTM hybridization, or post-hoc
+explainability, is in isolation novel to phishing detection. The
+contribution is instead methodological and integrative: The value
+lies in combining strict leakage control with non-parametric
+signiﬁcance testing and family-wise error correction, in cross-
+validating the explanation through two orthogonal attribution
+methods rather than relying on a single method, and in carrying
+the resulting convergent feature hierarchy through to an explicit,
+falsiﬁablesetofend-userawarenessguidelines.Weareexplicitthat
+the CNN–BiLSTM hybrid does not improve aggregateF
+1 over the
+strongest single classiﬁer; its role is to demonstrate a leakage-safe
+mechanism for injecting tree-ensemble knowledge into a deep
+model and to expose a recall-favorable operating point, and we
+evaluateitonthosetermsratherthanonaggregateaccuracy.
+2 Related work
+2.1 Engineered-feature approaches to
+phishing detection
+The earliest generation of machine learning phishing detectors
+reliedonrule-basedanddecision-treemodelsoverasmallnumber
+of URL-lexical features ( Gareraetal., 2007 ). Mohammadetal.
+Frontiersin ArtiﬁcialIntelligence 02 frontiersin.org
+
+Alam et al. 10.3389/frai.2026.1875321
+(2014) extended this paradigm by curating a thirty-feature set
+drawn from URL syntax, page content, and WHOIS metadata
+and demonstrated that an ensemble of neural networks could
+exceed 92% accuracy on a balanced corpus. ¸Sahingozetal.
+(2019) explored a broader feature universe and reported that
+random-forest classiﬁers consistently outperformed linear and
+instance-based alternatives. The dataset used in the present study
+extends these traditions by combining URL-lexical descriptors
+withHTML-contentdescriptorsandexternal-reputationindicators
+including page rank, Google indexing, domain age, and web
+traﬃc (HannousseandYahiouche, 2021). The empirical regularity
+that emerges from this body of work is consistent: Tree-based
+ensembles, including random forests, extra trees, and gradient
+boosting, tend to dominate other classical model families on
+engineered phishing features, in part because they accommodate
+the heavy-tailed and discontinuous distributions characteristic of
+URL-lexicaldatawithoutrequiringscalingortransformation.
+2.2 Gradient boosting in cybersecurity
+The XGBoost framework (ChenandGuestrin, 2016 ) and the
+subsequent LightGBM framework (Keetal., 2017 ) have become
+standard tools for tabular-data classiﬁcation in cybersecurity
+applications, including malware detection, intrusion detection,
+and credit-card fraud detection. Their dominance reﬂects three
+properties:histogram-basedsplit-ﬁndingthatscalestolargefeature
+counts, regularized leaf-weight learning that controls overﬁtting,
+and native handling of missing values. In the phishing-detection
+setting, several studies have reported that LightGBM and XGBoost
+achieve test F
+1-scores in the 0.96–0.98 range on engineered-
+feature datasets of the size used here ( Alsarieraetal., 2020 ;
+GandotraandGupta, 2021 ). The present study conﬁrms this
+regularity and additionally demonstrates that the gap between
+LightGBMandXGBoostisnotstatisticallysigniﬁcantonthecorpus
+considered, an observation that has practical consequence for
+deployment decisions where inference latency or model size may
+diﬀerbetweenthetwoframeworks.
+2.3 Deep learning over URLs
+Parallel to the engineered-feature literature, a strand of
+work treats URLs as raw character sequences and applies
+convolutional and recurrent networks directly. Leetal. (2018)
+introduced URLNet, a character-level convolutional network
+for URL classiﬁcation, and Huangetal. (2019) extended this
+approach with attention mechanisms. Ozcanetal. (2023)
+developed a hybrid that combines engineered features with
+a CNN-LSTM character-level pathway. The CNN–BiLSTM
+architecture proposed here diﬀers in two respects. First, it
+operates on engineered features augmented with the posterior
+probabilities of a high-performing tree ensemble, rather than
+on raw URL characters; this design preserves the interpretability
+of the underlying features while still allowing the deep network
+to discover non-linear interactions among them. Second, the
+parallel CNN and BiLSTM branches are merged via global
+average pooling and concatenation rather than sequential
+composition, reducing parameter count and improving training
+stability on the relatively modest dataset size considered.
+Bidirectional LSTMs in particular have been shown to capture
+context-sensitive dependencies that unidirectional recurrences
+miss ( SchusterandPaliwal, 1997 ; GravesandSchmidhuber,
+2005), and this advantage carries over to the engineered-
+feature setting where feature ordering can be exploited by the
+convolutionalbranch.
+2.4 Explainable artiﬁcial intelligence in
+phishing detection
+The use of explainable-AI techniques to interpret phishing
+classiﬁers has grown rapidly.LundbergandLee (2017) introduced
+SHAP, which provides theoretically grounded local and global
+feature attributions through Shapley values from cooperative
+game theory.Lundbergetal. (2020) subsequently developed Tree
+SHAP, an exact polynomial-time algorithm for tree ensembles.
+Permutation Importance (Breiman, 2001) provides an orthogonal,
+model-agnostic alternative whose attributions are derived from
+observed performance degradation under feature perturbation.
+Although both methods are now common in the phishing
+literature, they are typically reported in isolation, leaving open
+the question of whether their attributions are mutually consistent.
+The present study addresses this gap by applying both methods
+to the same model and quantifying the overlap between their
+top-rankedfeatures.
+2.5 Cybersecurity awareness as a defensive
+layer
+Cybersecurity awareness research ( Jampenetal., 2020 ;
+Parsonsetal., 2017 ) consistently ﬁnds that the human user is the
+binding constraint on phishing defense: Even highly accurate
+technical detectors will be circumvented by some fraction of
+attacks that reach end users, and the susceptibility of those users
+to social-engineering cues determines the residual risk. The most
+eﬀective awareness programmes translate technical insights into
+a small number of memorable rules that users can apply during
+everyday browsing (Abawajy, 2014). The convergent explanations
+producedbySHAPandPermutationImportanceinthisstudylend
+themselves naturally to such translation, and Section 5 develops
+thisconnection.
+Table1 situates the present study against representative prior
+systems along four axes that bear directly on the comparability
+of reported results: the dataset and its scale, whether explicit
+leakage controls were reported, the statistical treatment of
+model comparison, and the explainability approach. The table
+makes clear that while individual elements of the present
+pipeline have precedent, their combination under explicit leakage
+control with non-parametric signiﬁcance testing and dual-method
+explanation is not standard in the prior literature, which provides
+the appropriate context for interpreting the F
+1 = 0.9699
+reportedhere.
+Frontiersin ArtiﬁcialIntelligence 03 frontiersin.org
+
+Alam et al. 10.3389/frai.2026.1875321
+TABLE 1 Comparisonwithrepresentative priorphishing-detectionsystems.
+Study Dataset (size) Leakage control Signiﬁcance
+test
+XAI Reported
+F1/Acc.
+Mohammadetal.(2014) Custom(1,400) Notreported None None 0.92(Acc.)
+¸Sahingozetal.(2019) Custom(73,575) Notreported None None 0.98(Acc.)
+Alsarieraetal.(2020) UCI(11,055) Notreported None None 0.97(Acc.)
+HannousseandYahiouche
+(2021)
+Thiscorpus(11,430) Notreported None None 0.966(Acc.)
+Ozcanetal.(2023) Ebbu2017&PhishTank Notreported None None 0.98(Acc.)
+This work Thiscorpus(11,430) Yes Wilcoxon SHAP +
+Perm.
+0.9699 (F1)
+“Leakage control” denotes whether preprocessing transforms were reported as ﬁt on training data only; “Signiﬁcance” denotes the statistical treatment of model comparison; “XAI” denotes
+the explainability method. Reported metrics are quoted as published in the original studies and are not directly comparable across diﬀering datasets and protocols. Bold values indicate the
+best-performingentryforthecorrespondingcolumnmetric.
+3 Methodology
+3.1 Dataset and preliminary inspection
+The empirical investigation was conducted on a publicly
+available, large-scale phishing URL corpus comprisingN = 11,430
+instances and d = 89 attributes, of which 87 are engineered
+numerical features, one is the raw URL string, and one is the
+categorical target (HannousseandYahiouche, 2021 ). The class
+distribution is perfectly balanced with 5,715 legitimate and 5,715
+phishing samples, eliminating the need for synthetic minority
+oversampling and ensuring that accuracy remains a meaningful
+evaluationmetric. Figure1 presentstheclassdistributionasaradial
+chart. A comprehensive integrity check conﬁrmed the absence of
+missing values, duplicate rows, and constant columns. The raw
+URL ﬁeld was excluded from modeling because the dataset already
+encodes its lexical signal through 87 derived features and retaining
+the string would introduce a quasi-identiﬁer capable of causing
+trivial memorization. The categorical target was transformed via
+labelencodingsuchthat y ∈{0,1},where y = 0denotesalegitimate
+URLand y = 1denotesaphishingURL.
+3.2 Feature taxonomy
+To improve interpretability and to organize the downstream
+explainability analysis, the 87 features were grouped into four
+conceptual families: (i) URL-lexical descriptors comprising length,
+character ratios, special-token counts, sub-domain structure, and
+thepresenceofshorteningservices;(ii)HTML-contentdescriptors
+comprising hyperlink ratios, anchor safety, iframe presence,
+and login-form heuristics; (iii) external and WHOIS descriptors
+comprising domain age, registration length, DNS records, web
+traﬃc, page rank, and Google index status; and (iv) a residual
+“other”groupcomprisingthetwofeaturesthatdidnotfallintothe
+precedingthreefamiliesunderourkeywordtaxonomy,namely ip
+(raw-IP host indicator) andlinks_in_tags. Neither appears
+among the top-ﬁfteen ranked attributes under either Tree SHAP
+or Permutation Importance (Section 4), so the interpretability
+narrativeisunaﬀectedbytheirheterogeneousnature.Thispartition
+FIGURE 1
+Class distribution—radial view. The dataset is perfectly balanced with
+5,715 legitimate (green) and 5,715 phishing (red) URL instances
+(N = 11,430 total). The near-complete overlap of the two radial
+traces conﬁrms exact 50:50 balance, eliminating the need for
+synthetic minority oversampling and ensuring that accuracy remains
+a valid evaluation metric alongsideF
+1-score.
+isusedpurelyasananalyticallens;itisnotencodedasanadditional
+inputtoanymodel.
+3.3 Exploratory data analysis
+A multi-faceted exploratory analysis was performed to
+characterize the marginal and joint structure of the feature space.
+For every continuous feature Xj, the standardized mean gap
+betweenthetwoclasses,
+/Delta1j =
+⏐⏐μ(0)
+j −μ(1)
+j
+⏐⏐
+1
+2
+(
+σ(0)
+j + σ(1)
+j
+)
++ ε
+, (1)
+was computed to identify the most class-discriminative attributes,
+where μ(c)
+j and σ(c)
+j denote the conditional mean and standard
+Frontiersin ArtiﬁcialIntelligence 04 frontiersin.org
+
+Alam et al. 10.3389/frai.2026.1875321
+FIGURE 2
+Top-12 most class-discriminative features (by standardized mean gap/Delta1j). Class-conditional histograms overlay legitimate (teal) and phishing (pink)
+distributions for the 12 features with the largest standardized mean-gap score/Delta1j (Equation 1). The external-reputation featuresgoogle_index and
+page_rank exhibit the sharpest bimodal separation: Phishing URLs concentrate at low page-rank values and near-total absence from the Google
+index, while legitimate URLs span a broad positive range. URL-lexical features (length_url, ratio_digits_url) show heavy-tailed phishing
+distributions. Content features (nb_hyperlinks) exhibit right-skewed legitimate distributions reﬂecting the richer link structure of authentic pages.
+deviation of feature j in class c, and ε = 10−9 is a
+numerical regulariser. Mutual information between each feature
+andthetarget,
+MI(X
+j; Y) =
+∑
+x∈Xj
+∑
+y∈{0,1}
+p(x, y) log p(x, y)
+p(x) p(y), (2)
+was estimated using the k-nearest-neighbor estimator
+of Kraskovetal. (2004) , providing a non-parametric,
+monotone-invariant ranking of relevance. Higher-order
+distributional behavior was summarized via Fisher’s skewness
+γ1 = E[(X−μ)3]/σ3 andexcesskurtosis γ2 = E[(X−μ)4]/σ4−3.
+Linear redundancy was inspected through Pearson’s correlation
+ρij = cov(Xi, Xj)/(σiσj) restricted to the top-twenty features by
+mutualinformation.
+Figure2 presents class-conditional histograms for the 12 most
+class-discriminative features, Figure3 shows the top-25 features
+ranked by mutual information,Figure4 presents the correlation
+networkofthetop-20MIfeatures, Figure5 mapsthedistributional
+landscapeintheskewness-kurtosisplane,and Figure6 presentsthe
+class-conditionalradarproﬁleoverthetop-10MIfeatures.
+3.4 Train–test partitioning and leakage
+control
+The corpus was split into training and test partitions in an
+eighty-to-twenty ratio with stratiﬁcation on the target, yielding
+Ntr = 9,144and Nte = 2,286.Toprecludeanyformofinformation
+leakage(Kaufmanetal.,2012 ),allpreprocessingtransformerswere
+ﬁt exclusively on the training partition and only applied (not reﬁt)
+to the held-out test set. Feature standardization, given for featurej
+byEquation3,
+zij =
+xij −ˆμ(tr)
+j
+ˆσ(tr)
+j
+, (3)
+Frontiersin ArtiﬁcialIntelligence 05 frontiersin.org
+
+Alam et al. 10.3389/frai.2026.1875321
+FIGURE 3
+Top-25 features by mutual information with the phishing target
+(lollipop chart). Features are ranked in descending order of mutual
+information MI(X
+j; Y)e s t i m a t e db yt h ek-NN estimator (Equation 2).
+google_index (0.299), web_traffic (0.298), and domain_age
+(0.280) lead by a substantial margin, conﬁrming that
+external-reputation signals dominate individual discriminative power.
+The color gradient (magenta to cyan) encodes MI magnitude. The
+sharp elbow after rank 8 indicates diminishing informational returns
+beyond the external-reputation and content-richness feature
+groups, motivating the mutual-information ﬁlter atk = 50 applied in
+the preprocessing pipeline.
+used training-set moments only. Univariate ﬁlter-based feature
+selection was then carried out with the top-k mutual-information
+criterion( k = 50)computedonthetrainingfold,retaining50ofthe
+87 standardized features. The same ﬁtted scaler and selector were
+subsequently applied to the test fold, guaranteeing that no test-set
+statisticeverinﬂuencedthelearnedrepresentation.
+3.5 End-to-end framework overview
+Figure7 presentsthecompleteend-to-endpipeline,illustrating
+all 11 stages from dataset collection through SHAP and
+PermutationImportanceanalysis.
+3.6 Classical learning algorithms
+Eleven heterogeneous classiﬁers were trained on the
+reduced training matrix X(tr) ∈ R9144×50 to provide broad
+coverage of inductive biases. The pool comprises Logistic
+Regression, Decision Tree, Random Forest (Breiman, 2001), Extra
+Trees ( Geurtsetal., 2006 ), Gradient Boosting ( Friedman,
+2001), AdaBoost ( FreundandSchapire, 1997 ), XGBoost
+(ChenandGuestrin, 2016 ), LightGBM ( Keetal., 2017 ), k-
+Nearest Neighbors (CoverandHart, 1967), Gaussian Naive Bayes,
+and a Multi-Layer Perceptron. For completeness, we additionally
+benchmark a Support Vector Machine with a radial-basis-
+function kernel (C = 1, γ = scale). On the selected 50-feature
+representation, the RBF-SVM is computationally tractable (single
+ﬁt in 6.7s) and attainsF
+1 = 0.9503 and AUC= 0.9879 on the
+test partition, placing it below all four tree-ensemble methods and
+conﬁrming the general ﬁnding that margin-based kernels do not
+outperform gradient-boosted trees on heavy-tailed, zero-inﬂated
+tabular features (Grinsztajnetal., 2022 ). We therefore include
+the RBF-SVM as a reference point but do not carry it into the
+deep-hybrid or explainability stages, which focus on the strongest
+classical model. For the gradient-boosted ensembles, the additive
+modelof Equation4
+F
+M(x) =
+M∑
+m=1
+νhm(x; θm), hm ∈Htree, (4)
+was optimized under the regularized logistic objective of
+Equation5,
+L(φ) =
+Ntr∑
+i=1
+ℓ
+(
+yi,ˆyi
+)
++
+M∑
+m=1
+/Omega1(hm), /Omega1(h) = γT + 1
+2 λ∥w∥2
+2, (5)
+where T is the number of leaves,w the leaf-weight vector, and
+ν the shrinkage. The Multi-Layer Perceptron was trained with
+Adam (KingmaandBa, 2015) under the binary cross-entropy loss
+ofEquation6,
+LBCE =− 1
+N
+N∑
+i=1
+[
+yi logˆyi +(1−yi)log(1 −ˆyi)
+]
+. (6)
+Each model was evaluated by stratiﬁed 5-fold cross-validation
+on the training partition and additionally re-ﬁt on the entire
+trainingpartitiontoproduceheld-outtestpredictions.
+3.7 Performance metrics
+Letting TP,TN,FP, andFN denote the entries of the confusion
+matrix, the following quantities were reported for every model:
+accuracy and precision ( Equation7), recall and F
+1-score
+(Equation8),andtheareaundertheROCcurve( Equation9):
+Accuracy = TP+TN
+TP+TN+FP+FN, Precision = TP
+TP+FP,
+(7)
+Recall = TP
+TP+FN, F1 = 2Precision ·Recall
+Precision+Recall, (8)
+AUC=
+∫ 1
+0
+TPR
+(
+FPR−1(u)
+)
+du. (9)
+The F1-score served as the primary selection criterion because
+itpreservestheequilibriumbetweenfalsealarms,whicherodeuser
+trust,andmisseddetections,whichdirectlycausesecuritybreaches.
+3.8 Statistical signiﬁcance testing via the
+Wilcoxon signed-rank test
+To verify that the observed performance diﬀerences among
+classiﬁers are not attributable to fold-level sampling variance, an
+additional 10-fold stratiﬁed cross-validation was executed on the
+Frontiersin ArtiﬁcialIntelligence 06 frontiersin.org
+
+Alam et al. 10.3389/frai.2026.1875321
+FIGURE 4
+Top-20 MI features—correlation network (edge threshold|ρ| > 0.4, node size = MI score). Each node represents one of the 20 highest-MI features;
+node size encodes MI score, and node color encodes MI rank (yellow = highest). Edges are drawn only for pairs with absolute Pearson’s correlation
+|ρ| > 0.4; edge color encodes correlation sign (orange = positive, red = negative). The upper cluster (large yellow/green nodes:web_traffic,
+domain_age, google_index, nb_hyperlinks, ratio_intHyperlinks, ratio_extHyperlinks) exhibits sparse inter-correlation, indicating
+that these highly informative features carry largely orthogonal signal and that jointly retaining them adds cumulative value. The lower cluster
+(nb_www, ratio_digits_url, char_repeat, avg_words_raw, avg_word_host) shows denser redundancy patterns, identifying candidates for
+removal if a more aggressive feature budget is required.
+training partition. The slow Gradient Boosting, AdaBoost, and
+Multi-Layer Perceptron variants were excluded from this stage on
+groundsofcomputationalexpense,havingalreadyunderperformed
+in the 5-fold round. Leta(A)
+i and a(B)
+i denote the F1-scores of two
+competingmodelsonfold i, i = 1, ... ,10,andlet di = a(A)
+i −a(B)
+i .
+TheWilcoxonsigned-rankstatisticof Equation10,
+W =
+∑
+i : di̸=0
+sgn(di) Ri, Ri = rank
+(
+|di|
+)
+, (10)
+isdistribution-freeandteststhenullhypothesis H0 :median(d) = 0
+(Wilcoxon,1945;Demšar,2006).Thereferencemodelwasselected
+as the one with the highest mean fold F1, and pairwise tests
+were conducted atα = 0.05. Because the eight retained models
+give rise to multiple pairwise comparisons against the reference,
+raw p-values were adjusted using the Holm–Bonferroni step-down
+correction (Holm, 1979) to control the family-wise error rate;
+both raw and adjusted values are reported. To complement the
+hypothesis tests with magnitude information, two distribution-
+free eﬀect sizes were computed for each pairwise comparison: the
+matched-pairs rank-biserial correlation derived from the signed-
+rankstatistic,andCliﬀ’sdelta( Cliﬀ,1993).Finally,95%conﬁdence
+intervals for each model’s mean foldF
+1 were obtained from the
+10-fold scores using the bias-corrected and accelerated bootstrap
+(Efron, 1987) with 10,000 resamples. We emphasize that this
+signiﬁcance analysis is conducted only over the eight models
+carriedintothe10-foldstage;theGradientBoosting,AdaBoost,and
+Multi-Layer Perceptron variants excluded above on computational
+grounds are therefore outside its scope, and the corresponding
+claimsinthisstudyareframedaccordingly.
+3.9 Feature-extractor construction from
+the best classical model
+The best-performing classical model on the test partition,
+namely, LightGBM, was repurposed as a deterministic feature
+extractor for the deep architecture. Given an instancex ∈R
+50,t h e
+Frontiersin ArtiﬁcialIntelligence 07 frontiersin.org
+
+Alam et al. 10.3389/frai.2026.1875321
+FIGURE 5
+Distributional landscape—skewness vs. kurtosis (size= log-variance,
+color = MI). Each point represents one of the 87 features plotted by
+its Fisher skewness (γ1, x-axis) and excess kurtosis (γ2, y-axis). Point
+size encodes log-variance, and point color encodes mutual
+information (yellow = high MI, purple = low MI). The majority of
+features cluster in the low-skewness, low-kurtosis region, consistent
+with approximately symmetric distributions. Extreme outliers
+(path_extension, nb_dollar, punycode, nb_percent,
+nb_star) exhibit skewness above 35 and kurtosis above 1,000,
+reﬂecting near-binary indicator variables with heavy zero-inﬂation.
+These extreme distributional shapes motivate the
+mutual-information ﬁlter over variance-threshold selection since
+high variance alone (large circle size) does not imply high predictive
+relevance (low MI, purple color) for several outlier features. This also
+explains why these high-skewness, high-kurtosis features
+(path_extension, nb_dollar, punycode, nb_percent,
+nb_star) never appear among the top-ranked SHAP or Permutation
+Importance features in Section 4: they are near-binary, heavily
+zero-inﬂated indicators that ﬁre on a vanishingly small fraction of
+URLs, so despite their large variance they carry little mutual
+information with the target and contribute negligibly to the model’s
+decisions. Their exclusion from the top rankings is thus the expected
+and desired behavior of a relevance-based selector, not an oversight.
+augmentedrepresentation /Phi1(x) ∈R52 wasconstructedas
+/Phi1(x) =
+[
+x ∥ ˆp0(x) ∥ ˆp1(x)
+]
+, (11)
+where ∥ denotes concatenation andˆpc(x) is the class-conditional
+posteriorproducedbytheLightGBMensemble. Figure8 illustrates
+thisaugmentationpipelineschematically.
+A subtle but important source of leakage must be controlled at
+this step. If the posterior probabilities used to augment a training
+instance were produced by a LightGBM model that had itself
+been trained on that same instance, the augmented feature would
+encode the label through the model’s near-perfect ﬁt and would
+constitute stacking leakage, inﬂating the deep network’s apparent
+performance. To preclude this, the posterior augmentations for
+thetrainingpartitionweregeneratedby out-of-foldprediction:The
+training partition was divided into ten folds, and for each fold, the
+LightGBM posteriors were produced by a model trained only on
+the other nine folds, so that no instance ever received a posterior
+from a model that had seen it. The augmentations for the held-
+out test partition were generated by a LightGBM model ﬁt on
+the entire training partition and applied to the untouched test set.
+Themutual-informationfeatureselectorandthestandardiserwere
+likewise ﬁt only within the appropriate training folds, so the entire
+augmentationpipelineisfreeoftrain–testandstackingleakage.No
+nested cross-validation of hyperparameters was performed within
+the out-of-fold loop; LightGBM hyperparameters were ﬁxed at the
+values selected on the training partition prior to augmentation,
+which we note as a mild optimism that does not aﬀect the
+train–test separation. This out-of-fold protocol is the one used to
+produce the hybrid results reported in Section 4; we veriﬁed that
+replacing in-sample posteriors with out-of-fold posteriors changes
+the hybrid’s testF
+1 only marginally (from the in-sample value to
+0.9652),conﬁrmingthatthereportedperformancedoesnotreston
+stackingleakage.
+3.10 The CNN–BiLSTM hybrid architecture
+The augmented vectors were reshaped to X ∈ RN×52×1,
+treating the feature axis as a one-dimensional sequence. We make
+explicit that this reshaping imposes a sequential interpretation on
+what is fundamentally an unordered tabular feature vector: The
+convolutional kernels act on locally adjacent feature positions and
+the bidirectional LSTM models order-dependent transitions along
+thefeatureaxis,yettheorderingofthe50selectedfeatures(mutual-
+information rank, followed by the two appended posteriors)
+carries no intrinsic semantic adjacency. The architecture should
+therefore be understood as using convolution and recurrence as
+generic parametric mixers over the feature set rather than as
+exploitingameaningfulsequence,andtheempiricalgainsreported
+in the ablation study (Section 4.6) are accordingly evidence of
+useful inductive capacity rather than of a recovered feature order.
+We did not ﬁnd that permuting the feature order materially
+changed performance in preliminary checks, consistent with this
+interpretation; a systematic study of whether a principled ordering
+(for example, by hierarchical feature clustering) improves the
+hybrid is left to future work. The proposed network instantiates
+two parallel branches that consume this tensor and merge before
+classiﬁcation. Figure9 presentsthefullarchitecturediagram.
+3.10.1 Convolutional branch
+Astackofone-dimensionalconvolutionalblockscaptureslocal
+feature patterns, with theℓ-th layer computing the feature map of
+Equation12:
+h(ℓ+1)
+:,c′ = ReLU
+( Cℓ∑
+c=1
+K−1∑
+k=0
+W(ℓ)
+k,c,c′ h(ℓ)
+:+k,c + b(ℓ)
+c′
+)
+, (12)
+withkernelsize K = 3, C1 = C2 = 64,and C3 = 128ﬁlters,“same”
+padding, batch normalization (IoﬀeandSzegedy, 2015) after each
+convolution, ReLU activation, max-pooling with stride two, and
+dropout(Srivastavaetal.,2014 )of0.3betweenblocks.
+3.10.2 Bidirectional LSTM branch
+Operating on the same input, a two-layer bidirectional
+LSTM (HochreiterandSchmidhuber, 1997 ; SchusterandPaliwal,
+1997) models long-range, order-sensitive interactions across the
+augmented feature sequence. Each LSTM cell computes the gated
+Frontiersin ArtiﬁcialIntelligence 08 frontiersin.org
+
+Alam et al. 10.3389/frai.2026.1875321
+FIGURE 6
+Class-conditional proﬁle—radar chart (normalized means, top-10 MI features). Each axis represents one of the 10 highest-MI features, normalized to
+[0,1] by per-feature min-max scaling. The legitimate-URL polygon (teal) is substantially larger than the phishing polygon (red) across the
+reputation-based axes (domain_age, web_traffic, google_index, page_rank, safe_anchor, nb_hyperlinks, domain_registr), conﬁrming
+the dominance of external-reputation signals as discriminators of URL authenticity. The phishing polygon exceeds the legitimate one on the
+ratio_extHyper axis, indicating a higher fraction of external hyperlinks in phishing pages—a content-structure signal complementary to the
+reputation axes. The visual contrast between the two polygons directly motivates the two-axis narrative (trust-by-reputation vs.
+risk-by-lexical-complexity) developed in the discussion.
+recurrenceof Equation13,
+it = σ(Wixt + Uiht−1 + bi),
+ft = σ(Wf xt + Uf ht−1 + bf),
+ot = σ(Woxt + Uoht−1 + bo),
+˜ct = tanh(Wcxt + Ucht−1 + bc),
+ct = ft ⊙ ct−1 + it ⊙˜ct,
+ht = ot ⊙tanh(ct),
+(13)
+and the bidirectional hidden state is the concatenation−→h t∥←−h t.
+Hidden dimensions are 64 and 32 for the two stacked layers,
+respectively,withdropout0.3betweenthem.
+3.10.3 Fusion and classiﬁcation head
+Both branches are reduced by global average pooling to
+ﬁxed-length vectors, concatenated to a 192-dimensional joint
+embedding, and passed through a dense block of 128→ 64 → 1
+unitswithReLUactivationsanddropoutsof0.4and0.3.Asigmoid
+output produces the phishing probability. The full network has
+146,113trainableparameters.
+3.10.4 Optimization
+Training minimizes binary cross-entropy with the Adam
+optimiser at an initial learning rate of 10−3, batch size 64, a
+maximum of 60 epochs, early stopping on validation loss with
+patienceeight,andalearning-rate-on-plateauschedulerwithfactor
+0.5 and patience four. A 15% slice of the training partition served
+as the validation fold; the test partition was untouched throughout
+thisstage.
+3.11 Explainable artiﬁcial intelligence
+Two complementary post-hoc explanation methods were
+applied to the best classical model so that the explanations are
+grounded in the most accurate available classiﬁer. Tree SHAP
+(Lundbergetal., 2020) computes Shapley valuesφ
+j exactly for tree
+Frontiersin ArtiﬁcialIntelligence 09 frontiersin.org
+
+Alam et al. 10.3389/frai.2026.1875321
+FIGURE 7
+End-to-end machine learning framework for phishing URL detection. The pipeline comprises 11 sequential stages: (1) Dataset collection (11,430
+phishing and legitimate URLs); (2) Data cleaning and integrity check; (3) Feature engineering and feature taxonomy into four families; (4) Stratiﬁed
+80:20 train-test split; (5) Standardization and mutual-information feature selection (top-50 features, ﬁt on training partition only); (6) Eleven candidate
+classical classiﬁers (Logistic Regression, Decision Tree, Random Forest, Extra Trees, Gradient Boosting, AdaBoost, XGBoost, LightGBM, KNN, Naive
+Bayes, and MLP); (7) Best-model selection (LightGBM); (8) Posterior-probability feature augmentation; (9) Hybrid CNN–BiLSTM architecture;
+(10) Performance evaluation (accuracy, precision, recall,F1, ROC-AUC, PR-AUC, and confusion matrix); (11) SHAP and Permutation Importance
+explainability analysis. Color coding: dark blue = data processing; light blue = modeling; green = model selection; gray = evaluation and
+interpretation.
+FIGURE 8
+LightGBM posterior probability augmentation pipeline. The 50 mutual-information-selected features (left) are fed to the LightGBM classiﬁer acting as
+a deterministic feature extractor. The classiﬁer outputs two posterior probabilities:P0 (probability of legitimate, Class 0) andP1 (probability of
+phishing, Class 1), withP0 + P1 = 1 per sample. These two scalar outputs are concatenated with the original 50-feature vector to produce a
+52-dimensional augmented feature vector/Phi1(x) ∈R52 (Equation 11), which constitutes the input to the CNN–BiLSTM hybrid network. The
+augmentation injects a highly discriminative, non-linear compression of the boosted-tree decision surface into the deep network, providing it witha
+richer initial representation than the raw features alone.
+Frontiersin ArtiﬁcialIntelligence 10 frontiersin.org
+
+Alam et al. 10.3389/frai.2026.1875321
+FIGURE 9
+CNN–BiLSTM hybrid architecture for phishing detection. The 52-dimensional augmented feature vector (top) feeds two parallel branches.CNN
+Branch (blue): three convolutional blocks (Conv1D, 64 ﬁlters→ 64 → 128, kernel size 3), each followed by Batch Normalization, ReLU activation, Max
+Pooling (stride 2), and Dropout (p = 0.3); the branch terminates with Global Average Pooling to a 128-dimensional vector.BiLSTM Branch (green): a
+two-layer bidirectional LSTM (64 units, return sequences; 32 units, ﬁnal state) with Dropout (p = 0.3) between layers and Global Average Pooling to a
+64-dimensional vector. Fusion (F): the two branch outputs are concatenated to a 192-dimensional joint embedding and passed through a Dense
+Head (128→ 64 → 1 units, ReLU activations, Dropout 0.4/0.3, Sigmoid output) that yields the phishing probability. Total trainable parameters:
+146,113.
+ensembles by attributing the predictionf(x) to its features as in
+Equation14,
+f(x) = φ0 +
+d∑
+j=1
+φj(x),
+φj =
+∑
+S⊆F\{j}
+|S|!(|F|−| S|−1)!
+|F|!
+[
+fS∪{j}(x)−fS(x)
+]
+, (14)
+where Fisthefullfeaturesetand fS themodelconditionedonsubset
+S. The mean absolute SHAP value¯φj = 1
+n
+∑
+i |φj(xi)| deﬁnes a
+globalranking,whilethesignedmean ¯φsgn
+j = 1
+n
+∑
+i φj(xi)indicates
+whether a feature pushes predictions toward the phishing class.
+Permutation Importance is computed as the expected drop inF1
+whenfeature jisindependentlypermutedinthetestset,asgivenin
+Equation15:
+PIj = F1(Xte, yte)−Eπ
+[
+F1(X
+(πj)
+te , yte)
+]
+, (15)
+estimated with 10 random permutations to yield mean
+and standard deviation. Agreement between SHAP and
+Permutation rankings within the top-ﬁfteen was measured by
+intersectioncardinality.
+3.12 Ablation protocol
+To isolate the marginal contribution of each major design
+choice, six ablation variants were deﬁned. (A1) Drops the
+standardization step and feeds the raw selected features to
+LightGBM. (A2) Drops the mutual-information feature selection
+and feeds all 87 features to LightGBM. (A3) Replaces the mutual-
+informationselectorwithavariance-thresholdselectoratthesame
+retentionbudget.(A4)Removestheconvolutionalbranchfromthe
+hybrid network, retaining only the BiLSTM branch with the same
+fusion head. (A5) Removes the BiLSTM branch from the hybrid
+network, retaining only the convolutional branch. (A6) Removes
+the LightGBM-derived posterior augmentation and feeds the raw
+50-dimensional vectors directly to the dual-branch network. Each
+variant was trained under the same protocol as the full model,
+and the resulting test-set F
+1-score and AUC are compared in
+Section4.6.
+3.13 Implementation environment
+All experiments were implemented in Python 3.12
+using scikit-learn 1.4 ( Pedregosaetal., 2011 ), XGBoost 2.0,
+LightGBM 4.0, TensorFlow 2.15 ( Abadietal., 2016 ), and
+SHAP 0.44. Deep-learning training was performed on a
+single NVIDIA Tesla P100 GPU with 16 GB memory. All
+random seeds were ﬁxed to 42 for reproducibility. The
+hyperparameter conﬁgurations of the 11 classical models
+are reported in Table2 to support full reproducibility; any
+parameter not listed was left at its library default for the stated
+version.
+Frontiersin ArtiﬁcialIntelligence 11 frontiersin.org
+
+Alam et al. 10.3389/frai.2026.1875321
+TABLE 2 Hyperparameter conﬁgurationsof the 11classicalclassiﬁers.
+Model Key hyperparameters
+LogisticRegression penalty= ℓ2, C = 1.0,solver =lbfgs,
+max_iter= 1000
+DecisionTree criterion=gini,max_depth =None,
+min_samples_split= 2
+RandomForest n_estimators= 300,max_depth =None,
+max_features=
+√
+d,bootstrap =True
+ExtraTrees n_estimators= 300,max_depth =None,
+max_features=
+√
+d,bootstrap =False
+GradientBoosting n_estimators= 200,learning_rate = 0.1,
+max_depth= 3,subsample = 1.0
+AdaBoost n_estimators= 200,learning_rate = 1.0,
+base=decisionstump
+XGBoost n_estimators= 400,learning_rate = 0.1,
+max_depth= 6,subsample = 0.9,
+colsample_bytree= 0.9,reg_lambda = 1.0
+LightGBM n_estimators= 400,learning_rate = 0.05,
+num_leaves= 31,max_depth =−1,
+subsample= 0.9,colsample_bytree = 0.9,
+reg_lambda= 1.0
+k-NearestNeighbors n_neighbors= 5,weights =uniform,metric
+=minkowski( p = 2)
+GaussianNaiveBayes var_smoothing= 10−9
+Multi-LayerPerceptron hidden_layers= (128,64),activation =
+ReLU,optimiser =Adam,lr = 10−3,batch
+= 64,max_iter = 300
+Values for LightGBM, XGBoost, and Extra Trees are the conﬁgurations selected by the
+randomized search; the remaining entries are the ﬁxed defaults used at the baseline stage.
+Unlistedparametersuselibrarydefaultsfortheversionsnamedinthetext.Theexactselected
+valuesarealsoserializedinthereproducibilitypackage.
+4 Results
+4.1 Exploratory ﬁndings
+Mutual-information estimates revealed a small set of highly
+informative features dominating the dependency structure of the
+corpus. Table3 reports the 10 most informative features alongside
+theclass-conditionalmeans.
+Two macroscopic patterns emerge. First, external-reputation
+signals including Google indexing, Alexa-like web traﬃc, page
+rank, domain age, and registration length are by far the most
+discriminative attributes. Phishing URLs are systematically newer,
+less-indexed, lower-traﬃcked, and registered for shorter durations.
+The Google-index feature alone exhibits a more than 5-fold mean
+ratiobetweenclasses,conﬁrmingthatsearch-enginevisibilityisone
+of the strongest single indicators of legitimacy. Second, content-
+richness features such as hyperlink counts, internal/external link
+ratios, and anchor safety provide an orthogonal signal: Legitimate
+pages contain on average 144 hyperlinks against only 30 for
+phishingpages,andasubstantiallyhigherproportionofthoselinks
+point internally. This dual signal of external trust and content
+density deﬁnes the empirical phishing manifold uncovered by the
+featurespace.
+TABLE 3 Ten most informative features, ranked by mutualinformationwiththe target.
+Rank Feature μ(0)
+legit μ(1)
+phish
+MI
+1 google_index 0.169 0.899 0.299
+2 web_traﬃc 736,252 977,261 0.298
+3 domain_age 5,094 3,031 0.280
+4 ratio_intHyperlinks 0.694 0.511 0.244
+5 ratio_extHyperlinks 0.250 0.303 0.240
+6 nb_hyperlinks 144.32 30.06 0.234
+7 page_rank 4.482 1.889 0.221
+8 safe_anchor 43.84 30.29 0.179
+9 domain_registration_
+length
+624.29 360.77 0.146
+10 links_in_tags 59.63 44.32 0.121
+4.2 Baseline comparison of classical
+models
+Eleven classiﬁers were trained under identical preprocessing
+andevaluatedontheheld-outtestpartition.Theirfullperformance
+proﬁles are summarized in Table4, ordered by descending F1.
+Figure10 presents the multi-metric leaderboard as a horizontal
+groupedbarchart.
+LightGBM achieves the strongest performance across every
+metric simultaneously, attaining F1 = 0.9699 and AUC =
+0.9943 on the test partition. The four tree-ensemble methods
+(LightGBM, XGBoost, Extra Trees, and Random Forest) form a
+tightperformanceclusterbetween F1 = 0.961and0.970andclearly
+outperformthelinear,kernel-free,instance-based,andshallow-tree
+alternatives.
+The training time reported for LightGBM inTable4 (1.8s)
+is the single-ﬁt cost of the selected conﬁguration at native
+multithreading, consistent with LightGBM’s histogram-based
+eﬃciencyandcomparabletoXGBoost(3.3s).Weﬂagthisexplicitly
+because an earlier version of our pipeline logged the full single-
+threaded grid-search wall-clock time (548.6s) in this column,
+which would misleadingly suggest LightGBM is two orders of
+magnitude slower than XGBoost; that larger ﬁgure is the end-to-
+end model-selection time, not the per-model training cost, and is
+reported separately. This distinction is material to the deployment
+discussion inSection 5, whereinference-time eﬃciency, not search
+time,governsthecomparison.
+4.3 Statistical signiﬁcance of the
+performance gap
+To verify that the LightGBM advantage is statistically robust
+rather than the product of fold-level noise, the Wilcoxon signed-
+rank test was applied to 10-fold F1-scores collected from eight
+competing classiﬁers. The mean fold F1 values were 0.9698
+(LightGBM), 0.9685 (XGBoost), 0.9642 (Random Forest), 0.9626
+(Extra Trees), 0.9428 (Logistic Regression), 0.9426 ( k-Nearest
+Neighbors), 0.9348 (Decision Tree), and 0.7015 (Naive Bayes).
+Figure11 presents the 10-fold CVF1 distributions as violin plots
+Frontiersin ArtiﬁcialIntelligence 12 frontiersin.org
+
+Alam et al. 10.3389/frai.2026.1875321
+TABLE 4 Test-set performance of the eleven classicalmodels.
+Model CV F1 Acc. Prec. Rec. F1 AUC Time (s)
+LightGBM 0.9683±0.0055 0.9698 0.9678 0.9720 0.9699 0.9943 1.8
+XGBoost 0.9682±0.0080 0.9637 0.9601 0.9676 0.9638 0.9936 3.3
+ExtraTrees 0.9617±0.0057 0.9637 0.9633 0.9641 0.9637 0.9928 6.8
+RandomForest 0.9634±0.0070 0.9606 0.9558 0.9659 0.9608 0.9933 11.6
+MLP 0.9580±0.0058 0.9532 0.9481 0.9589 0.9535 0.9896 18.5
+GradBoost 0.9557±0.0087 0.9510 0.9463 0.9563 0.9513 0.9896 13.1
+KNN 0.9420±0.0066 0.9418 0.9461 0.9370 0.9415 0.9773 2.3
+LogisticReg. 0.9427±0.0076 0.9344 0.9336 0.9353 0.9344 0.9809 3.5
+DecisionTree 0.9299±0.0036 0.9335 0.9350 0.9318 0.9334 0.9335 0.7
+AdaBoost 0.9461±0.0076 0.9331 0.9319 0.9344 0.9332 0.9849 11.3
+NaiveBayes 0.7642±0.0256 0.7612 0.9320 0.5634 0.7023 0.9352 0.2
+CVcolumnsreportmeanandstandarddeviationacrossﬁvestratiﬁedfoldsonthetrainingpartition.
+FIGURE 10
+Model leaderboard—multi-metric comparison (score range 0.85–1.00). Horizontal grouped bar chart showing accuracy (blue), precision (yellow),
+recall (teal),F1 (purple), and AUC (orange) for all 11 classiﬁers, ordered by descending AUC. The four tree-ensemble methods (LightGBM, XGBoost,
+Extra Trees, and Random Forest) cluster at the top of the leaderboard, with all ﬁve metrics above 0.96. NaiveBayes is the sole systematic outlier, with
+recall dropping to 0.56 due to the conditional-independence assumption being violated by the correlated feature space. The zoomed x-axis
+(0.85–1.00) expands the region of practical interest, making inter-model differences of 1–3 percentage points visually apparent.
+with Wilcoxon signiﬁcance annotations. Pairwise comparisons
+againstLightGBMarereportedin Table5.
+After Holm–Bonferroni adjustment, the six signiﬁcant
+comparisons remain signiﬁcant atα= 0.05 (adjustedp = 0.0137),
+and the single non-rejection involving XGBoost is unchanged
+(p = 0.375); the family-wise correction, therefore, does not
+alter any qualitative conclusion. The eﬀect sizes corroborate this:
+Cliﬀ’sδ and the rank-biserial correlation are large for the six
+dominated competitors (LightGBM achieved the higher foldF
+1
+on every one of the ten folds) and small for XGBoost (δ = 0.11,
+rrb = 0.345). Decisively, the 95% bootstrap conﬁdence interval
+on the LightGBM–XGBoost mean- F1 gap, [−0.0004, 0.0031]
+straddles zero, providing direct interval evidence that the two
+boosting frameworks are statistically equivalent on this corpus,
+whereaseveryotherintervalliesstrictlyabovezero.
+LightGBM is statistically superior to six of the seven
+competitors carried into this stage at α = 0.05. The single
+non-rejection (p = 0.375) involves XGBoost, which echoes the
+closeness of their point estimates and conﬁrms that the two
+boostingframeworksarepracticallyinterchangeableonthiscorpus,
+while both signiﬁcantly outperform every other family evaluated
+here. We reiterate that Gradient Boosting, AdaBoost, and the
+Multi-LayerPerceptronwerenotcarriedintothe10-foldstageand
+are therefore not covered by this signiﬁcance claim; the broader
+assertionisaccordinglylimitedtothemodelsactuallytested.
+4.4 The CNN–BiLSTM hybrid
+Equipped with the LightGBM-augmented representation
+/Phi1(x) ∈ R52, the proposed CNN–BiLSTM hybrid was trained for
+at most 60 epochs with early stopping on the validation loss and
+learning-rate reduction on plateau; the best validation loss was
+Frontiersin ArtiﬁcialIntelligence 13 frontiersin.org
+
+Alam et al. 10.3389/frai.2026.1875321
+FIGURE 11
+10-fold cross-validation F1 distributions (violin plots)—reference: LightGBM. Each violin shows the distribution of per-foldF1 scores (n = 10) for one
+classiﬁer; individual fold observations are overlaid as points. Stars above each violin indicate Wilcoxon signed-rank test signiﬁcance against LightGBM
+as reference (** p ≤0.002, ns p > 0.05; labeled in red and gold respectively). LightGBM (labeled “best”) achieves the highest median and lowest
+variance. XGBoost is the only non-signiﬁcant competitor (“ns”), conﬁrming statistical equivalence (p = 0.375). NaiveBayes (rightmost, magenta) is
+dramatically separated from the remaining classiﬁers, with medianF1 ≈0.70 and high fold-to-fold variability.** p ≤0.002 (statistically signiﬁcant after
+Holm-Bonferroni correction); ns= not signiﬁcant (p > 0.05).
+TABLE 5 Wilcoxonsigned-rank testofF1 across 10cross-validationfolds, withLightGBMas the reference model.
+Comparison W praw pHolm δ rrb 95 % CI on gap
+LightGBMvs.LogisticRegression 0.0 0.0020 0.0137 0.94 +1.000 [0.0242, 0.0299]
+LightGBMvs.DecisionTree 0.0 0.0020 0.0137 1.00 +1.000 [0.0306, 0.0399]
+LightGBMvs.RandomForest 0.0 0.0020 0.0137 0.47 +1.000 [0.0042, 0.0069]
+LightGBMvs.ExtraTrees 0.0 0.0020 0.0137 0.54 +1.000 [0.0049, 0.0094]
+LightGBMvs.XGBoost 18.0 0.3750 0.3750 0.11 +0.345 [−0.0004, 0.0031]
+LightGBMvs.KNN 0.0 0.0020 0.0137 0.96 +1.000 [0.0239, 0.0305]
+LightGBMvs.NaiveBayes 0.0 0.0020 0.0137 1.00 +1.000 [0.2466, 0.2911]
+praw is the unadjusted two-sidedp-value; pHolm is the Holm–Bonferroni-adjusted value controlling the family-wise error rate across the seven comparisons.δis Cliﬀ’s delta andrrb the
+matched-pairsrank-biserialcorrelation(eﬀectsizes).Theﬁnalcolumnisthe95%bootstrapconﬁdenceinterval(10,000resamples)onthereferenc e–competitormean- F1 gap.
+reached after roughly two dozen epochs, and the best weights
+were restored. Figure12 presents the training dynamics. The
+ﬁnal test-set performance is summarized in Table6 alongside
+the unaided LightGBM, and Figure13 shows the confusion
+matrix on the test partition. Figure14 presents the ﬁnal radar
+comparisonofLightGBM,CNN–BiLSTM,LogisticRegression,and
+NaiveBayes.
+The CNN–BiLSTM does not surpass the unaided LightGBM
+on aggregate F1 (0.9652 vs. 0.9699), conﬁrming that the deep
+hybrid is not introduced as a more accurate classiﬁer. Its
+value lies instead in the precision–recall trade-oﬀ: under the
+leakage-safe out-of-fold augmentation, the hybrid reaches a
+recall of 0.9703 at a precision of 0.9602, an operating point
+that favors detection sensitivity. Operationally, this trade is
+relevant in cybersecurity deployments where the cost of a
+missed phishing URL exceeds that of an additional false alarm;
+the hybrid therefore oﬀers a deployable alternative tuned for
+recall rather than an accuracy improvement over the boosted-
+treebaseline.
+4.5 Explainable AI ﬁndings
+Tree SHAP and Permutation Importance were applied to
+LightGBM to provide model-faithful explanations.Table7 reports
+the top features under each criterion alongside their signed mean
+SHAP contributions and the implied directional eﬀect.Figure15
+presents the global SHAP importance bar chart,Figure16 presents
+the SHAP value distributions per feature,Figure17 presents the
+Permutation Importance rankings, and Figure18 presents the
+cross-methodagreementscatterplot.
+The intersection of the top-ﬁfteen features under both
+methods contains 11 features, indicating strong agreement
+between the two attribution paradigms despite their orthogonal
+deﬁnitions, namely cooperative-game-theoretic vs. perturbation-
+based. The signed SHAP analysis exposes a coherent semantic
+narrative. Features whose elevation pushes a prediction toward
+phishing are predominantly URL-lexical signs of obfuscation:
+nb_dots, nb_hyphens, length_url, phish_hints,
+and the absence of nb_www, together with the negative
+Frontiersin ArtiﬁcialIntelligence 14 frontiersin.org
+
+Alam et al. 10.3389/frai.2026.1875321
+FIGURE 12
+CNN–BiLSTM training dynamics.Left: Binary cross-entropy loss on training (red) and validation (cyan) sets across 37 epochs (early stopping triggered
+at epoch 37). Both losses converge rapidly within the ﬁrst ﬁve epochs and stabilize below 10−2; the training–validation gap is negligible, conﬁrming
+an absence of overﬁtting.Right: Accuracy on training (green) and validation (purple) sets. Full validation accuracy is achieved by epoch four,
+reﬂecting the near-linear separability of the LightGBM-augmented feature space and the effectiveness of the posterior-probability augmentation in
+compressing the discrimination task.
+TABLE 6 Comparisonofthe best classical modeland the proposedCNN–BiLSTM hybrid onthe held-out testpartition.
+Model Accuracy Precision Recall F1 AUC
+LightGBM(bestclassical) 0.9698 0.9678 0.9720 0.9699 0.9943
+CNN–BiLSTM(hybrid) 0.9650 0.9602 0.9703 0.9652 0.9903
+reputation indicator google_index = 0. Features whose
+elevation pushes a prediction toward legitimacy are external-trust
+metrics: page_rank, domain_age, nb_hyperlinks, and
+web_traffic. This dichotomy provides a security-actionable
+ruleof thumb:themore anURL reliesonlexical complexityrather
+than reputational substance, the higher its phishing risk, and
+viceversa.
+4.6 Ablation studies
+Six ablation variants were constructed and evaluated to isolate
+the marginal contribution of each major design choice; the results
+aresummarizedin Table8.
+Several conclusions follow. Standardization (A1) is essentially
+neutral for tree-based learners, as expected, since LightGBM is
+invariant to monotone feature transformations. Removing the
+mutual-information feature selection (A2) results in a small but
+consistent degradation, indicating that the 37 dropped features
+are noisy rather than informative under the LightGBM inductive
+bias. Replacing the mutual-information criterion with a variance-
+threshold criterion (A3) at the same retention budget reduces
+F
+1 by 0.0085, conﬁrming that feature relevance to the target,
+rather than mere variability, is the appropriate selection signal.
+On the deep-network side, removing either the convolutional
+branch (A4) or the bidirectional LSTM branch (A5) reducesF
+1
+by between 0.003 and 0.004, demonstrating that the two branches
+capture complementary patterns and that their concatenation
+produces a strict improvement over either alone. The most
+informativeablationisA6,whichremovestheLightGBM-posterior
+augmentation: F
+1 fallsby0.0156to0.9496,andAUCfallsby0.0017
+to 0.9886. This is the largest single degradation observed in the
+entire study and provides the clearest evidence in our ablations
+for the proposed feature-extractor design. We stress that both
+the full hybrid and this ablation use the leakage-safeout-of-fold
+augmentation described in Section 3.9; the gain is therefore
+attributabletogenuinepredictiveinformationtransferredfromthe
+boosted-treedecisionsurface,nottoin-sampleposteriors.
+4.7 Synthesis
+The full experimental campaign supports four principal
+claims. First, gradient-boosted ensembles, especially LightGBM
+and XGBoost, are the most accurate single-stage classiﬁers on
+engineered phishing-URL features, with statistically equivalent
+performancetooneanotherbutsigniﬁcantlysuperiorperformance
+to all other model families. Second, preprocessing under strict
+train-only ﬁtting eliminates leakage as an explanation for the
+high reported scores, indicating that the attainable performance
+of the engineered representation is intrinsically high rather than
+artifactual. Third, injecting tree-ensemble posterior probabilities
+into the input sequence of a CNN–BiLSTM hybrid yields
+a recall-favorable operating point useful in security-sensitive
+deployments without sacriﬁcing overall accuracy, and the ablation
+analysis conﬁrms that this augmentation is the dominant single
+contributor to the deep network’s performance. Fourth, a small,
+semantically coherent subset of features anchored on Google
+indexing, page rank, domain age, and URL lexical complexity
+explains the bulk of the classiﬁer’s behavior and oﬀers an
+operationally meaningful set of awareness indicators for end-user
+cybersecuritytraining.
+Frontiersin ArtiﬁcialIntelligence 15 frontiersin.org
+
+Alam et al. 10.3389/frai.2026.1875321
+FIGURE 13
+CNN–BiLSTM confusion matrix on the held-out test partition
+(n = 2,286). Counts on the leakage-safe out-of-fold-augmented
+hybrid. True Negatives (Legitimate predicted as Legitimate): 1,097
+(48.0 %); True Positives (Phishing predicted as Phishing): 1,109
+(48.5 %). False Positives (Legitimate predicted as Phishing): 46 (2.0%);
+False Negatives (Phishing predicted as Legitimate): 34 (1.5%). The
+asymmetry in error types (FP> FN) reﬂects the recall-favorable
+operating point of the hybrid architecture: The model accepts
+slightly more false alarms in exchange for a higher true-positive rate,
+a trade-off of value in security-sensitive deployments where missing
+a phishing URL incurs a higher cost than an unnecessary warning.
+Expressed as row-conditional (per-true-class) rates, which are the
+quantities most relevant to deployment reasoning, the false-positive
+rate is 46/(1,097 +46) = 4.0 % of legitimate URLs and the
+false-negative rate is 34/(1,109 +34) = 3.0 % of phishing URLs,
+giving a per-class recall of 96.0% for the legitimate class and 97.0%
+for the phishing class.
+5 Discussion
+5.1 Implications for cybersecurity
+awareness
+The convergent explanations produced by SHAP and
+Permutation Importance identify a small set of human-
+interpretable features whose values discriminate phishing
+from legitimate URLs with high reliability. These features sort
+cleanlyintotwogroups,suggestingacompactpedagogicalframing
+for end-user awareness training. The ﬁrst group consists of
+external-reputation indicators that are typically opaque to end
+users but whose intuitive analogs, including “is this domain old
+and well-established?” and “does this domain appear in normal
+search results?”, are accessible through routine browser checks.
+The second group consists of URL-lexical complexity indicators
+that are directly visible in any address bar: unusually long URLs,
+large numbers of dots and hyphens, the absence of a recognizable
+second-levelbrand,andthepresenceofsuspicioustokens.
+To make this translation concrete rather than conceptual,
+we distill the convergent top-ranked features ofTable7 into the
+following compact set of candidate awareness guidelines, each
+annotatedwiththefeature(s)fromwhichitderives.Theguidelines
+areintendedtobememorableheuristicsforendusers,notdetection
+rulesforautomatedsystems.
+FIGURE 14
+Final model comparison—radar chart (zoomed 0.85–1.00). Each axis
+represents one evaluation metric (precision, accuracy,F1,A U C ,a n d
+recall), with the scale zoomed to [0.85,1.00] to amplify inter-model
+differences. LightGBM (blue) and CNN–BiLSTM (red) produce nearly
+overlapping polygons across all ﬁve axes, with CNN–BiLSTM
+exhibiting a slight recall advantage and LightGBM a slight AUC
+advantage. Logistic Regression (orange) occupies a smaller polygon
+interior, underperforming primarily on Precision andF
+1. Naive Bayes
+(teal) exhibits a strongly asymmetric proﬁle driven by its very low
+recall (0.56), conﬁrming its unsuitability as a standalone phishing
+detector despite competitive AUC.
+TABLE 7 Top features under SHAPand PermutationImportance, withdirectionaleffect.
+Rank SHAP
+feature
+Direction Permutation
+feature
+1 google_index → phishing page_rank
+2 page_rank → legitimate google_index
+3 nb_www → legitimate nb_www
+4 domain_age → legitimate domain_age
+5 phish_hints → phishing nb_hyphens
+6 nb_hyperlinks → legitimate phish_hints
+7 nb_dots → phishing nb_dots
+8 nb_hyphens → phishing nb_hyperlinks
+9 length_url → phishing length_url
+1. Read the whole address before the ﬁrst single slash. The
+genuinedestinationistheregistereddomainimmediatelytothe
+left of the ﬁrst lone “/”; brand names appearing only in the
+path or in subdomains are not the destination.(derives from
+nb_dots, nb_www, absence of a second-level brand)
+2. Treat unusually long or punctuation-heavy URLs as a
+warning. Addresses that are very long or crowded with dots
+and hyphens are disproportionately phishing. (derives from
+length_url, nb_dots, nb_hyphens)
+3. Be suspicious of alarming or action-urging words inside
+the link itself. Tokens such assecure, account, verify,
+login,and updateembeddedintheURLstringarecommon
+phishinghints. (derives from phish_hints)
+Frontiersin ArtiﬁcialIntelligence 16 frontiersin.org
+
+Alam et al. 10.3389/frai.2026.1875321
+FIGURE 15
+SHAP feature importance—LightGBM (signed mean|SHAP|,r e d= pushes toward phishing, green= toward legitimate). Features are ranked by mean
+absolute SHAP value¯φj. google_index and page_rank dominate with¯φj of approximately 3.0 and 2.5, respectively. The color of each bar encodes
+t h es i g n e dm e a nS H A P(¯φsgn
+j ): Green bars indicate features whose elevation on average pushes predictions toward the legitimate class (negative
+signed mean, e.g., highpage_rank → legitimate), while red bars indicate features pushing toward phishing (positive signed mean, e.g., high
+nb_dots → phishing). The directional asymmetry cleanly separates the external-reputation group (green:google_index, page_rank, nb_www,
+nb_hyperlinks, domain_age) from the URL-lexical complexity group (red:phish_hints, nb_dots, nb_hyphens, length_url).
+4. Expect a real brand to have a search-visible, established
+domain. If a link claims to be a well-known organization but
+the domain does not appear in ordinary search results, this
+mismatch is among the strongest single indicators of phishing.
+(derives from google_index, page_rank)
+5. Prefer domains with a visible history. Very recently registered
+domains, and domains registered for only a short period, are
+markedly more likely to be malicious; when in doubt, a quick
+public WHOIS or domain-age check is informative. (derives
+from domain_age, domain_registration_length)
+6. Match surface complexity against reputational substance.The
+unifying rule: when the surface form of a URL is complex,
+the underlying domain should command commensurate
+reputational evidence; a complex address on an obscure, new,
+or unindexed domain should be treated as suspect.(synthesizes
+both feature groups)
+The dichotomy between trust-by-reputation and risk-by-
+lexical-complexityunderliesallsixguidelinesandyieldsateachable
+principle that does not require users to become security experts.
+This framing is consistent with empirical ﬁndings on the
+eﬀectiveness of brief, principle-based cybersecurity training over
+rote memorization of indicators of compromise (Abawajy, 2014;
+Jampenetal.,2020 ).
+Two important caveats bound the strength of these guidelines.
+First, they are derived from the global feature attributions of the
+LightGBM model rather than from the deployed CNN–BiLSTM
+hybrid; while the convergent SHAP and Permutation rankings
+providestrongevidencefortheunderlyingfeatureimportance,the
+assumptionthatthesamehierarchygovernsthehybrid’sbehavioris
+not directly validated here, and Section 5 identiﬁes gradient-based
+attribution of the hybrid as necessary future work. The guidelines
+should therefore be read as LightGBM-derived heuristics whose
+transfertothehybridisplausiblebutunveriﬁed.Second,andmore
+fundamentally, these are guidelines inferred from model behavior,
+not behavioral evidence: We conducted no user study, and the
+claim that they improve human phishing-detection performance
+remains a hypothesis. We accordingly present them as candidate
+guidelines that may inform awareness strategies, and we ﬂag a
+controlled user study as the appropriate next step to establish their
+pedagogicalvalue.
+5.2 Comparison with the literature
+The performance achieved on the corpus considered is
+comparable to the upper end of the published range for
+engineered-feature phishing detection ( Alsarieraetal., 2020 ;
+GandotraandGupta, 2021 ; HannousseandYahiouche, 2021). The
+methodological contributions of the present study, in particular
+the explicit leakage controls, the Wilcoxon-based signiﬁcance
+Frontiersin ArtiﬁcialIntelligence 17 frontiersin.org
+
+Alam et al. 10.3389/frai.2026.1875321
+FIGURE 16
+SHAP value distributions per feature (Top-12)—violin style. Each row represents one of the 12 highest-SHAP features; thex-axis shows the raw SHAP
+value (impact on log-odds of phishing prediction). Violin widths encode the kernel density of SHAP values across the test set; horizontal error bars
+extend to the 5th–95th percentile. google_index and page_rank exhibit bimodal SHAP distributions, reﬂecting their near-binary nature: High
+google_index contributes a large negative SHAP (toward legitimate), while zerogoogle_index contributes a large positive SHAP (toward
+phishing). domain_age and phish_hints show heavy-tailed distributions extending beyond±4, indicating that their extreme values exert very large
+individual-level inﬂuence on predictions.
+FIGURE 17
+Permutation feature importance—LightGBM (decrease inF1,m e a n± std over 10 permutations). Features are ranked by meanF1 decrease when their
+values are randomly shuffled in the test set.page_rank is the single most important feature under the permutation criterion (/Delta1F1 ≈0.065), followed
+by google_index (≈0.030) and nb_www (≈0.019). The color bar encodes importance magnitude (yellow= highest). Error bars represent the
+standard deviation across 10 independent permutations; the narrow bars for all top features conﬁrm stable, reproducible importance estimates. The
+ordering is broadly consistent with the SHAP global ranking, providing cross-method validation of the feature relevance hierarchy.Frontiersin ArtiﬁcialIntelligence 18 frontiersin.org
+
+Alam et al. 10.3389/frai.2026.1875321
+FIGURE 18
+Feature importance agreement—SHAP vs. Permutation Importance
+(rank comparison). Each point represents one feature plotted by its
+SHAP rank (x-axis, lower = more important) against its Permutation
+Importance rank (y-axis, lower = more important); the dashed
+diagonal represents perfect rank agreement. Blue points (“Top in
+both”) are features appearing in the top-15 of both methods; orange
+points (“Top in only one”) appear in the top-15 of exactly one
+method. Eleven of 15 top features overlap (blue), demonstrating
+strong cross-method agreement (73% intersection). Features
+clustering near the diagonal (page_rank, google_index, nb_www,
+domain_age, phish_hints, nb_dots) are the most robustly
+identiﬁed across both attribution paradigms and constitute the
+irreducible core of the phishing detection signal.
+testing, the dual-method explanation analysis, and the ablation
+protocol,areintendedtomakethisperformancelevelreproducible
+and interpretable rather than merely reportable. The ﬁnding that
+LightGBM and XGBoost are statistically indistinguishable on
+this corpus is consistent with several recent comparative studies
+in adjacent cybersecurity domains ( Shwartz-ZivandArmon,
+2022) and suggests that future benchmarks should report not
+only point performance but also fold-level distributions to enable
+principledselection.
+5.3 Limitations
+Three limitations should be acknowledged. First, the corpus,
+while large by historical standards, represents a single public
+dataset captured at one point in time, and the distribution of
+phishing URLs is known to drift as adversaries adapt to deployed
+detectors (Tianetal., 2018 ). The present evaluation includes no
+temporal split, no cross-dataset transfer test, and no external
+validation corpus; consequently, the performance levels reported
+here should be interpreted as an upper bound on the steady-
+state operating performance of a deployed system rather than
+as evidence of cross-distribution generalization. Establishing the
+latterrequires(i)achronologicaltrain-on-past,test-on-futuresplit
+to quantify concept-drift decay, and (ii) evaluation on at least
+one independently collected phishing corpus to measure cross-
+dataset transfer; we identify both as essential directions for future
+work rather than claims of the present study. Continual retraining
+TABLE 8 Ablationstudy.
+ID Variant F1 AUC /Delta1F1
+LightGBM-side ablations (full:F1 = 0.9699 ,A U C= 0.9943 )
+A1 Nostandardization 0.9701 0.9942 +0.0002
+A2 Nofeatureselection
+(useall87)
+0.9682 0.9938 −0.0017
+A3 Variance-threshold
+insteadofMI
+0.9614 0.9907 −0.0085
+Deep-network-side ablations (full:F1 = 0.9652 ,
+AUC = 0.9903)
+A4 BiLSTMonly(drop
+CNNbranch)
+0.9657 0.9821 −0.0034
+A5 CNNonly(drop
+BiLSTMbranch)
+0.9663 0.9829 −0.0028
+A6 No
+LightGBM-posterior
+augmentation
+0.9496 0.9886 −0.0156
+Each row removes or replaces one component of the full pipeline./Delta1F1 is relative to the
+correspondingfullmodel(LightGBMforA1–A3,CNN–BiLSTMforA4–A6).
+on fresh data is in any case essential for sustained deployment.
+Second,thefeaturerepresentationdependsonexternalservicesfor
+WHOIS lookups, page-rank queries, and traﬃc estimates, which
+introduce latency and a soft attack surface, since adversaries may
+attempt to manipulate these signals (MoghimiandVarjani, 2016).
+Third, the explainability analysis is conducted at the level of the
+LightGBM model rather than the deployed CNN–BiLSTM hybrid;
+while the convergent SHAP and Permutation rankings provide
+strongevidencefortheunderlyingfeatureimportance,futurework
+should extend the analysis to the deep-network branch through
+gradient-based attribution methods such as Integrated Gradients
+(Sundararajanetal.,2017 ).
+5.4 Future directions
+Several extensions of the present framework are immediate.
+The feature-extractor construction generalizes beyond LightGBM,
+and an ensemble of feature extractors drawn from the top-
+three classiﬁers could provide a more robust embedding. The
+CNN–BiLSTM architecture could be augmented with a self-
+attention layer over the bidirectional hidden states (Vaswanietal.,
+2017) to make long-range dependencies between features more
+salient. On the awareness side, the convergent feature rankings
+could be operationalised as a browser extension that exposes
+the dominant indicators to users in real time, providing a
+passive training signal during routine browsing. Finally, the
+performance evaluation should be replicated on temporally
+split corpora to quantify the rate of concept drift and the
+correspondingretrainingcadencerequiredtomaintainoperational
+performance.
+Frontiersin ArtiﬁcialIntelligence 19 frontiersin.org
+
+Alam et al. 10.3389/frai.2026.1875321
+6C o n c l u s i o n
+This study presented a complete machine learning framework
+for phishing-URL detection over a balanced corpus of 11,430
+instances and 87 engineered features. Eleven heterogeneous
+classiﬁers were trained under a strict no-leakage protocol, and the
+Light Gradient Boosting Machine emerged as the strongest single-
+stage model with F
+1 = 0.9699 and AUC= 0.9943. Wilcoxon
+signed-ranktestingon10-fold F1-scoresconﬁrmedthatLightGBM
+signiﬁcantly outperforms every other classiﬁer evaluated at this
+stage (p ≤ 0.002) except XGBoost, with which it is statistically
+equivalent (p = 0.375); three of the slowest underperforming
+models were excluded from this stage on computational grounds
+and are therefore outside the scope of this signiﬁcance claim. A
+hybrid CNN–BiLSTM architecture, augmented with the out-of-
+fold posterior probabilities of the LightGBM extractor, achieved
+F
+1 = 0.9652 and recall = 0.9703. The hybrid does not
+improve aggregate F1 over LightGBM but provides a recall-
+favorable operating point of practical value in deployments where
+missed detections are costlier than false alarms. Ablation studies
+conﬁrmed the contribution of every major design choice, with
+the LightGBM-posterior augmentation contributing the largest
+single performance gain to the deep network. Tree SHAP and
+Permutation Importance produced convergent global rankings,
+with 11 of 15 top features overlapping, and identiﬁed external-
+reputationindicators(Googleindexing,pagerank,domainage,and
+web traﬃc) and URL-lexical complexity indicators (length, dots,
+hyphens,andphishinghints)asthetwosemanticallycoherentaxes
+governing classiﬁer behavior. These convergent ﬁndings are used
+to motivate a compact set of candidate awareness guidelines that
+may inform end-user cybersecurity training, connecting technical
+detection to the human factors that ultimately shape the security
+postureofdigitalinfrastructure.
+Data availability statement
+The original contributions presented in the study are included
+in the article/supplementary material, further inquiries can be
+directedtothecorrespondingauthor.
+Author contributions
+PA:Fundingacquisition,Conceptualization,Writing–original
+draft, Writing – review & editing, Formal analysis, Data
+curation, Software. MR: Data curation, Methodology, Writing –
+review & editing, Investigation, Writing – original draft, Project
+administration, Conceptualization, Formal analysis. JS: Formal
+analysis, Writing – original draft, Data curation, Investigation,
+Resources, Software, Funding acquisition, Writing – review &
+editing. SHR: Formal analysis, Writing – review & editing, Data
+curation,Conceptualization,Writing–originaldraft,Investigation,
+Funding acquisition. WA: Writing – original draft, Funding
+acquisition, Writing – review & editing, Software, Formal
+analysis, Data curation, Conceptualization, Methodology. PR:
+Conceptualization, Investigation, Writing – review & editing,
+Software, Data curation, Formal analysis, Resources. SR: Writing
+– review & editing, Conceptualization, Writing – original draft,
+Investigation, Project administration, Data curation. SK: Writing
+– review & editing, Supervision, Writing – original draft,
+Resources,Validation.
+Funding
+The author(s) declared that ﬁnancial support was not received
+forthisworkand/oritspublication.
+Acknowledgments
+The authors wish to express their sincere gratitude to the
+Pangea Borderless Education for providing an enriching academic
+environment that made this work possible. We are especially
+indebted to Dr. Samuel Kim of the faculty, whose thoughtful
+mentorship, insightful guidance, and unwavering encouragement
+havebeeninvaluablethroughoutthecourseofthisresearch.
+Conﬂict of interest
+The author(s) declared that this work was conducted in the
+absence of any commercial or ﬁnancial relationships that could be
+construedasapotentialconﬂictofinterest.
+Generative AI statement
+The author(s) declared that Generative AI was not used in the
+creationofthismanuscript.
+Any alternative text (alt text) provided alongside ﬁgures in
+this article has been generated by Frontiers with the support of
+artiﬁcial intelligence and reasonable eﬀorts have been made to
+ensureaccuracy,includingreviewbytheauthorswhereverpossible.
+Ifyouidentifyanyissues,pleasecontactus.
+Publisher’s note
+All claims expressed in this article are solely those of the
+authors and do not necessarily represent those of their aﬃliated
+organizations, or those of the publisher, the editors and the
+reviewers. Any product that may be evaluated in this article, or
+claim that may be made by its manufacturer, is not guaranteed or
+endorsedbythepublisher.
+Frontiersin ArtiﬁcialIntelligence 20 frontiersin.org
+
+Alam et al. 10.3389/frai.2026.1875321
+References
+Abadi, M., Barham, P., Chen, J., Chen, Z., Davis, A., Dean, J., et al. (2016).
+“TensorFlow: a system for large-scale machine learning,” in Proceedings of the
+12th USENIX Symposium on Operating Systems Design and Implementation (OSDI) ,
+265–283.
+Abawajy, J. (2014). User preference of cyber security awareness delivery
+methods. Behav. Inform. Technol . 33, 237–248. doi: 10.1080/0144929X.2012.70
+8787
+Aljofey, A., Jiang, Q., Rasool, A., Chen, H., Liu, W., Qu, Q., et al. (2022). An eﬀective
+detection approach for phishing websites using URL and HTML features.Sci. Rep.
+12:8842.doi:10.1038/s41598-022-10841-5
+Alsariera, Y. A., Adeyemo, V. E., Balogun, A. O., and Alazzawi, A. K. (2020). AI meta-
+learners and extra-trees algorithm for the detection of phishing websites.IEEE Access
+8,142532–142542.doi:10.1109/ACCESS.2020.3013699
+Anti-Phishing Working Group (2023). Phishing Activity Trends Report, Technical
+Report.Lexington,MA:APWG.
+Breiman, L. (2001). Random forests. Mach. Learn . 45, 5–32.
+doi:10.1023/A:1010933404324
+Chen, T., and Guestrin, C. (2016). “XGBoost: a scalable tree boosting system,”
+in Proceedings of the 22nd ACM SIGKDD International Conference on Knowledge
+Discovery and Data Mining (NewYork:ACM),785–794.
+Cliﬀ, N. (1993). Dominance statistics: ordinal analyses to answer ordinal questions.
+Psychol. Bull.114,494–509.doi:10.1037/0033-2909.114.3.494
+Cover, T., and Hart, P. (1967). Nearest neighbor pattern classiﬁcation.IEEE Trans.
+Inform. Theory 13,21–27.doi:10.1109/TIT.1967.1053964
+Demšar,J.(2006).Statisticalcomparisonsofclassiﬁersovermultipledatasets. J. Mach.
+Learn. Res. 7, 1–30. Available online at: https://www.jmlr.org/papers/v7/demsar06a.
+html(AccessedSeptember14,2026).
+Efron, B. (1987). Better bootstrap conﬁdence intervals.J. Am. Stat. Assoc. 82, 171–185.
+doi:10.1080/01621459.1987.10478410
+Freund, Y., and Schapire, R. E. (1997). A decision-theoretic generalization of on-
+line learning and an application to boosting. J. Comp. Syst. Sci . 55, 119–139.
+doi:10.1006/jcss.1997.1504
+Friedman, J. H. (2001). Greedy function approximation: a gradient boosting machine.
+Ann. Stat.29,1189–1232.doi:10.1214/aos/1013203451
+Gandotra, E., and Gupta, D. (2021). “An eﬃcient approach for phishing detection
+usingmachinelearning,”in Multimedia Security: Algorithm Development, Analysis and
+Applications(Singapore:Springer),239–253.
+Garera,S.,Provos,N.,Chew,M.,andRubin,A.D.(2007).“Aframeworkfordetection
+and measurement of phishing attacks,” inProceedings of the 2007 ACM Workshop on
+Recurring Malcode(NewYork,NY:ACM),1–8.
+Geurts, P., Ernst, D., and Wehenkel, L. (2006). Extremely randomized trees.Mach.
+Learn.63,3–42.doi:10.1007/s10994-006-6226-1
+Graves, A., and Schmidhuber, J. (2005). Framewise phoneme classiﬁcation with
+bidirectionalLSTMandotherneuralnetworkarchitectures. Neural Netw.18,602–610.
+doi:10.1016/j.neunet.2005.06.042
+Grinsztajn, L., Oyallon, E., and Varoquaux, G. (2022). Why do tree-based models still
+outperform deep learning on typical tabular data?Adv. Neural Inf. Process. Syst . 35,
+507–520.doi:10.52202/068431-0037
+Hannousse, A., and Yahiouche, S. (2021). Towards benchmark datasets for machine
+learning based website phishing detection: An experimental study.Eng. Appl. Artif.
+Intell.104:104347.doi:10.1016/j.engappai.2021.104347
+Hochreiter, S.,and Schmidhuber, J. (1997).Long short-term memory.Neural Comput.
+9,1735–1780.doi:10.1162/neco.1997.9.8.1735
+Holm, S. (1979). A simple sequentially rejective multiple test procedure.Scandinavian
+J. Statist.6,65–70.
+Huang, Y., Yang, Q., Qin, J., and Wen, W. (2019). “Phishing URL detection via CNN
+and attention-based hierarchical RNN,” inProceedings of the 18th IEEE International
+Conference on Trust, Security and Privacy in Computing and Communications
+(TrustCom)(Rotorua:IEEE),112-119.
+Ioﬀe, S., and Szegedy, C. (2015). “Batch normalization: accelerating deep network
+training by reducing internal covariate shift,” inProceedings of the 32nd International
+Conference on Machine Learning (ICML) (Lille:PMLR),448–456.
+Jampen, D., Gur, G., Sutter, T., and Tellenbach, B. (2020). Don’t click: towards
+an eﬀective anti-phishing training. A comparative literature review.Human-Centric
+Comp. Inform. Sci.10,1–41.doi:10.1186/s13673-020-00237-7
+Kaufman, S., Rosset, S., Perlich, C., and Stitelman, O. (2012). Leakage in data mining:
+Formulation, detection, and avoidance. ACM Trans. Knowl. Discov. Data 6, 1–21.
+doi:10.1145/2382577.2382579
+Ke, G., Meng, Q., Finley, T., Wang, T., Chen, W., Ma, W., et al. (2017). “LightGBM:
+A highly eﬃcient gradient boosting decision tree,” inAdvances in Neural Information
+Processing Systems, 30, 3146–3154. Available online at: https://proceedings.neurips.
+cc/paper/2017/hash/6449f44a102fde848669bdd9eb6b76fa-Abstract.html (Accessed
+September14,2026).
+Kingma, D. P., and Ba, J. (2015). “Adam: A method for stochastic optimization,” in
+Proceedings of the 3rd international conference on learning representations (San Diego,
+CA:ICLR).
+Kraskov,A.,Stögbauer,H.,andGrassberger,P.(2004).Estimatingmutualinformation.
+P h y s .R e v .E69:066138.doi:10.1103/PhysRevE.69.066138
+Le, H., Pham, Q., Sahoo, D., and Hoi, S. C. H. (2018). URLNet:
+Learning a URL representation with deep learning for malicious URL
+detection. arXiv [preprint] arXiv:1802.03162. doi: 10.48550/arXiv.1802.
+03162
+Lundberg,S.M.,Erion,G.,Chen,H.,DeGrave,A.,Prutkin,J.M.,Nair,B.,etal.(2020).
+From local explanations to global understanding with explainable AI for trees.Nat.
+Mach. Intellig.2,56–67.doi:10.1038/s42256-019-0138-9
+Lundberg, S. M., and Lee, S.-I. (2017). “A uniﬁed approach to interpreting model
+predictions,” inAdvances in Neural Information Processing Systems (Long Beach, CA:
+CurranAssociates,Inc.),volume30,4765–4774.
+Moghimi, M., and Varjani, A. Y. (2016). “New rule-based phishing detection method,”
+in Expert Systems with Applications,volume53(London:Elsevier),231–242.
+Mohammad, R. M., Thabtah, F., and McCluskey, L. (2014). Predicting phishing
+websites based on self-structuring neural network.Neural Comp. Appl. 25, 443–458.
+doi:10.1007/s00521-013-1490-z
+Ozcan, A., Catal, C., Donmez, E., and Senturk, B. (2023). A hybrid DNN-
+LSTM model for detecting phishing URLs. Neural Comp. Appl . 35, 4957–4973.
+doi:10.1007/s00521-021-06401-z
+Parsons, K., Calic, D., Pattinson, M., Butavicius, M., McCormac, A., and Zwaans,
+T. (2017). The human aspects of information security questionnaire (HAIS-Q):
+Two further validation studies. Comp. Security 66, 40–51. doi: 10.1016/j.cose.2017.
+01.004
+Pedregosa, F., Varoquaux, G., Gramfort, A., Michel, V., Thirion, B., Grisel, O.,
+et al. (2011). Scikit-learn: machine learning in Python. J. Mach. Learn. Res . 12,
+2825–2830. Available online at: https://www.jmlr.org/papers/v12/pedregosa11a.html
+(AccessedSeptember14,2026).
+Prakash, P., Kumar, M., Kompella, R. R., and Gupta, M. (2010). “PhishNet: predictive
+blacklisting to detect phishing attacks,” inProceedings of the 29th IEEE International
+Conference on Computer Communications (INFOCOM) (San Diego, CA: IEEE),
+1–5.
+¸Sahingoz, O. K., Buber, E., Demir, O., and Diri, B. (2019). Machine learning
+based phishing detection from URLs. Expert Syst. Appl . 117, 345–357.
+doi:10.1016/j.eswa.2018.09.029
+Schuster, M., and Paliwal, K. K. (1997). Bidirectional recurrent neural networks.IEEE
+Trans. Signal Proc.45,2673–2681.doi:10.1109/78.650093
+Shwartz-Ziv,R.,andArmon,A.(2022).Tabulardata:Deeplearningisnotallyouneed.
+Inform. Fusion81,84–90.doi:10.1016/j.inﬀus.2021.11.011
+Srivastava, N., Hinton, G., Krizhevsky, A., Sutskever, I., and Salakhutdinov, R. (2014).
+Dropout:asimplewaytopreventneuralnetworksfromoverﬁtting. J. Mach. Learn. Res.
+15, 1929–1958. Available online at: https://www.jmlr.org/papers/v15/srivastava14a.
+html(AccessedSeptember14,2026).
+Sundararajan, M., Taly, A., and Yan, Q. (2017). “Axiomatic attribution for deep
+networks,” inProceedings of the 34th International Conference on Machine Learning
+(ICML)(Sydney:PMLR),3319–3328.
+Tajaddodianfar, F., Stokes, J. W., and Gururajan, A. (2020). “Texception:
+a character/word-level deep learning model for phishing URL
+detection,” in Proceedings of the IEEE International Conference on
+Acoustics, Speech and Signal Processing (ICASSP) (Barcelona: IEEE),
+2857–2861.
+Tian, K., Jan, S. T. K., Hu, H., Yao, D., and Wang, G. (2018). “Needle in a haystack:
+tracking down elite phishing domains in the wild,” inProceedings of the Internet
+Measurement Conference(Boston,MA:ACM),429–442.
+Vaswani,A.,Shazeer,N.,Parmar,N.,Uszkoreit,J.,Jones,L.,Gomez,A.N.,etal.(2017).
+“Attentionisallyouneed,”in Advances in Neural Information Processing Systems(Long
+Beach,CA:CurranAssociates,Inc.),volume30,5998–6008.
+Verizon (2023). Data Breach Investigations Report, Technical Report .N e wY o r k ,N Y :
+VerizonBusiness.
+Wilcoxon, F. (1945). Individual comparisons by ranking methods.Biomet. Bullet.1 ,
+80–83.doi:10.2307/3001968
+Frontiersin ArtiﬁcialIntelligence 21 frontiersin.org

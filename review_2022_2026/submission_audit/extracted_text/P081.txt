@@ -1,0 +1,1309 @@
+Open Access
+© The Author(s) 2025. Open Access This article is licensed under a Creative Commons Attribution 4.0 International License, which permits 
+use, sharing, adaptation, distribution and reproduction in any medium or format, as long as you give appropriate credit to the original 
+author(s) and the source, provide a link to the Creative Commons licence, and indicate if changes were made. The images or other third 
+party material in this article are included in the article’s Creative Commons licence, unless indicated otherwise in a credit line to the mate-
+rial. If material is not included in the article’s Creative Commons licence and your intended use is not permitted by statutory regulation or 
+exceeds the permitted use, you will need to obtain permission directly from the copyright holder. To view a copy of this licence, visit http://
+creativecommons.org/licenses/by/4.0/.
+RESEARCH
+Naser and Naser  Journal of Big Data           (2025) 12:77  
+https://doi.org/10.1186/s40537-025-01122-9
+Journal of Big Data
+SPINEX-anomaly: similarity-based 
+predictions with explainable neighbors 
+exploration for anomaly and outlier detection
+M. Z. Naser1,2* and Ahmad Z. Naser3 
+Abstract 
+This paper presents a novel anomaly and outlier detection algorithm from the SPINEX 
+(Similarity-based Predictions with Explainable Neighbors Exploration) family. This algo-
+rithm leverages the concept of similarity and higher-order interactions across multiple 
+subspaces to identify outliers. A comprehensive set of experiments was conducted 
+to evaluate the performance of SPINEX. This algorithm was examined against 21 com-
+monly used anomaly detection algorithms, and across 39 synthetic and real datasets 
+from various domains and of a variety of dimensions and complexities. Furthermore, 
+a complexity analysis was carried out to examine the complexity of the proposed 
+algorithm. Our results demonstrate that SPINEX achieves superior performance, 
+outperforms commonly used anomaly detection algorithms, and has moderate 
+complexity (e.g., O(n log n × d)). More specifically, SPINEX was found to rank at the top 
+of algorithms on the synthetic datasets and the 7th on the real datasets. Finally, a dem-
+onstration of the explainability capabilities of SPINEX, along with future research needs, 
+is presented.
+Keywords: Algorithm, Machine learning, Benchmarking, Anomaly detection
+Introduction
+Anomaly and outlier detection is a critical area of data mining and machine learn -
+ing (ML) research, with wide-ranging applications across domains [1]. This particular 
+area focuses on identifying data points or observations that deviate significantly from 
+the expected patterns within a given data. These anomalies, also called outliers or con -
+taminants, often represent central information of interest to users [2]. Thus, accurately 
+detecting anomalies can enhance system performance and reliability and may provide 
+valuable insights that can lead to discoveries or prevent potential failures. For example, 
+detecting outliers in financial systems can help identify fraudulent transactions, and 
+detecting the same in network security, healthcare, or industrial settings may identify 
+intrusions, aid in the early detection of diseases, and predict equipment failures.
+Historically, anomaly and outlier detection was handled via statistical methods that 
+assumed a parametric model of normality, where any deviation from this model sug -
+gested an anomaly [3]. As data complexity grew, these traditional methods were seen to 
+*Correspondence:   
+mznaser@clemson.edu
+1 School of Civil & Environmental 
+Engineering and Earth Sciences 
+(SCEEES), Clemson University, 
+Clemson, SC, USA
+2 Artificial Intelligence 
+Research Institute for Science 
+and Engineering (AIRISE), 
+Clemson University, Clemson, 
+SC, USA
+3 Department of Mechanical 
+Engineering, University 
+of Manitoba, Winnipeg, 
+Manitoba, Canada
+
+Page 2 of 55Naser and Naser  Journal of Big Data           (2025) 12:77 
+struggle. This paved the way for ML as it can offer a more flexible framework to model 
+and detect anomalies even in complex datasets where many variables interact in nonlin -
+ear and high-dimensional ways.
+Anomaly and outlier detection techniques can be categorized based on the availability 
+of labeled data [4]. For example, in supervised anomaly detection, models are trained 
+on a labeled dataset containing both normal and anomalous samples. However, data 
+obtained from most realistic scenarios do not contain labeled data; hence, such scenarios 
+are more commonly impractical to label data. More recently, semi-supervised anomaly 
+detection uses a small amount of labeled data alongside a larger pool of unlabeled data in 
+an effort to balance the two approaches.
+Noise removal eliminates unwanted data elements that interfere with analysis [5]. This 
+process is typically a preprocessing step aimed at improving data quality before any sub -
+stantive analysis begins. Noise in data can arise from various sources, such as measure -
+ment errors, data corruption, or limitations in data collection methods. Thus, a primary 
+goal of noise removal is to enhance the signal-to-noise ratio such that the true patterns 
+and relationships emerge more clearly. Rather than attempting to remove noise from the 
+data, noise accommodation aims to develop robust statistical models in the presence of 
+noise. This approach recognizes that eliminating noise may not always be possible or 
+desirable but instead focuses on minimizing its impact on analytical outcomes [6].
+The key difference between noise accommodation and outlier detection lies in their 
+objectives. While noise accommodation seeks to mitigate the effect of anomalous data 
+on statistical models, outlier detection aims to identify and often analyze these anoma -
+lous instances. As seen above, outliers are not merely noise to be ignored or accommo -
+dated but can rather home important information that warrants further investigation. 
+Another important aspect to consider is the potential value of outliers. While noise is 
+generally considered detrimental to analysis, outliers can often provide valuable insights 
+(e.g., they might point to new phenomena, challenge existing theories, or represent 
+emerging trends or untapped opportunities).
+As one can see, anomaly and outlier detection can be a challenging task [7]. For exam -
+ple, defining normality in complex, high-dimensional, or dynamic datasets is non-trivial, 
+as patterns may evolve temporally [8]. The scarcity of labeled anomaly data often neces -
+sitates unsupervised or semi-supervised approaches. Real-world data noise can conceal 
+true anomalies, which may demand robust algorithms to distinguish between genuine 
+outliers and natural variations. Scalability is equally crucial, given the availability of large 
+datasets that require efficient processing. Additionally, contextual and collective anoma-
+lies introduce further complexity, as their detection requires consideration of broader 
+data contexts or collective behaviors.
+The concept of similarity can be traced to various anomaly detection techniques [9 ]. 
+This fundamental idea theorizes that normal data points exhibit some degree of similar -
+ity to each other while anomalies deviate significantly [10, 11]. Thus, this concept can be 
+leveraged to distinguish between regular patterns and outliers. At its most basic level, 
+similarity might be quantified as the distance between data points in a feature space 
+(i.e., Euclidean distance) [12]. However, the concept of similarity extends beyond sim -
+ple geometric distance. For example, nearest neighbor approaches directly compare the 
+
+Page 3 of 55
+Naser and Naser  Journal of Big Data           (2025) 12:77 
+ 
+similarity of a data point to its local neighborhood. Clustering techniques group simi -
+lar data points together, with anomalies often appearing as singleton clusters or points 
+far from cluster centers. Similarity is also embedded in the learned representations and 
+reconstruction errors in more complex models like autoencoders [13].
+The interest gained in similarity-based approaches lies in their intuitive nature and abil-
+ity to capture complex, nonlinear relationships without requiring strong assumptions 
+about the underlying distribution. This makes them particularly useful in high-dimen -
+sional spaces where traditional statistical methods may underperform. To leverage such 
+a concept, we propose a novel algorithm, SPINEX, based on the concept of similarity and 
+can offer explainable results. We provide a detailed description of our algorithm, includ-
+ing its mathematical formulation, implementation details, and empirical evaluation. We 
+will demonstrate how our method performs on various benchmark datasets, comparing 
+its performance against 21 state-of-the-art anomaly detection algorithms, commonly used 
+anomaly and outlier detection algorithms, and across 39 synthetic and real datasets. Our 
+experimental findings display the effectiveness and competitiveness of SPINEX compared 
+to state-of-the-art algorithms and point out possible means for future improvements.
+The rest of the paper is organized as follows: Sect. Description of the SPINEX anomaly 
+and outlier detection algorithm describes SPINEX and explains each component in detail. 
+Sect.  Description of benchmarking algorithms, experiments, and functions describes 
+benchmarking algorithms and complexity analysis. Sect.  Description of benchmarking 
+experiments, algorithms, and datasets presents the selected datasets and our compara -
+tive results. The paper concludes with Sects. A note on explainability and future research 
+directions and Conclusions by presenting future research directions and our study’s main 
+findings.
+Description of the SPINEX anomaly and outlier detection algorithm
+This section describes the SPINEX in more detail.
+General description
+SPINEX is an unsupervised anomaly detection algorithm designed for high-dimensional 
+data that primarily utilizes similarity principles through distance metric calculations 
+and feature interaction components. SPINEX assesses similarity directly, wherein data 
+points closer to each other according to the selected distance metric are considered 
+more similar, while those farther apart are deemed dissimilar. Further, SPINEX option -
+ally computes both linear and nonlinear interactions between features. For linear inter -
+actions, the algorithm directly multiplies the values of two features, while for nonlinear 
+interactions, it applies a transformation, such as logarithmic or square root, to the prod -
+uct depending on the nature of the data (e.g., ensuring non-negativity). These interac -
+tions provide a multi-dimensional view of data relationships, allowing the algorithm to 
+capture more complex patterns and dependencies between features not apparent in the 
+original data space. This is particularly useful in scenarios where anomalies are defined 
+by unusual combinations of feature values rather than extreme individual feature values.
+
+Page 4 of 55Naser and Naser  Journal of Big Data           (2025) 12:77 
+Detailed description
+A more detailed description of SPINEX’s functions is provided herein.
+Initialization (__init__)
+The __init__ method of the SPINEX algorithm initializes the anomaly detection 
+framework, setting up the operational parameters and preparing the data for analysis. 
+The method signature is as follows:
+This constructor takes multiple parameters that configure the behavior and function -
+ality of the anomaly detection process:
+Method: validate_and_convert_input(data, column_names)
+This method serves as the entry point for data preprocessing in the SPINEX algorithm 
+to ensure that input data is correctly formatted and labeled for subsequent analysis. The 
+function accepts data in either a NumPy array or a pandas DataFrame format. If a NumPy 
+array is provided, optional column names can be supplied; if none are given, default 
+names are generated in the form of Feature1, Feature2, …, FeatureN for N columns.
+Mathematically, let D be the input data matrix with dimensions m × n where m repre-
+sents the number of samples and n the number of features. The function checks the type 
+of D:
+
+Page 5 of 55
+Naser and Naser  Journal of Big Data           (2025) 12:77 
+ 
+This ensures the data is always in a consistent DataFrame format for the operations that 
+follow.
+Method: apply_scaling()
+Scaling is crucial for normalizing feature magnitudes, especially when calculating dis -
+tances. Thus, this method applies scaling based on the scaling_method parameter, which 
+can be standard, minmax, or robust.
+The scaling transformation is defined as follows:
+• StandardScaler: Standardizes features by removing the mean and scaling to unit vari-
+ance:
+where μ and σ are the mean and standard deviation of the feature values, respectively.
+• MinMaxScaler: Scales features to a given range, typically [0, 1]:
+• RobustScaler: Scales features using statistics that are robust to outliers:
+where  Q1 and  Q3  are the first and third quartiles, respectively.
+Method: precompute_interactions()
+Define the number of original features as n. The number of linear interactions is:
+If nonlinear interactions are enabled, the number is doubled. Each linear interaction 
+between features i and j is calculated as:
+For nonlinear interactions, a transformation f is applied:
+where f could be a logarithmic or square root function, depending on the sign and mag -
+nitude of the multiplication.
+Method: calculate_feature_differences(row)
+This method computes the distance between a given row r and all other rows in the 
+dataset using the specified distance_metric. The distance metric d is applied as:
+x′= x − µ
+σ
+x′= x − min(x)
+max(x) − min(x)
+x′= x − Q1(x)
+Q3(x) − Q1(x)
+linear_count = n(n − 1)/2
+interactionnl
+i,j = xi × xj
+interactionnl
+i,j = f (xi × xj )
+d(r, x) =
+√
+n∑
+i=1
+wi(ri − xi)2
+
+Page 6 of 55Naser and Naser  Journal of Big Data           (2025) 12:77 
+where,  wi  are the weights applied to the features, enhancing the importance of features 
+with higher variances.
+Method: calculate_feature_differences_parallel(row)
+This method is a straightforward parallelization wrapper for the calculate_feature_dif -
+ferences function. It allows SPINEX to leverage multi-core processing capabilities to 
+enhance performance when calculating distances between data points in large datasets.
+Method: calculate_feature_contributions(row, baseline_differences)
+This function computes the absolute differences between the features of a given row 
+and a baseline, which is typically the mean or median of the dataset, to identify how 
+much each feature contributes to the anomaly score.
+For a dataset row r and a baseline vector b, the contribution of each feature is calcu -
+lated as:
+where  ci is the contribution of the  ith feature.
+These contributions are summed to generate an overall anomaly score for each data 
+point. This method is crucial in determining the significance of each feature’s deviation 
+from normal behavior, providing insights into the anomalous nature of the data points. 
+The same is also elemental to explaining each of the predicted anomalies.
+Method: fixed_threshold(scores)
+This method implements a fixed thresholding mechanism for anomaly detection based 
+on percentile values. Given a set of anomaly scores s, the threshold T is determined as:
+where τ is the user-defined anomaly threshold percentile (e.g., 98).
+This threshold is used to classify points as anomalies if their scores exceed T. The 
+method ensures robustness by handling edge cases such as empty or NaN-filled score 
+arrays for stable thresholding operation.
+Method: statistical_threshold(scores)
+This method calculates an anomaly detection threshold based on the statistical prop -
+erties of the score distribution. Given the mean μ and standard deviation σ of the scores, 
+the threshold T is computed as:
+where, k is a multiplier provided by the user (default is 2). This method is effective in sce-
+narios where the data distribution is assumed to be approximately normal, allowing for 
+the capture of statistically significant outliers.
+Method: adaptive_quantile_threshold(scores)
+The adaptive quantile threshold method dynamically adjusts the threshold based on 
+the most recent data. This makes SPINEX particularly useful for streaming data or data -
+sets with non-stationary distributions. For a scores vector s, the threshold T is calculated 
+using:
+ci =| ri − bi |
+T = percentile(s, τ)
+T = µ + kσ
+
+Page 7 of 55
+Naser and Naser  Journal of Big Data           (2025) 12:77 
+ 
+where  srecent  is the subset of scores from the last nnn observations, and q is the quantile. 
+This method adapts to changes in data behavior over time, providing a responsive and 
+context-sensitive anomaly detection mechanism.
+Method: analyze()
+The analyze method orchestrates the anomaly detection process. It starts by calculat -
+ing feature differences for each row in parallel and then aggregates these differences to 
+establish a baseline of normal behavior. Anomalies are identified by comparing individ -
+ual behavior against this baseline using a statistical threshold method. The aggregation 
+of differences for the baseline calculation involves computing the mean or median of the 
+differences across all data points, providing a central tendency measure that serves as 
+the anomaly detection threshold. Anomalies are those data points whose aggregated dif -
+ference exceeds this threshold by a specified multiplier, typically set to capture the upper 
+tail of the difference distribution.
+Method: get_predictions()
+The get_predictions method in the SPINEX algorithm is the final step in the anomaly 
+detection process. It generates predictions that classify each data point as either nor -
+mal or an anomaly based on the anomaly scores and the threshold determined earlier in 
+the analyze method. The method initializes a prediction array with a default value of 1, 
+indicating normalcy for all data points in the dataset. It then examines the indices of the 
+anomalies identified in the analyze method and updates the corresponding entries in the 
+prediction array to -1, indicating anomalous points. Let p be the predictions vector, n be 
+the number of observations in the dataset, and A be the set of indices corresponding to 
+anomalies. The predictions are initially set as:
+After identifying anomalies, the values in p at indices corresponding to anomalies are 
+set to -1:
+The output of the method is a tuple containing:
+• predictions: an array where each element is either 1 (normal) or -1 (anomaly), cor -
+responding to each data point in the dataset.
+• self.anomaly_scores_all: the array of anomaly scores computed during the analy -
+sis, reflecting the degree of deviation of each data point from the expected normal 
+behavior.
+Two more functions exist: the visualize_transformations() and the visualize_feature_
+pairs(). These methods facilitate a visual examination of the relationships between pairs 
+of features through scatter plots.
+The complete class of SPINEX is shown below:
+T = percentile(srecent , q × 100)
+p = {pi = 1∀i ∈ {1, 2, ..., n}}
+pi =− 1∀i ∈ A
+
+Page 8 of 55Naser and Naser  Journal of Big Data           (2025) 12:77 
+
+
+Page 9 of 55
+Naser and Naser  Journal of Big Data           (2025) 12:77 
+ 
+
+Page 10 of 55Naser and Naser  Journal of Big Data           (2025) 12:77 
+
+
+Page 11 of 55
+Naser and Naser  Journal of Big Data           (2025) 12:77 
+ 
+
+Page 12 of 55Naser and Naser  Journal of Big Data           (2025) 12:77 
+Description of benchmarking algorithms, experiments, and functions
+This section describes the experimental examination used to benchmark SPINEX. For a 
+start, SPINEX was examined against 21 commonly used optimization algorithms, namely, 
+Angle-Based Outlier Detection (ABOD), Connectivity-Based Outlier Factor (COF), Cop-
+ula-Based Outlier Detection (COPOD), ECOD, Elliptic Envelope (EE), Feature Bagging 
+with KNN, Gaussian Mixture Models (GMM), Histogram-based Outlier Score (HBOS), 
+Isolation Forest (IF), Isolation Neural Network Ensemble (INNE), Kernel Density Esti -
+mation (KDE), K-Nearest Neighbors (KNN), Lightweight Online Detector of Anomalies 
+(LODA), Linear Model Deviation-based Detector (LMDD), Local Outlier Factor (LOF), 
+Minimum Covariance Determinant (MCD), One-Class SVM (OCSVM), Quadratic MCD 
+(QMCD), Robust Covariance (RC), Stochastic Outlier Selection (SOS), and Subspace Out-
+lier Detection (SOD)—see Table  1. A brief description of each of the utilized algorithms 
+is presented herein, and we invite our readers to cross examine the sources for these algo-
+rithms for additional details.
+Angle‑based outlier detection (ABOD)
+The Angle-Based Outlier Detection (ABOD) was developed by Kriegel et  al. in 2008 
+[14] to address the challenges of anomaly detection in high-dimensional spaces where 
+
+Page 13 of 55
+Naser and Naser  Journal of Big Data           (2025) 12:77 
+ 
+traditional distance-based methods often struggle. The ABOD builds on the observation 
+that for normal points, the angles formed with pairs of other points tend to vary widely, 
+while for outliers, these angles tend to be consistently small. As such, the algorithm com-
+putes an angle-based outlier factor for each point, which is the variance of the angles 
+formed by the point with pairs of other points in the dataset. Points with small variances 
+in these angles are considered potential outliers. ABOD’s key advantage is its effective -
+ness in high-dimensional spaces, as it does not rely directly on distance. Additionally, 
+ABOD does not require explicit parameters like the number of neighbors, and it can 
+detect both global and local outliers. However, the naive implementation of ABOD has 
+high computational complexity, which can be prohibitive for large datasets, although 
+approximation methods like FastABOD can mitigate this issue [15].
+Connectivity‑based outlier factor (COF)
+The Connectivity-Based Outlier Factor (COF) is an extension of the Local Outlier Fac -
+tor (LOF) algorithm that was proposed by Tang et al. in 2002 [16]. The COF introduces 
+the concept of a set-based nearest path (SBN-path) to measure the connectivity between 
+points, replacing the Euclidean distance used in LOF. Thus, for each point, COF calcu -
+lates an average chaining distance based on these SBN-paths, then computes the COF 
+score as the ratio of the average chaining distances of a point’s neighbors to its own aver-
+age chaining distance. Points with COF values significantly larger than 1 are considered 
+potential anomalies. This approach allows COF to better handle datasets where clus -
+ters have different densities and to more effectively detect outliers in elongated clusters. 
+However, like LOF, COF’s performance can also be sensitive to the choice of the number 
+of nearest neighbors.
+Copula‑based outlier detection (COPOD)
+COPOD is a parameter-free probabilistic approach to detecting outliers in multivariate 
+data, proposed by Li et al. in 2020 [17]. COPOD is a non-parametric method that mod -
+els the dependency structure between dimensions of data using copulas. This algorithm 
+can effectively capture the tail dependencies and detect anomalies in complex multivari -
+ate distributions without the assumption of normality. The outlier score is based on the 
+empirical copula of observed data points.
+Elliptic envelope (EE)
+The Elliptic Envelope method is an object for detecting outliers in Gaussian distributed 
+data using a robust covariance estimation [18]. It assumes that the data is generated 
+from a single Gaussian distribution and fits an ellipse to the central data points, ignor -
+ing points outside a specified contamination parameter. Thus, points outside the ellipse 
+defined by several standard deviations are considered outliers.
+Empirical cumulative distribution function‑based outlier detection (ECOD)
+The Empirical Cumulative Distribution Function-based Outlier Detection (ECOD) is a 
+parameter-free method that utilizes empirical cumulative distribution functions to iden-
+tify anomalies (in both univariate and multivariate data). ECOD begins by independently 
+computing the empirical cumulative distribution function for each feature. Then, this 
+
+Page 14 of 55Naser and Naser  Journal of Big Data           (2025) 12:77 
+Table 1 A comparison between anomaly algorithms
+Algorithm Type Strengths Weaknesses Computational  complexity*
+Angle-Based Outlier Detection (ABOD) Angle-based Effective in high-dimensional spaces; 
+Less affected by data density
+Computationally intensive; Perfor-
+mance can vary with dimensionality
+O(n log n × d)
+Connectivity-Based Outlier Factor 
+(COF)
+Distance-based Good for datasets with varying densi-
+ties; Detailed local outlier detection
+High computational complexity; Not 
+suitable for large datasets
+O(n2 × d)
+Copula-Based Outlier Detection 
+(COPOD)
+Copula-based No parameter tuning needed; Effec-
+tive with different data distributions
+Less interpretable; May struggle with 
+very high-dimensional data
+O(n log n × d log d)
+ECOD Empirical Distribution Simple and efficient; No assumptions 
+on data distribution
+May be less effective for complex or 
+highly noisy data
+O(n log n * d log d)
+Elliptic Envelope (EE) Covariance-based Effective for Gaussian distributed data; 
+Intuitive model assumption
+Poor performance with non-Gaussian 
+data; Sensitive to outliers
+–
+Feature Bagging with KNN Ensemble Combines multiple models for robust-
+ness; Reduces risk of overfitting
+Increased computational cost; 
+Depends on the effectiveness of 
+individual models
+O(n log n ×d)
+Gaussian Mixture Models (GMM) Model-based Flexibility in modeling data distribu-
+tions; Effective in many scenarios
+Requires assumptions on component 
+number; Can be sensitive to initializa-
+tion
+O(n × d log d)
+Histogram-based Outlier Score (HBOS) Histogram-based Fast and scalable; Good for large 
+datasets
+Assumes feature independence; Poor 
+performance with correlated features
+O(n × d)
+Isolation Forest (IF) Tree-based Efficient with high-dimensional data; 
+Handles large datasets well
+Less effective with very small datasets; 
+Performance can degrade with noisy 
+data
+O(n × d)
+Isolation Neural Network Ensemble 
+(INNE)
+Neural Network Robust performance; Combines multi-
+ple neural networks for diversity
+Requires large data for training; Com-
+putationally expensive
+O(n log n × d)
+Kernel Density Estimation (KDE) Density-based Good for data with underlying struc-
+tures; Flexible kernel choice
+Sensitive to bandwidth parameter; 
+Struggles with high dimensions
+O(n2 × d log d)
+K-Nearest Neighbors (KNN) Distance-based Intuitive and simple; Effective in iden-
+tifying global outliers
+Computationally expensive; Not ideal 
+for high-dimensional data
+O(n1.5 × d log d)
+Lightweight Online Detector of 
+Anomalies (LODA)
+Histogram-based Lightweight and suitable for online 
+environments; Fast and scalable
+Performance can be limited by 
+histogram binning; Less effective with 
+complex patterns
+O(n × d)
+
+Page 15 of 55
+Naser and Naser  Journal of Big Data           (2025) 12:77 
+ 
+Table 1 (continued)
+Algorithm Type Strengths Weaknesses Computational  complexity*
+Linear Model Deviation-based Detec-
+tor (LMDD)
+Linear models Simple and fast for data with linear 
+relations
+Ineffective with nonlinear or complex 
+patterns
+O(n2 × d log d)
+Local Outlier Factor (LOF) Density-based Detects local outliers effectively; 
+Adaptable to varying densities
+Not suited for high-dimensional data; 
+Sensitive to parameter k
+O(n log n × d)
+Minimum Covariance Determinant 
+(MCD)
+Robust Statistics Resistant to outliers; Effective in 
+moderate-dimensional datasets
+Computationally intensive; Not scal-
+able to very large datasets
+O(n × d log d)
+One-Class SVM (OCSVM) Support Vector Machine Effective in high-dimensional space; 
+Good for novelty detection
+Sensitive to parameter settings; Can 
+be computationally intensive
+O(n2 × d)
+Quadratic MCD (QMCD) Robust Statistics Enhances MCD by better handling 
+data shape; Robust against outliers
+Higher computational demand than 
+MCD; Scalability issues
+O(n2 × d log d)
+Robust Covariance (RC) Covariance-based Effective for multivariate data; Robust 
+to outliers
+Requires assumption of Gaussian 
+distribution; Computationally heavy
+-
+SPINEX Similarity-based + Feature Interaction Effective for multivariate data; Robust 
+to outliers, and accounts for feature 
+interactions
+Does not inherently include feature 
+selection mechanisms
+O(n log n × d)—possibly reaching 
+a theoretical O(n2× d) for data-
+sets > n = 25,000 × d = 1000
+Stochastic Outlier Selection (SOS) Stochastic Considers affinity of points based on 
+probability; Robust to outliers
+Computational complexity can be 
+high; Parameter tuning is critical
+O(n2 × d log d)
+Subspace Outlier Detection (SOD) Subspace-based Effective in high-dimensional data by 
+focusing on relevant subspaces
+Can miss outliers that are not appar-
+ent in lower dimensions
+O(n1.5 × d)
+*Estimated via a basic examination across 100, 1000, and 10000 samples (n) with 50, 100, 500, and 1000 features (d) 
+
+Page 16 of 55Naser and Naser  Journal of Big Data           (2025) 12:77 
+algorithm transforms the data to the [0,1] space using these functions. The outlier score 
+for each point is computed as the maximum absolute difference between its transformed 
+values and 0.5 across all features. ECOD offers several advantages, including computa -
+tional efficiency with a time complexity of O(n log n), robustness to data dimensional -
+ity, and interpretable probabilistic scores. As ECOD assumes feature independence, this 
+algorithm may not capture complex feature interactions as effectively.
+Feature bagging with KNN
+Feature Bagging with KNN is an ensemble method for anomaly detection that combines 
+multiple base KNN detectors to improve robustness and performance [19]. This algo -
+rithm creates multiple subsets of features by randomly selecting a portion of the origi -
+nal features. For each subset, it trains a KNN anomaly detector and calculates anomaly 
+scores for each data point. The final anomaly score for a point is then determined by 
+combining the scores from all detectors, typically through averaging or taking the maxi -
+mum. This approach addresses some limitations of standard KNN anomaly detection, 
+such as sensitivity to irrelevant features and high dimensionality. Still, such improve -
+ment comes at the cost of increased computational complexity (compared to standard 
+KNN) and can be sensitive to the number of feature subsets and subset size. The method 
+is particularly useful in scenarios with high-dimensional data or when there is uncer -
+tainty about which features are most relevant for anomaly detection.
+Gaussian mixture models (GMM)
+The GMM for anomaly detection is based on fitting a mixture of Gaussian distributions 
+to the data and then identifying points with low likelihood under this model. Algorith -
+mic parameters are typically estimated using the Expectation–Maximization (EM) algo -
+rithm. Once the model is fitted, anomalies are identified as points with low likelihood 
+under the model or, equivalently, high negative log likelihood. GMM has the advantage 
+of being able to model complex, multimodal distributions and provide probabilistic 
+anomaly scores. However, specifying the number of mixture components in advance can 
+be challenging. Additionally, GMM can be sensitive to initialization and may converge to 
+local optima.
+Histogram‑based outlier score (HBOS)
+The Histogram-based Outlier Score (HBOS) was developed by Goldstein and Dengel 
+in 2012 [20]. The HBOS can be described as a statistical anomaly detection method 
+designed for fast processing of large datasets. HBOS independently constructs his -
+tograms for each feature and then combines information from these histograms to 
+compute an anomaly score. Then, the algorithm calculates bin heights as normalized fre-
+quencies for each feature and then computes the score for each data point as the sum of 
+the logarithms of inverse bin heights across all features. Naturally, higher scores indi -
+cate a higher likelihood of the point being an anomaly. HBOS offers several advantages, 
+including linear time complexity (i.e., O(n)), ease of interpretation, and the ability to 
+handle mixed data types. On the other hand, this algorithm assumes feature independ -
+ence, which may not always hold true and can be sensitive to the choice of bin width. 
+The method may also face challenges in high-dimensional spaces where the likelihood 
+
+Page 17 of 55
+Naser and Naser  Journal of Big Data           (2025) 12:77 
+ 
+of a point being in a low-density region by chance increases. HBOS can be particularly 
+useful when computational efficiency is crucial and where the independence assumption 
+is reasonable [21].
+Isolation forest (IF)
+The Isolation Forest (IF) was Liu et al. in 2008 [22]. This algorithm is based on the prin -
+ciple that anomalies are few, rare, and different; hence, they can be easily isolated in a 
+dataset. The IF algorithm constructs a forest of random decision trees, called isolation 
+trees, and identifies anomalies as instances with short average path lengths on these 
+trees. For example, the algorithm recursively partitions the data in each tree by ran -
+domly selecting a feature and a split value, continuing until each data point is isolated 
+or a specified tree height is reached. Then, an anomaly score for a point is calculated 
+based on the average path length across all trees, with shorter paths indicating a higher 
+likelihood of being an anomaly (i.e., anomalies are instances with scores close to 1, while 
+normal points have scores much smaller than 0.5). The IF algorithm performs well in 
+high-dimensional datasets and is particularly effective when anomalies are scattered and 
+in small numbers. Its time complexity is linear with the number of samples and features, 
+and it can be efficient for large datasets. However, IF may struggle with datasets where 
+anomalies form clusters or when normal data is not homogeneous [23]. The contamina -
+tion parameter in the IF implementation determines the proportion of outliers in the 
+dataset, which, in turn, influences the threshold for anomaly classification.
+Isolation neural network ensemble (INNE)
+INNE combines the concept of isolation with nearest neighbor methods to enhance 
+detection in high-dimensional spaces. Thus, the INNE is an ensemble method for anom-
+aly detection that combines multiple neural networks trained to isolate individual data 
+points. Each neural network in the ensemble is trained on a random subset of features 
+and a random subset of the data. The networks learn to separate individual points from 
+the rest of the data, similar to the concept of Isolation Forests. The anomaly score for a 
+point is then computed as the average path length (or a similar metric) across all net -
+works in the ensemble. Points that are easier to isolate (i.e., have shorter average path 
+lengths) are considered potential anomalies. INNE has the advantage of effectively 
+capturing complex, nonlinear relationships in the data and handling high-dimensional 
+datasets. The ensemble approach also provides robustness against noise and irrelevant 
+features. However, INNE can be computationally intensive, especially for large datasets 
+or when using a large number of networks in the ensemble.
+Kernel density estimation (KDE)
+The KDE is a non-parametric method for estimating the probability density function 
+of a random variable based on a finite data sample [24]. This algorithm can be used to 
+identify data points that lie in regions of low density. The algorithm estimates the den -
+sity at each point using a kernel function centered at that point, typically a Gaussian 
+kernel. Points with low density estimates are considered potential anomalies. The band -
+width parameter h controls the smoothness of the density estimate and can significantly 
+affect the results. KDE has the advantage of being able to capture complex, multimodal 
+
+Page 18 of 55Naser and Naser  Journal of Big Data           (2025) 12:77 
+distributions without assuming a specific parametric form. However, it can be computa -
+tionally expensive for large datasets and may struggle in high-dimensional spaces.
+K‑nearest neighbors (KNN) for anomaly detection
+When adapted for anomaly detection, the K-Nearest Neighbors (KNN) algorithm can 
+be best described as a distance-based method that relies on the principle that nor -
+mal data points have close neighbors while anomalies are located far from their clos -
+est neighbors. Thus, KNN calculates the average distance to its k nearest neighbors for 
+each data point as an anomaly score. Points with higher scores are considered potential 
+anomalies. The algorithm is intuitive and easy to implement, capable of working well in 
+various scenarios, including when normal data forms multiple clusters. However, this 
+algorithm may face challenges such as high computational complexity for large datasets 
+and dependence on the choice of k. This algorithm has a similar time complexity to the 
+LOF algorithm.
+Lightweight online detector of anomalies (LODA)
+The LODA algorithm was developed by Pevny [25] as a fast, online anomaly detection 
+algorithm designed for streaming data and large datasets. LODA works by projecting the 
+data onto multiple random one-dimensional subspaces and constructing histograms in 
+these subspaces. Each projection maintains a histogram of the projected values, and the 
+anomaly score for a new point is computed as the negative log-likelihood of its projected 
+values across all histograms. LODA can be computationally efficient with linear time 
+complexity, handle high-dimensional data, and be updated incrementally. Additionally, 
+LODA provides interpretable results by identifying which features contribute most to 
+a point’s anomaly score. However, LODA may not capture complex, multi-dimensional 
+relationships in the data as effectively as some more sophisticated methods.
+Linear median deviation‑based detector (LMDD)
+LMDD is a robust statistic that seeks to minimize the squared deviations from the 
+median of the dataset. The algorithm first fits a model to the dataset, and then it com -
+putes the residuals for each data point (i.e., which represents the deviation from the 
+model). The magnitude of these residuals serves as an anomaly score, with larger resid -
+uals indicating potential outliers. One advantage of LMDD is its simplicity and inter -
+pretability. However, it can be sensitive to outliers in the model fitting stage, potentially 
+masking some anomalies.
+Local outlier factor (LOF)
+The Local Outlier Factor (LOF) algorithm was developed by Breunig et al. in 2000 [26] as 
+a density-based method for detecting anomalies. Unlike global outlier detection meth -
+ods, LOF identifies anomalies by comparing a point’s local density to its neighbors’ local 
+densities. Simply, the LOF considers the samples that have a substantially lower den -
+sity than their neighbors as outliers. This approach allows LOF to detect local anomalies 
+that might be missed by global methods—notably in datasets with varying densities. The 
+LOF starts by calculating a local reachability density for each point based on its k near -
+est neighbors, then computes the LOF score as the ratio of the average local reachability 
+
+Page 19 of 55
+Naser and Naser  Journal of Big Data           (2025) 12:77 
+ 
+density of a point’s neighbors to its own local reachability density. Points with LOF 
+scores significantly larger than 1 are considered outliers. LOF’s strength lies in its abil -
+ity to detect outliers in datasets with varying densities and its robustness to different 
+distance measures. However, it can be computationally intensive for large datasets (as it 
+has a time complexity equal to a time complexity of O(n2)) and sensitive to the choice of 
+the k parameter [27].
+Minimum covariance determinant (MCD)
+The Minimum Covariance Determinant (MCD) was proposed by Rousseeuw [28]. The 
+MCD is a highly robust estimator of multivariate location and scatter and is designed to 
+resist the effect of outliers in the data. The algorithm aims to find the subset of h observa-
+tions (out of n total observations) whose covariance matrix has the lowest determinant. 
+Typically, h is chosen to be about 75% of n to balance robustness and efficiency. The 
+MCD algorithm iteratively selects subsets of the data, computes their mean and covari -
+ance, and keeps the subset with the lowest covariance determinant. Once the optimal 
+subset is found, it is used to compute the final estimates of location and scatter. These 
+robust estimates can then be used to compute Mahalanobis distances for all points, with 
+large distances indicating potential outliers. The MCD method is particularly useful in 
+multivariate settings where outliers might not be apparent in any single dimension but 
+become visible in the multivariate structure of the data. While the original MCD can be 
+computationally intensive for large datasets, fast approximation algorithms have been 
+developed to make it more practical [29].
+One class support vector machine (OCSVM)
+The One-Class Support Vector Machine (OCSVM) is an extension of the Support Vec -
+tor Machine algorithm designed for unsupervised anomaly detection. This algorithm 
+was proposed by Schölkopf et al. [30] to learn a decision boundary that encapsulates the 
+majority of the data points. Then, any point that falls outside this boundary is treated 
+as an outlier. More specifically, OCSVM maps input data into a high-dimensional fea -
+ture space via a kernel function and then seeks to find the maximal margin hyperplane 
+that separates the data from the origin. This algorithm solves an optimization problem 
+to determine this hyperplane, with the decision function classifying new points based on 
+their position relative to the hyperplane. OCSVM is particularly effective when the nor -
+mal data is well-clustered and separable from anomalies in the feature space. However, 
+OCSVM can be sensitive to the choice of kernel and its parameters, and it may strug -
+gle with datasets containing multiple normal clusters or when anomalies are not well-
+separated from normal data. OCSVM can also be computationally intensive for large 
+datasets and has a time complexity of O(n 2) to O(n3), where n is the number of training 
+samples.
+Quantile minimum covariance determinant (QMCD)
+QMCD is an extension of the Minimum Covariance Determinant (MCD) method that 
+incorporates quadratic terms to better handle nonlinear relationships in the data [31]. 
+QMCD aims to provide a more robust and flexible approach to outlier detection.
+
+Page 20 of 55Naser and Naser  Journal of Big Data           (2025) 12:77 
+Robust covariance (RC)
+Robust Covariance is an outlier detection method that uses a robust estimator of covari -
+ance to identify anomalies in multivariate data [32]. This method is similar to the Elliptic 
+Envelope method but provides more flexibility in the choice of the robust covariance 
+estimator.
+Stochastic outlier selection (SOS)
+The Stochastic Outlier Selection (SOS) is an unsupervised anomaly detection algorithm 
+proposed by Janssens et al. in 2012 [33]. This algorithm is based on the concept of affin -
+ity between data points and uses a probabilistic approach to identify outliers. The algo -
+rithm begins by computing pairwise distances between all points in the dataset. These 
+distances are then converted to affinities using a Gaussian kernel, where the bandwidth 
+of the kernel is determined adaptively for each point based on a user-specified perplex -
+ity value. The affinities are normalized to obtain binding probabilities that represent the 
+probability that a point would choose another specific point as its neighbor. The out -
+lier probability for each point is then computed as the product of the probability that 
+it would not be chosen as a neighbor by any other point. This approach allows SOS to 
+capture complex, nonlinear distributions and relationships in the data and adapt to vary-
+ing densities. One of the key advantages of SOS is that it provides a probabilistic outlier 
+score, which can be more interpretable than distance-based scores. However, SOS can 
+be computationally expensive for large datasets due to the need to compute all pairwise 
+distances.
+Subspace outlier detection (SOD)
+The Subspace Outlier Detection (SOD) algorithm was proposed by Kriegel et al. in 2009 
+[34]. SOD is designed to detect outliers in high-dimensional spaces by considering rel -
+evant subspaces for each data point. For example, for each point, SOD first identifies its 
+k nearest neighbors, then computes a subspace spanned by these neighbors using tech -
+niques like principal component analysis [35]. The point and its neighbors are then pro -
+jected onto this subspace, and the distance of the point to the centroid of its neighbors 
+in this subspace is computed. This distance is normalized by the spread of the neighbors 
+in the subspace to produce an outlier score. Points with high normalized distances are 
+considered outliers. The strength of this algorithm lies in its ability to detect outliers that 
+are only visible in specific subspaces, making it particularly effective in high-dimensional 
+datasets where outliers might be obscured when considering all dimensions simultane -
+ously. The algorithm adapts to local data characteristics, providing a flexible approach to 
+outlier detection. However, SOD can be sensitive to the choice of the number of neigh -
+bors and can be computationally expensive for large datasets.
+Complexity analysis
+A basic comparative complexity analysis was conducted between the above algorithms 
+and SPINEX. This analysis was carried out across 100, 1000, and 10,000 samples (n) 
+with 50, 100, 500, and 1000 features (d)—see Fig.  1 and Table  1. This analysis shows 
+that SPINEX, with an empirical complexity of O(n log n × d), demonstrates competitive 
+
+Page 21 of 55
+Naser and Naser  Journal of Big Data           (2025) 12:77 
+ 
+performance in terms of computational complexity compared to other anomaly detec -
+tion algorithms. This complexity places SPINEX in the middle tier of efficiency among 
+the examined algorithms, which have better scalability than quadratic algorithms. 
+More specifically, our findings categorize them into three broad groups based on their 
+complexity:
+1. Linear or Near-Linear Complexity: Algorithms like HBOS, IF, and LODA, with 
+O(n × d) complexity, represent the most efficient category. These algorithms scale 
+linearly with both the number of samples and features, which can be preferred for 
+large datasets. SPINEX is only marginally slower than the aforementioned algorithms 
+due to its additional logarithmic factor.
+2. Log-Linear Complexity: SPINEX falls into this category along with algorithms like 
+ECOD, FeatureBagging, INNE, LOF, and ABOD. These algorithms, with complexi -
+ties around O(n log n × d) or O(n log n × d log d), offer a good balance between com-
+putational efficiency and detection capability, with only a slight penalty compared to 
+linear algorithms.
+3. Higher Complexity: Algorithms such as KDE, LMDD, OCSVM, QMCD, and SOS, 
+with complexities of O(n1.5 × d) or higher, represent the most computationally inten-
+sive methods.
+It is important to note that computational complexity is just one factor in algorithm 
+selection. Detection accuracy, robustness to different data distributions, interpretability 
+of results, and specific use case requirements are all crucial considerations. SPINEX’s 
+moderate complexity suggests it might balance computational efficiency and detection 
+capability well. While our analysis covered dataset sizes up to 10,000 samples with 1000 
+features, which we considered to be sufficiently large for most practical applications, we 
+recognize that there is a need to further examine this algorithm into the range of mil -
+lions of samples and tens of thousands of features. This would be a future task to exam -
+ine future editions of SPINEX.
+Description of benchmarking experiments, algorithms, and datasets
+A series comprising 39 synthetic and real datasets was run and evaluated in a Python 
+3.10.5 environment using an Intel(R) Core(TM) i7-9700F CPU @ 3.00GHz and an 
+installed RAM of 32.0GB. To ensure reproducibility, the settings of SPINEX and the 
+other algorithms presented earlier will be found in our Python script. All algorithms 
+ran in default settings. 1 The performance of all algorithms is evaluated through various 
+1 We opted to use the other algorithms in their default settings for three reasons:
+1. Because we also used SPIENX in its default settings. We believe this would present a somewhat plain level for 
+comparison.
+2. We used 21 algorithms in our analysis and provided separate results for each algorithm under tuned and default 
+settings, which would have significantly pushed the size of this paper (currently set at about 16,000 words).
+3. According to the no free lunch theorem, we did not anticipate that one algorithm would govern all scenarios 
+and databases but rather we anticipate that tuning might offer improvements for specific cases, and hence tun-
+ing (given the above two items) seemed a cumbersome task at the moment – due to the lack of funding at the 
+moment.
+Despite the above, we do see merit and importance for a secondary analysis on fully tuned algorithms. We hope to be 
+able to do so in a future and improved version of SPIENX.
+
+Page 22 of 55Naser and Naser  Journal of Big Data           (2025) 12:77 
+performance metrics (see Table  2 [36]). These metrics include precision, recall, F1-score, 
+and area under the receiver operating characteristic (ROC) curve (AUC).
+Each metric provides unique insights from identifying anomalies (often regarded as 
+the minority class). For example, precision measures the accuracy of the positive pre -
+dictions made by the algorithm and quantifies explicitly the proportion of data points 
+that were correctly identified as anomalies (true positives) out of all the data points that 
+were predicted as anomalies (true positives and false positives). High precision indicates 
+that the algorithm correctly made most of its “anomaly” predictions, minimizing false 
+alarms. On the other hand, recall is defined as the ratio of true positives to the sum of 
+true positives and false negatives (anomalies that the algorithm failed to detect). This 
+metric measures the algorithm’s ability to detect all actual anomalies.
+The F1-score is the harmonic mean of precision and recall and hence combines both 
+precision and recall into a single measure to capture the balance between them. Since 
+it accounts for both false positives and false negatives, this metric becomes useful for 
+understanding an algorithm’s overall accuracy without favoring either precision or 
+recall. The AUC ROC illustrates the algorithm for discriminating between the classes 
+across all possible threshold values. The ROC curve is a plot of the true positive rate 
+(recall) against the false positive rate (the ratio of incorrectly labeled normal instances to 
+all actual normal instances) for various threshold settings. AUC values range from 0 to 1, 
+with 1 indicating perfect classification and 0.5 denoting no discriminative ability.
+Synthetic datasets
+Twenty one synthetic datasets were used in our experiments. Each dataset simulates dif-
+ferent conditions and scenarios for anomaly detection purposes. These datasets were 
+created using the following specially designed function (see Fig. 2 and Table 3).
+Fig. 1 Complexity analysis
+
+Page 23 of 55
+Naser and Naser  Journal of Big Data           (2025) 12:77 
+ 
+generate_complex_data: This function is designed to simulate data with varying 
+degrees of complexity, incorporating both normal data points and outliers. Key param -
+eters include mean_shift, cov_scale, outlier_fraction, size, num_features, and complex -
+ity_level, which allow for extensive control over the data characteristics:
+• mean_shift: Shifts the mean of the normal data distribution
+• cov_scale: Scales the covariance matrix for both normal data and outliers
+• outlier_fraction: Determines the proportion of outliers in the dataset
+• size: Total number of data points to generate
+• num_features: Number of features in the base dataset
+• complexity_level: Controls the addition of nonlinear interactions and higher-order 
+terms
+The function begins by setting a random seed for reproducibility. It then initializes 
+the base mean vector and covariance matrix for the normal data distribution. The base 
+mean is a zero vector, and the base covariance is an identity matrix scaled by cov_scale. 
+The number of outliers is calculated based on the outlier_fraction and size parameters. 
+The function uses math.ceil() to generate at least one outlier when the calculated num -
+ber is non-zero but less than one.
+The function then introduces additional complexity based on the complexity_level 
+parameter:
+• For complexity_level > 0, nonlinear interactions are added:
+• The product of the first two features is calculated and appended as a new feature: 
+fnew = f1 × f2
+• For complexity_level > 1, higher-order terms are added via:
+• Squared terms of all features: fnew = f1.2
+• Sine transformation of all features: fnew = sin(fi)
+After generating the data, the function combines normal data and outliers and creates 
+corresponding labels (0 for normal data, 1 for outliers). Finally, it shuffles the data and 
+labels to ensure random ordering.
+We followed a systematic methodology to rank the examined algorithms’ perfor -
+mance across all listed datasets. This methodology calculates the average scores for each 
+algorithm on each dataset and across all metrics. Then, we rank algorithms per metric, 
+calculate the sum of ranks across all metrics, and display the ranked models. The out -
+come of this analysis is shown in Table  4 as well as Fig.  3. It is quite clear that SPINEX 
+Table 2 List of common performance metrics
+P (number of real positives), N (number of real negatives), TP (true positives), TN (true negatives), FP (false positives), and FN (false negatives) 
+Metric Formula
+Precision Precision = TP
+TP+FP
+Recall Recall = TP
+TP+FN
+F1 score F1 = 2TP
+2TP+FP+FN
+Area under the ROC curve AUC = ∑N−1
+i=1
+1
+2 (FPi+1 − FPi )(TPi+1 − TPi )
+
+Page 24 of 55Naser and Naser  Journal of Big Data           (2025) 12:77 
+and most of its variants rank well when compared to other algorithms. Compared with 
+other well-known algorithms like HBOS, LOF, and various k-NN based methods, most 
+SPINEX variants generally exhibit competitive or superior rankings (with nuanced dif -
+ferences appearing between the variants that incorporate weights and interactions vs. 
+those of dynamic thresholds). This competitive edge likely stems from SPINEX’s unique 
+approach to anomaly detection, which might include inherent processing and interac -
+tion utilization methods.
+Figure 4 utilizes the Principal Component Analysis (PCA) to reduce the data to two 
+dimensions as a means to allow us to visually assess how each algorithm separates nor -
+mal points from outliers. This plot shows such a plot for two datasets (no. 1 and no. 4). 
+The standard SPINEX shows a clear separation between normal data and outliers, with 
+the boundary being relatively close to the cluster of normal points. This suggests a care -
+ful approach to anomaly detection, as that can also be seen in other algorithms such 
+as IF, KNN, GMM, EE etc. On the other hand, other algorithms, such as ABOD, SOD, 
+COPOD, INNE, etc., seem to struggle to separate the outliers. Similar plots for all data -
+sets are shown in the Appendix.
+Real datasets
+This section offers insights into the same systemic analysis followed on the synthetic 
+datasets but by using 18 real datasets. These datasets consist of various problems and 
+scenarios and are described in Table 5. This table lists details on each dataset, along with 
+their respective references. Additional details can be found in the respective references. 
+Notably, many of these datasets were recommended by the following notable and com -
+prehensive benchmarking studies [37–39]—see Fig. 5.
+The results of the benchmarking and ranking analysis are listed in Table  6 and shown 
+in Fig. 6. These results clearly show that the SPINEX algorithm and its variants perform 
+comparatively well against the other commonly used anomaly detection algorithms. For 
+example, these variants rank within the top-10 performing algorithms. The same results 
+also note that the use of additional settings (in terms of weights and interactions) does 
+not seem to offer significant variations in the average rankings. It is quite clear that the 
+KNN-like algorithms, along with SOD, COPOD, INNE, and KDE, rank on the top-5 list 
+of algorithms.
+Figure  7 presents two visual examples by displaying the PCA for the Pendigits and 
+Waveform datasets. This plot shows that SPINEX clearly identifies outliers, unlike 
+other algorithms, such as OCSVM and FB with KNN. These algorithms seem to strug -
+gle to separate the outliers. Please note that the plots for all datasets are shown in the 
+Appendix.
+As shown above, the performance variability of anomaly detection algorithms across 
+metrics (precision, recall, F1-score, AUC) stems from their inherent design principles 
+and optimization strategies. For example, algorithms prioritizing anomaly detection may 
+achieve higher recall at the expense of precision, while more conservative approaches 
+
+Page 25 of 55
+Naser and Naser  Journal of Big Data           (2025) 12:77 
+ 
+might excel in precision but sacrifice recall. F1-score and AUC, being composite met -
+rics, favor algorithms that balance precision and recall or effectively rank anomalous 
+instances, respectively. Dataset-specific characteristics, including feature interactions, 
+noise levels, and anomaly proportions, further modulate algorithm performance. Algo -
+rithms skilled at handling multivariate relationships tend to outperform in datasets 
+where complex feature interactions are crucial for anomaly identification. This inter -
+play between algorithm design, evaluation metrics, and dataset properties elucidates the 
+observed performance variations in anomaly detection tasks.
+Fig. 2 Visualization of the synthetic datasets
+
+Page 26 of 55Naser and Naser  Journal of Big Data           (2025) 12:77 
+A note on explainability and future research directions
+To showcase the explainability performance of SPINEX, two anomalous data points (i.e., 
+No. 43 and no. 93) of the three identified from the first synthetic dataset are examined 
+herein. Figure 8 shows the calculated feature importance and contribution (by using cal -
+culate_feature_contributions method) to each anomalous data point. As one can see, 
+these data points yielded significant values that were above the baseline established for 
+anomaly scores. This visualization can help guide users on how a given data point was 
+predicted to be anomalous or normal.
+Despite the significant progress made in anomaly detection over the past decades, 
+several challenges persist, limiting the effectiveness of existing methods and motivating 
+Table 3 Parameters used in the synthetic datasets
+No Mean Shift Covariance 
+Scale
+Outlier Fraction Number of 
+Features
+Complexity 
+Level
+Size
+1 4 1.2 0.03 3 0 100
+2 − 1 0.7 0.04 9 1 350
+3 5 1.1 0.12 5 2 8000
+4 − 4 0.6 0.08 3 0 550
+5 2 2.5 0.07 11 0 120
+6 − 3 0.3 0.18 19 1 300
+7 1.5 0.9 0.11 16 1 400
+8 − 2 1.3 0.16 10 2 100
+9 − 1 0.4 0.19 4 2 320
+10 4.5 0.9 0.06 25 1 4200
+11 − 4.5 0.7 0.09 11 0 520
+12 2.5 1.6 0.13 14 0 130
+13 − 3.5 0.5 0.11 10 2 590
+14 1.2 1.7 0.17 18 1 1400
+15 3.5 1.2 0.15 13 1 440
+16 − 1.5 0.8 0.22 150 0 5040
+17 2 1 0.03 3 0 200
+18 − 2 0.5 0.04 13 1 3000
+19 − 1 0.7 0.05 9 2 150
+20 3 0.6 0.02 7 1 250
+21 − 3 1.1 0.06 30 0 1000
+
+Page 27 of 55
+Naser and Naser  Journal of Big Data           (2025) 12:77 
+ 
+Table 4 Average and overall ranking results on synthetic data
+Algorithm Precision Recall F1‑score AUC ROC Overall
+SPINEX 1.429 1.381 1.238 1.476 1
+COPOD 2.143 2.000 1.810 1.095 2
+HBOS 3.381 3.286 2.952 1.762 3
+MCD 4.381 4.333 3.952 2.143 4
+QMCD 4.952 4.857 4.714 3.810 5
+ECOD 7.524 7.048 6.667 5.619 6
+LMDD 7.190 6.857 6.381 6.667 7
+SPINEX (Statistical) 2.381 12.095 11.952 1.476 8
+LODA 9.524 9.381 8.667 6.905 9
+EE 4.476 4.429 4.048 25.476 10
+RC 4.714 4.667 4.333 25.429 11
+KNN 10.762 10.810 10.095 9.190 12
+KDE 12.333 12.095 11.238 7.857 13
+SPINEX (Adaptive_quantile) 8.048 14.810 20.381 1.476 14
+IF 8.286 7.952 7.476 25.190 15
+FB with KNN 15.286 10.619 21.000 8.238 16
+GMM 16.905 17.095 16.190 13.000 17
+OCSVM 25.429 1.000 24.762 25.333 18
+LOF 19.762 19.571 19.524 18.286 19
+ABOD 20.333 20.524 19.714 18.762 20
+SOD 21.810 22.095 21.524 19.524 21
+INNE 22.571 23.333 22.905 19.286 22
+COF 23.000 23.286 23.000 20.429 23
+SOS 26.667 26.667 26.619 22.810 24
+Fig. 3 Outcome of benchmarking across synthetic datasets
+
+Page 28 of 55Naser and Naser  Journal of Big Data           (2025) 12:77 
+continued research in this field. Such challenges apply not only to SPINEX but to many 
+of the examined algorithms as well. Hence, understanding these challenges is crucial for 
+future improvements [46].
+One of the primary challenges lies in the inherent imbalance in datasets. Anomalies, 
+by definition, are rare occurrences, and hence, they comprise only a tiny fraction of the 
+Fig. 4 Visualization of anomalies predicted across two dataset scenarios (no. 1 [left] and no. 4 [right])
+
+Page 29 of 55
+Naser and Naser  Journal of Big Data           (2025) 12:77 
+ 
+Table 5 Real datasets used in the analysis
+Dataset No. of samples No. of features % Anomaly Domain Ref
+ALOI 49,534 27 3.04 Image [38]
+Annthyroid 7200 6 7.42 Healthcare [38, 40]
+Arrhythmia 450 259 2.00 Healthcare [38]
+Bank 41,188 10 11.2 Finance [39]
+Cardio 1831 21 9.61 Healthcare [38, 41]
+Glass 214 7 4.21 Forensic [38]
+HeartDisease 270 13 2.00 Healthcare [38]
+Hepatitis 80 19 16.25 Healthcare [38]
+Ionosphere 351 33 35.90 Oryctognosy [38, 42]
+PageBlocks 5393 10 9.46 Document [38]
+Parkinson 195 22 2.00 Healthcare [38]
+Pendigits 6870 16 2.27 Image [38, 43]
+Pima 768 8 34.90 Healthcare [38]
+SpamBase 4207 57 39.91 Document [38]
+Stamps 340 9 9.12 Document [38]
+Waveform 3443 21 2.90 Physics [38, 44]
+Wilt 4819 5 5.33 Botany [38]
+WPBC 198 33 23.74 Healthcare [38, 45]
+Fig. 5 Visualization of the real datasets
+
+Page 30 of 55Naser and Naser  Journal of Big Data           (2025) 12:77 
+Table 6 Average and overall ranking results on real data
+Algorithm Precision Recall F1‑score AUC ROC Overall
+KNN 8.222 8.556 7.944 6.167 1
+SOD 8.389 9.056 8.111 9.389 2
+COPOD 9.944 10.333 9.722 6.278 3
+FB with KNN 12.611 7.611 11.833 6.111 4
+INNE 9.556 9.889 9.111 9.722 5
+KDE 9.889 10.278 9.667 9.167 6
+SPINEX 8.667 8.833 8.167 14.000 7
+GMM 10.167 10.222 9.778 11.556 8
+MCD 11.056 11.111 10.611 9.500 9
+HBOS 11.000 11.444 11.000 9.500 10
+COF 11.000 11.444 10.778 10.444 11
+LMDD 10.000 10.500 9.889 13.944 12
+ECOD 12.833 12.833 12.333 9.667 13
+QMCD 12.556 12.944 12.222 10.722 14
+LOF 10.556 11.000 10.278 18.667 15
+SPINEX (Adaptive_quantile) 8.833 12.667 15.944 14.000 16
+EE 9.167 9.333 8.667 24.833 17
+IF 9.389 9.889 9.111 24.500 18
+ABOD 13.824 14.000 13.412 11.765 19
+SPINEX (statistical) 10.500 13.556 16.611 14.000 20
+LODA 14.167 14.222 14.000 15.556 21
+OCSVM 18.833 1.444 14.778 23.722 22
+RC 12.444 12.333 11.944 24.611 23
+SOS 15.333 15.444 15.056 16.833 24
+Fig. 6 Rankings on real datasets
+
+Page 31 of 55
+Naser and Naser  Journal of Big Data           (2025) 12:77 
+ 
+Fig. 7 Visualization of anomalies predicted across two real dataset scenarios (no. 1 [Pendigits] and no. 4 
+[Waveform])
+
+Page 32 of 55Naser and Naser  Journal of Big Data           (2025) 12:77 
+data. This imbalance can lead to difficulties in training models, especially supervised 
+ones, and may result in biased or overfitted models. Another challenge is the dynamic 
+nature of normal behavior in real-world scenarios. What constitutes normal can evolve 
+over time (a phenomenon known as concept drift). In some scenarios, this evolution can 
+cause previously developed algorithms to become ineffective or outdated. Thus, devel -
+oping algorithms that can adapt to these changes while maintaining high detection accu-
+racy remains an open problem in the field [47].
+The high-dimensional nature of many modern datasets poses another set of chal -
+lenges. As the number of features increases, the sparsity of data in this high-dimensional 
+Fig. 8 Example of explainability
+
+Page 33 of 55
+Naser and Naser  Journal of Big Data           (2025) 12:77 
+ 
+space makes it difficult to distinguish between normal points and anomalies (a phenom -
+enon known as the curse of dimensionality). Moreover, in high-dimensional spaces, the 
+notion of similarity may become less intuitive [48]. To handle such high-dimensional 
+data, scalability is an increasingly important concern as the volume and velocity of data 
+continue to grow. Thus, developing algorithms that can handle big data while main -
+taining high accuracy and low latency is a critical area of ongoing research. A possible 
+and inherent weakness of SPINEX at the moment is its lack of feature selection mecha -
+nisms. We hope to remedy this component soon—potentially with the incorporation of 
+mechanisms that leverage the core concept of this algorithm in terms of similarity and 
+explainability.
+The interpretability of anomaly detection results is another pressing challenge, par -
+ticularly in high-stakes applications (e.g., healthcare or financial fraud detection). While 
+some algorithms offer clear interpretability, there is a need for the adoption of advanced 
+interpretability and explainability techniques. Similarly, there is also a need to examine 
+and test versatile datasets from the above-noted domains (and others) to verify the suit -
+ability and performance of algorithms. We invite interested readers to spearhead efforts 
+aimed at overcoming such challenges.
+Conclusions
+This study introduces a new algorithm from the SPINEX (Similarity-based Predic -
+tions with Explainable Neighbors Exploration) family, designed for anomaly and outlier 
+detection. It employs similarity metrics across multiple subspaces to effectively pin -
+point outliers. The performance of SPINEX was rigorously assessed through a series of 
+experiments, comparing it against 21 well-established anomaly detection algorithms, 
+including Angle-Based Outlier Detection (ABOD), Connectivity-Based Outlier Factor 
+(COF), Copula-Based Outlier Detection (COPOD), ECOD, Elliptic Envelope (EE), Fea -
+ture Bagging with KNN, Gaussian Mixture Models (GMM), Histogram-based Outlier 
+Score (HBOS), Isolation Forest (IF), Isolation Neural Network Ensemble (INNE), Kernel 
+Density Estimation (KDE), K-Nearest Neighbors (KNN), Lightweight Online Detector 
+of Anomalies (LODA), Linear Model Deviation-based Detector (LMDD), Local Outlier 
+Factor (LOF), Minimum Covariance Determinant (MCD), One-Class SVM (OCSVM), 
+Quadratic MCD (QMCD), Robust Covariance (RC), Stochastic Outlier Selection (SOS), 
+and Subspace Outlier Detection (SOD). These comparisons were conducted across 39 
+benchmark datasets, both synthetic and real, covering various domains and featuring 
+diverse dimensions and complexities. The findings confirm that SPINEX consistently 
+outperforms conventional anomaly detection algorithms, ranking among the top seven 
+in effectiveness.
+Appendix
+Python script, additional results, and visualizations.
+A. Python script: to be provided.
+
+Page 34 of 55Naser and Naser  Journal of Big Data           (2025) 12:77 
+
+
+Page 35 of 55
+Naser and Naser  Journal of Big Data           (2025) 12:77 
+ 
+
+
+Page 36 of 55Naser and Naser  Journal of Big Data           (2025) 12:77 
+B. Visualization of synthetic datasets.
+
+
+Page 37 of 55
+Naser and Naser  Journal of Big Data           (2025) 12:77 
+ 
+
+
+Page 38 of 55Naser and Naser  Journal of Big Data           (2025) 12:77 
+
+
+Page 39 of 55
+Naser and Naser  Journal of Big Data           (2025) 12:77 
+ 
+
+
+Page 40 of 55Naser and Naser  Journal of Big Data           (2025) 12:77 
+
+
+Page 41 of 55
+Naser and Naser  Journal of Big Data           (2025) 12:77 
+ 
+
+
+Page 42 of 55Naser and Naser  Journal of Big Data           (2025) 12:77 
+
+
+Page 43 of 55
+Naser and Naser  Journal of Big Data           (2025) 12:77 
+ 
+
+
+Page 44 of 55Naser and Naser  Journal of Big Data           (2025) 12:77 
+
+
+Page 45 of 55
+Naser and Naser  Journal of Big Data           (2025) 12:77 
+ 
+C. Visualization of real datasets.
+
+
+Page 46 of 55Naser and Naser  Journal of Big Data           (2025) 12:77 
+
+
+Page 47 of 55
+Naser and Naser  Journal of Big Data           (2025) 12:77 
+ 
+
+
+Page 48 of 55Naser and Naser  Journal of Big Data           (2025) 12:77 
+
+
+Page 49 of 55
+Naser and Naser  Journal of Big Data           (2025) 12:77 
+ 
+
+
+Page 50 of 55Naser and Naser  Journal of Big Data           (2025) 12:77 
+
+
+Page 51 of 55
+Naser and Naser  Journal of Big Data           (2025) 12:77 
+ 
+
+
+Page 52 of 55Naser and Naser  Journal of Big Data           (2025) 12:77 
+
+
+Page 53 of 55
+Naser and Naser  Journal of Big Data           (2025) 12:77 
+ 
+
+
+Page 54 of 55Naser and Naser  Journal of Big Data           (2025) 12:77 
+Author contribution
+All authors reviewed the manuscript.
+Funding
+Open access funding provided by the Carolinas Consortium. 
+Data availability
+No datasets were generated or analysed during the current study.
+Declarations
+Ethics approval and consent to participate
+None required for this research.
+Competing interests
+The authors declare no competing interests.
+Received: 8 August 2024   Accepted: 11 March 2025
+References
+ 1. Atkinson AC, Hawkins DM. Identification of outliers. Biometrics. 1981. https:// doi. org/ 10. 2307/ 25301 82.
+ 2. Ghosh D, Vogt A. Outliers: an evaluation of methodologies. Jt Stat Meet. 2012;12:3455–60.
+ 3. Wang H, Bah MJ, Hammad M. Progress in outlier detection techniques: a survey. IEEE Access. 2019. https:// doi. org/ 
+10. 1109/ ACCESS. 2019. 29327 69.
+ 4. Singh K, Upadhyaya S. Outlier detection: applications and techniques. Int J Comput. 2012;9:307.
+ 5. Xiong H, Pandey G, Steinbach M, Kumar V. Enhancing data analysis with noise removal. IEEE Trans Knowl Data Eng. 
+2006. https:// doi. org/ 10. 1109/ TKDE. 2006. 46.
+ 6. Liu Y, Dillon T, Yu W, Rahayu W, Mostafa F. Noise removal in the presence of significant anomalies for industrial IoT 
+sensor data in manufacturing. IEEE Internet Things J. 2020. https:// doi. org/ 10. 1109/ JIOT. 2020. 29814 76.
+ 7. Liu H, Li X, Li J, Zhang S. Efficient outlier detection for high-dimensional data. IEEE Trans Syst Man Cybern Syst. 2018. 
+https:// doi. org/ 10. 1109/ TSMC. 2017. 27182 20.
+ 8. Liu H, Zhang S, Wu Z, Li X. Outlier detection using local density and global structure. Pattern Recognit. 
+2025;157:110947. https:// doi. org/ 10. 1016/J. PATCOG. 2024. 110947.
+ 9. Nagaraja A, Boregowda U, Khatatneh K, Vangipuram R, Nuvvusetty R, Sravan Kiran V. Similarity based feature trans-
+formation for network anomaly detection. IEEE Access. 2020. https:// doi. org/ 10. 1109/ ACCESS. 2020. 29757 16.
+ 10. Suwandi WS. Do economic growth, income distribution, and investment reduce poverty level? J Berk Ilm Efisiensi. 
+2022;2:87.
+ 11. Liu H, Li E, Liu X, Su K, Zhang S. Anomaly Detection with kernel preserving embedding. ACM Trans Knowl Discov 
+Data. 2021. https:// doi. org/ 10. 1145/ 34476 84.
+ 12. Huang Z, Li S. From difference to similarity: a manifold ranking-based hyperspectral anomaly detection framework. 
+IEEE Trans Geosci Remote Sens. 2019. https:// doi. org/ 10. 1109/ TGRS. 2019. 29183 42.
+ 13. Sakurada M, Yairi T. Anomaly detection using autoencoders with nonlinear dimensionality reduction. ACM Int Conf 
+Proceeding Ser. 2014. https:// doi. org/ 10. 1145/ 26897 46. 26897 47.
+ 14. Kriegel HP , Schubert M, Zimek A. Angle-based outlier detection in high-dimensional data, in: Proc ACM SIGKDD Int 
+Conf Knowl Discov Data Min. 2008. https:// doi. org/ 10. 1145/ 14018 90. 14019 46.
+ 15. Villa-Pérez ME, Álvarez-Carmona M, Loyola-González O, Medina-Pérez MA, Velazco-Rossell JC, Choo KKR. Semi-
+supervised anomaly detection algorithms: a comparative summary and future research directions. Knowl-Based 
+Syst. 2021. https:// doi. org/ 10. 1016/j. knosys. 2021. 106878.
+ 16. Tang J, Chen Z, Fu AWC, Cheung DW. Enhancing effectiveness of outlier detections for low density patterns. Lect 
+Notes Comput Sci. 2002. https:// doi. org/ 10. 1007/3- 540- 47887-6_ 53.
+ 17. Li Z, Zhao Y, Botta N, Ionescu C, Hu X. COPOD: Copula-based outlier detection, in: Proc—IEEE Int. Conf. Data Mining, 
+ICDM, 2020. https:// doi. org/ 10. 1109/ ICDM5 0108. 2020. 00135.
+ 18. Usman N, Utami E, Hartanto AD. Comparative analysis of elliptic envelope, isolation forest, one-class SVM, and local 
+outlier factor in detecting earthquakes with status anomaly using outlier, in: ICCoSITE 2023—Int Conf Comput Sci 
+Inf Technol Eng Digit Transform Strateg Facing VUCA TUNA Era, 2023. https:// doi. org/ 10. 1109/ ICCoS ITE57 641. 2023. 
+10127 748.
+ 19. Lazarevic A, Kumar V. Feature bagging for outlier detection, in: Proc. ACM SIGKDD Int. Conf. Knowl. Discov. Data Min. 
+2005. https:// doi. org/ 10. 1145/ 10818 70. 10818 91.
+ 20. Goldstein M, Dengel A. Histogram-based outlier score (hbos): A fast unsupervised anomaly detection algorithm, 
+KI-2012 Poster Demo Track. 2012.
+ 21. Aguilera-Martos I, Luengo J, Herrera F. Revisiting histogram based outlier scores: strengths and weaknesses. Lect 
+Notes Comput Sci. 2023. https:// doi. org/ 10. 1007/ 978-3- 031- 40725-3_4.
+ 22. Liu FT, Ting KM, Zhou ZH. Isolation forest, in: Proc—IEEE Int. Conf. Data Mining, ICDM, 2008. https:// doi. org/ 10. 1109/ 
+ICDM. 2008. 17.
+ 23. Hariri S, Kind MC, Brunner RJ. Extended isolation forest. IEEE Trans Knowl Data Eng. 2021. https:// doi. org/ 10. 1109/ 
+TKDE. 2019. 29476 76.
+
+Page 55 of 55
+Naser and Naser  Journal of Big Data           (2025) 12:77 
+ 
+ 24. Hu W, Gao J, Li B, Wu O, Du J, Maybank S. Anomaly detection using local kernel density estimation and context-
+based regression. IEEE Trans Knowl Data Eng. 2020. https:// doi. org/ 10. 1109/ TKDE. 2018. 28824 04.
+ 25. Pevný T. Loda: Lightweight on-line detector of anomalies. Mach Learn. 2016. https:// doi. org/ 10. 1007/ 
+s10994- 015- 5521-0.
+ 26. Breuniq MM, Kriegel HP , Ng RT, Sander J. LOF: identifying density-based local outliers. ACM SIGMOD Rec. 
+2000;29:93–104. https:// doi. org/ 10. 1145/ 335191. 335388.
+ 27. Cheng Z, Zou C, Dong J. Outlier detection using isolation forest and local outlier, Proc. 2019 Res. Adapt. Converg. 
+Syst. RACS 2019. 2019; 161–168. https:// doi. org/ 10. 1145/ 33388 40. 33556 41.
+ 28. Hubert M, Debruyne M, Rousseeuw PJ. Minimum covariance determinant and extensions. Wiley Interdiscip Rev 
+Comput Stat. 2018. https:// doi. org/ 10. 1002/ wics. 1421.
+ 29. Rousseeuw PJ, Van Driessen K. A fast algorithm for the minimum covariance determinant estimator. Technometrics. 
+1999. https:// doi. org/ 10. 1080/ 00401 706. 1999. 10485 670.
+ 30. Muandet K, Schölkopf B. One-class support measure machines for group anomaly detection, in: Uncertain. Artif. 
+Intell—Proc. 29th Conf. UAI 2013, 2013.
+ 31. Beltramonte T, Clemente C, Di Bisceglie M, Galdi C. Robust multiband detection of thermal anomalies using the 
+minimum covariance determinant estimator. Int Geosci Remote Sens Symp. 2009. https:// doi. org/ 10. 1109/ IGARSS. 
+2009. 54173 71.
+ 32. Peña D, Prieto FJ. Multivariate outlier detection and robust covariance matrix estimation. Technometrics. 2001. 
+https:// doi. org/ 10. 1198/ 00401 70013 16975 899.
+ 33. Janssens JHM. Outlier Selection and One-Class Classifcation, Van Lankveld Uitgeverij, 2013.
+ 34. Kriegel H-P , Kroger P , Schubert E, Zimek A. Outlier detection in axis-parallel subspaces of high dimensional data BT—
+advances in knowledge discovery and data mining. Adv Knowl Discov Data Min. 2009.
+ 35. Aggarwal CC. High-dimensional outlier detection: the subspace method. Outlier Anal. 2017. https:// doi. org/ 10. 
+1007/ 978-3- 319- 47578-3_5.
+ 36. Naser MZ, Alavi AH. Error metrics and performance fitness indicators for artificial intelligence and machine learning 
+in engineering and sciences. Archit Struct Constr. 2021;1:1–19. https:// doi. org/ 10. 1007/ S44150- 021- 00015-8.
+ 37. Han S, Hu X, Huang H, Jiang M, Zhao Y. ADBench: Anomaly Detection Benchmark. Adv Neural Inf Process Syst. 2022. 
+https:// doi. org/ 10. 2139/ ssrn. 42664 98.
+ 38. Campos GO, Zimek A, Sander J, Campello RJGB, Micenková B, Schubert E, Assent I, Houle ME. On the evaluation of 
+unsupervised outlier detection: measures, datasets, and an empirical study. Data Min Knowl Discov. 2016. https:// 
+doi. org/ 10. 1007/ s10618- 015- 0444-8.
+ 39. Pang G, Shen C, Cao L, Van Den Hengel A. Deep learning for anomaly detection: a review. ACM Comput Surv. 2021. 
+https:// doi. org/ 10. 1145/ 34399 50.
+ 40. Quinlan JR. Induction of decision trees. Mach Learn. 1986;1:81–106. https:// doi. org/ 10. 1007/ bf001 16251.
+ 41. Ayres-de-Campos D, Bernardes J, Garrido A, Marques-de-Sa J, Pereira-Leite L. SisPorto 2.0: a program for automated 
+analysis of cardiotocograms. J Matern Fetal Med. 2000;9:311–8.
+ 42. Sigillito VG, Wing SP , Hutton LV, Baker KB. Classification of radar returns from the ionosphere using neural networks. 
+Johns Hopkins APL Tech Dig. 1989;10:262.
+ 43. Alimoglu F, Alpaydin E. Methods of combining multiple classifiers based on different representations for pen-based 
+handwritten digit recognition, Proc Fifth Turkish Artif Intell Artif Neural Networks Symp. 1996.
+ 44. Loh WY. Classification and regression trees. Wiley Interdiscip Rev Data Min Knowl Discov. 2011. https:// doi. org/ 10. 
+1002/ widm.8.
+ 45. Mangasarian OL, Street WN, Wolberg WH. Breast cancer diagnosis and prognosis via linear programming. AAAI 
+Spring Symp Tech Rep. 1994. https:// doi. org/ 10. 1287/ opre. 43.4. 570.
+ 46. Alghanmi N, Alotaibi R, Buhari SM. Machine learning approaches for anomaly detection in IoT: an overview and 
+future research directions. Wirel Pers Commun. 2022. https:// doi. org/ 10. 1007/ s11277- 021- 08994-z.
+ 47. Koschmider A, Kaczmarek K, Krause M, van Zelst SJ. Demystifying noise and outliers in event logs: review and future 
+directions. Lect Notes Bus Inf Process. 2022. https:// doi. org/ 10. 1007/ 978-3- 030- 94343-1_ 10.
+ 48. Palakurti NR. Challenges and future directions in anomaly detection. In: Practical applications of data processing, 
+algorithms, and modeling. Hershey: IGI Global; 2024.
+Publisher’s Note
+Springer Nature remains neutral with regard to jurisdictional claims in published maps and institutional affiliations.

@@ -1,0 +1,900 @@
+RESEARCH Open Access
+Discover ComputingWu et al. Discover Computing          (2026) 29:393 
+https://doi.org/10.1007/s10791-026-10253-3
+Distributed log anomaly detection method 
+based on improved HDBSCAN
+Xunyun Wu1, Jiabin Wang1*, Xilong Lin1, Jiexuan Zhuang1 and Hao Cheng1
+  * C o r r e s p o n d e n c e :  
+Jiabin Wang
+fatwang@hqu.edu.cn
+1College of Engineering, Huaqiao 
+University, No. 269, Chenghua 
+North Road, Fengze District, 
+Quanzhou 362021, Fujian, China
+© The Author(s) 2026. Open Access  This article is licensed under a Creative Commons Attribution-NonCommercial-NoDerivatives 4.0 International 
+License, which permits any non-commercial use, sharing, distribution and reproduction in any medium or format, as long as you give appropriate 
+credit to the original author(s) and the source, provide a link to the Creative Commons licence, and indicate if you modified the licensed material. 
+You do not have permission under this licence to share adapted material derived from this article or parts of it. The images or other third party 
+material in this article are included in the article’s Creative Commons licence, unless indicated otherwise in a credit line to the material. If material 
+is not included in the article’s Creative Commons licence and your intended use is not permitted by statutory regulation or exceeds the permitted 
+use, you will need to obtain permission directly from the copyright holder. To view a copy of this licence, visit  h t t p : / / c r e a t i v e c o m m o n   s   . o r g / l i c e n s 
+e s / b y - n c - n d / 4 . 0 /     .    
+Abstract
+As a critical information source in distributed systems and large-scale IoT 
+infrastructures, log data serves as the foundation for fault diagnosis and security 
+auditing. However, the explosive growth of unstructured and dynamically changing 
+log data poses significant challenges for real-time big data analytics and system 
+scalability. To overcome these performance bottlenecks, this paper proposes and 
+optimizes an end-to-end log anomaly detection method tailored for large-scale log 
+data processing. Specifically, to address template inconsistency across distributed 
+environments, we propose a distributed Drain parsing algorithm featuring dynamic 
+parse tree expansion and global incremental synchronization. Furthermore, we 
+optimize the HDBSCAN algorithm by integrating the RTree spatial index and Boruvka 
+minimum spanning tree (MST). This algorithmic breakthrough effectively eliminates 
+computational bottlenecks in real-time processing and significantly enhances the 
+capacity to capture non-spherical clusters. By proposing a fusion of cross-partition 
+clustering and the GLOSH scoring mechanism, our method strongly supports 
+intelligent analytics in distributed infrastructures. We validate the model on the Spark 
+framework using HDFS, BGL, and OpenStack datasets. Experimental results show 
+that our proposed method has good performance in terms of scalability, resolution 
+efficiency and detection performance, making it highly relevant to modern Internet 
+of Things and large-scale systems.
+Keywords Log anomaly detection, HDBSCAN, Distributed computing, Drain 
+algorithm, Spark
+ 1 Introduction
+With the acceleration of digital transformation, distributed systems (e.g., cloud service 
+clusters, IoT networks, and edge computing environments) have become key infra -
+structures that support enterprises’ core businesses. As the digital fingerprints of sys -
+tem operating states, distributed log data in modern IoT and large-scale systems records 
+critical events such as node communications and resource scheduling, serving as the 
+core basis for intelligent fault diagnosis and security auditing [1]. However, the explosive 
+growth of unstructured and dynamically changing big data has imposed significant chal -
+lenges for real-time big data analytics. According to statistics, modern cloud and IoT 
+systems generate massive log streams, up to 50 GB per hour [ 2]. If the hidden transient 
+
+Page 2 of 21
+Wu et al. Discover Computing          (2026) 29:393 
+anomalies (e.g., DataNode communication interruptions and CPU overload) are not 
+identified timely in such large-scale environments, they may trigger critical failures such 
+as system downtime [3]. Therefore, developing an efficient, accurate, and highly scalable 
+log anomaly detection mechanism has become critical to ensuring business continuity 
+and empowering intelligent analytics in distributed infrastructures [4].
+Current research on log anomaly detection faces the trilemma of efficiency, accuracy, 
+and scalability. First, log data generally exhibits the feature of a mixture of constants and 
+variables [ 5], and its format dynamically changes with system iterations. Traditional 
+parsing methods (e.g., fixed regular expressions) fail to meet the requirements of real-
+time parsing and dynamic adaptation, while single-machine algorithms cannot handle 
+large-scale log streams [6]. Second, in terms of anomaly detection, existing methods can 
+be divided into two categories. The first category is machine learning methods based 
+on template counting. These methods suffer from reduced accuracy due to feature spar -
+sity when handling high-dimensional log data (e.g., BGL includes more than 300 types 
+of events) [ 7]. The second category is deep learning-based methods (e.g., DeepLog [ 8]). 
+These methods can capture sequential dependencies but require substantial time for 
+training and inference, and lack sensitivity to non-sequential density anomalies. In terms 
+of deployment scenarios, although deep learning solutions can be scaled up via frame -
+works such as TensorFlow Distributed [9], they rely on GPU cluster support, resulting in 
+high hardware and operational costs. Moreover, the communication overhead caused by 
+model parameter synchronization is relatively high, thereby impairing operational effi -
+ciency in distributed scenarios.
+To address the real-time processing and scalability challenges in IoT and large-scale 
+big data environments, this paper proposes and optimizes an end-to-end log anomaly 
+detection framework. By optimizing the HDBSCAN algorithm for distributed collabo -
+ration, our method specifically tackles the computational bottlenecks of large-scale log 
+streams, directly enhancing intelligent analytics. In our design, we explicitly address the 
+theoretical and computational contradictions that arise when combining log parsing and 
+clustering in distributed environments. We distinguish our foundational building blocks 
+(adapted from prior work) from our core algorithmic novelties. The main contributions 
+and the underlying synergy of this integration are as follows:
+  • Original Algorithmic Novelty 1: Distributed Drain with Global Synchronization. 
+While the baseline Drain algorithm [ 10] is utilized for single-machine parsing, 
+naive parallelization leads to severe template drift. Our original contribution is the 
+design of a dynamic parse tree expansion and global incremental synchronization 
+mechanism. This ensures absolute semantic consistency across distributed nodes, 
+providing high-quality, standardized feature inputs for the subsequent clustering 
+stage.
+  • Original Algorithmic Novelty 2: Optimized HDBSCAN and Cross-Partition Fusion. 
+The traditional HDBSCAN algorithm [ 11] is theoretically robust but inherently 
+suffers from an O (n2) complexity, rendering it impractical for big data processing 
+even within Spark. Our original contribution is a dual-level optimization: locally, 
+we integrate the RTree spatial index and Boruvka minimum spanning tree (MST) 
+to reduce search complexity; globally, we propose a Gaussian kernel-based fusion 
+strategy to merge cross-partition clusters. This novel integration directly solves the 
+"data silo" problem inherent in distributed computing.
+
+Page 3 of 21
+Wu et al. Discover Computing          (2026) 29:393 
+  • The Synergy of Integration: What makes this specific combination of algorithms 
+highly effective is their synergistic feedback loop: the improved distributed Drain 
+acts as a consistent structural foundation; the RTree+MST integration acts 
+as an algorithmic accelerator, making local execution on Spark worker nodes 
+computationally viable; and the Gaussian kernel fusion acts as a global bridge, 
+ensuring that distributed processing does not compromise the detection of cross-
+node anomalies. Finally, we propose the GLOSH multi-layer anomaly determination 
+mechanism to output interpretable risk levels. Experimental results on HDFS, BGL, 
+and OpenStack datasets validate that our method achieves order-of-magnitude 
+improvements in real-time processing efficiency and superior scalability for modern 
+big data systems.
+2 Related work
+2.1 Log parsing techniques
+Log parsing aims to convert unstructured text into structured templates, serving as the 
+foundation for anomaly detection.
+Clustering-based methods, such as Logcluster [12], identify frequent words using hash 
+tables and construct candidate groups; LKE [ 13] employs a clustering method based on 
+string edit distance. Frequent pattern mining-based methods, including the Logram [ 14] 
+algorithm, extract log templates via an n-gram dictionary, while FT-tree [ 15] parses logs 
+using frequency information. The iterative partitioning-based IPLoM [ 16] algorithm 
+gradually refines log partitions through multiple iterations to obtain structured tem -
+plates. The parse tree-based Drain [ 10] algorithm groups logs with a fixed-depth parse 
+tree and extracts templates in combination with a trie tree, and TF-Tree also belongs to 
+this category. The longest common subsequence-based Spell [17] algorithm manages log 
+objects through LCSMap and implements log parsing by calculating the longest com -
+mon subsequence between new logs and keys of existing logs. However, most current 
+log parsing methods exhibit limited adaptability; they necessitate frequent parameter 
+tuning when handling different log formats, which introduces instability into log parsing.
+Among these approaches, the Drain algorithm is widely adopted due to its high accu -
+racy. Nevertheless, since it is originally designed for single-machine environments, the 
+traditional Drain algorithm exhibits limited processing capacity when handling large-
+scale distributed logs. Moreover, its parallelization often leads to parsing errors caused 
+by inconsistent template states across nodes.
+2.2 Anomaly detection techniques
+The core objective of anomaly detection is to identify abnormal patterns within struc -
+tured log templates. Mainstream technical approaches for this task can be categorized 
+into two types: clustering-based unsupervised methods and deep learning-based super -
+vised/semi-supervised methods.
+2.2.1 Clustering-based anomaly detection
+Clustering-based anomaly detection methods mine the intrinsic distribution character -
+istics of log data, group logs with similar patterns into clusters, and label samples deviat -
+ing from cluster distributions as anomalies. Thanks to their advantages of not relying on 
+
+Page 4 of 21
+Wu et al. Discover Computing          (2026) 29:393 
+labeled data and being adaptable to low-label log scenarios, this category of methods has 
+emerged as an important technical approach for log anomaly detection.
+The Gaussian Mixture Model (GMM) is a clustering method that assumes data origi -
+nates from multiple Gaussian distributions and has been applied to real-time anomaly 
+detection tasks [ 18]. Zeufack et al. [ 19] employed OPTICS clustering to learn frequent 
+patterns from historical logs and identify anomalies based on vector distances. Wang 
+et al. [ 20] combined HDBSCAN with spectral clustering to enhance the ability to clus -
+ter log semantic correlations. For the OpenStack system, Niwa et al. [ 21] constructed a 
+topological graph based on the parent–child and communication relationships among 
+processes, combined K-means++ with MeanShift centroid clustering, and identified 
+abnormal processes using process resource statistics. The Log2Vec framework proposed 
+by Meng et al. [ 22] integrates lexical contrast information (synonyms and antonyms) 
+and relational triples into word embeddings. This integration provides semantically 
+rich feature inputs for clustering and effectively addresses the issue of semantic infor -
+mation loss, which is caused by traditional clustering methods that rely solely on sta -
+tistical features. Farzad et al. [ 23] attempted to combine Fuzzy C-means clustering with 
+a Multi-Layer Perceptron (MLP). They screened reliable samples using cluster centers 
+to optimize the accuracy of anomaly determination. HDBSCAN [ 11] is a hierarchical 
+density-based clustering algorithm. Although it can identify multi-density anomalies, 
+the time complexity of its nearest neighbor search is as high as O (n2). In distributed 
+scenarios, the algorithm is prone to significant performance degradation caused by data 
+skew and lacks an effective cross-node correlation analysis mechanism.
+2.2.2 Deep learning-based anomaly detection
+With the advances in natural language processing (NLP) technology, deep learning-
+based methods have gradually evolved from single sequence modeling to semantic 
+enhancement, structure fusion, and large model applications.
+In foundational research on sequence modeling and semantic understanding, Deep -
+Log [8] pioneered the use of LSTM to capture the sequential dependencies of log indi -
+ces but neglected semantic information. To address this limitation, LogAnomaly [ 24] 
+introduced template2vec technology to capture both sequential and quantitative anoma-
+lies simultaneously via semantic vectors. To tackle the challenge of scarce labeled data, 
+PLELog [25] further combined GRU with probabilistic label estimation to achieve effi -
+cient semi-supervised detection.
+To solve the log parsing bottleneck and environmental noise problems, research -
+ers have strived to improve the robustness and representation granularity of models. 
+Le et al. [ 26] proposed directly modeling raw log text, thus breaking the limitation of 
+the “parse-first, detect-later” paradigm. Building on this idea, the SEN network pro -
+posed by Hariharan et al. [ 27] employed a subword-level attention mechanism to effec -
+tively address the challenge of capturing out-of-vocabulary (OOV) words and complex 
+semantic information. LogRobust [ 28] introduced an adversarial training mechanism to 
+significantly enhance the model’s robustness against noise interference. In addition, Log-
+Former [29] leveraged the long-range attention mechanism of Transformer to enhance 
+the model’s generalization capability across different log domains.
+In the cutting-edge exploration of multi-dimensional fusion and large model appli -
+cations, research has begun to focus on the implicit structure and reasoning ability 
+
+Page 5 of 21
+Wu et al. Discover Computing          (2026) 29:393 
+between logs. Log2graphs [ 20] integrated log content and causal topological relation -
+ships via a Dual Graph Convolutional Network (DualGCN). LogMS [ 30] further 
+improved detection accuracy via a multi-source information fusion strategy. Recently, 
+the LogLLM [ 31] framework innovatively combined BERT with Llama, leveraging the 
+reasoning capabilities of large language models to provide new insights for complex 
+fault diagnosis.Similarly, LLMeLog [ 32] utilizes the in-context learning capabilities of 
+LLMs to enrich log events with semantic and anomaly tendency information, generating 
+higher-quality event representations for downstream anomaly detection models.
+Although the aforementioned methods have achieved respective breakthroughs, 
+reducing computational resource consumption while maintaining high detection accu -
+racy remains a major challenge in current research.
+2.3 Distributed log anomaly detection methods
+To explicitly distinguish our algorithmic contributions and highlight the synergy of our 
+proposed integration, it is essential to compare our work against recent distributed or 
+hybrid log anomaly detection frameworks. Current distributed frameworks generally fall 
+into several paradigms. First, some distributed clustering approaches rely on algorithms 
+like K-Means deployed on Spark [33]. However, these methods inherently assume spher-
+ical data distributions and require predefined cluster counts, which fail to represent the 
+complex topological structures of modern log features. Our improved HDBSCAN over -
+comes this by leveraging the Boruvka MST to capture non-spherical anomaly clusters 
+dynamically without requiring a predefined k. Second, recent evaluations of distributed 
+machine learning algorithms [ 34] demonstrate that supervised models (e.g., Logistic 
+Regression, Random Forest on Spark) achieve high accuracy but critically rely on mas -
+sive, manually labeled datasets. In contrast, our proposed framework maintains a fully 
+unsupervised pipeline, identifying dynamic anomalies without prior label dependency.
+Third, compared to hybrid frameworks that deploy distributed deep learning (such as 
+Spark-based Autoencoders) [ 35], our approach avoids the severe communication over -
+head and prolonged training latencies associated with neural network parameter syn -
+chronization across nodes. By optimizing local nearest-neighbor searches with the 
+RTree spatial index, we strictly bound our computational complexity to O (log n+ k), 
+making it highly suitable for real-time high-concurrency streams.Finally, addressing the 
+inherent "data silo" problem in distributed systems, existing real-time streaming anom -
+aly detection systems [ 36] aggregate anomalies globally but often struggle with contex -
+tual boundary loss across partitions. We specifically resolve this by proposing a Gaussian 
+kernel-based cross-partition fusion strategy. Furthermore, while standalone distributed 
+parsers like LogParser-SP [ 37] focus solely on expediting unstructured text conversion, 
+our framework structurally synchronizes a distributed Drain parser (via global incre -
+mental synchronization) directly with the downstream clustering module. This guaran -
+tees that no template drift occurs across Spark nodes, proving that our framework is 
+not merely an engineering combination, but a strongly coupled, end-to-end algorithmic 
+synergy designed specifically for large-scale distributed infrastructures.
+
+Page 6 of 21
+Wu et al. Discover Computing          (2026) 29:393 
+3 Proposed work
+This section details the design of the proposed log anomaly detection framework. It 
+is crucial to clarify that while existing algorithms (e.g., Drain, HDBSCAN, R-tree, and 
+Spark) serve as foundational components, our framework is not a simple engineering 
+concatenation of these tools. Instead, the core algorithmic novelty lies in resolving the 
+inherent friction between distributed data processing and global anomaly correlation.
+The strength of this specific integration stems from its complementary architecture: 
+we rely on Spark for high-throughput ingestion, but recognize that distributed parti -
+tioning destroys the global context required by clustering algorithms. To solve this, our 
+modified distributed Drain algorithm establishes a synchronized global parsing stan -
+dard. Concurrently, traditional HDBSCAN cannot handle the massive data blocks on 
+Spark nodes due to its quadratic complexity. By integrating RTree spatial indexing and 
+Boruvka MST construction, we algorithmically break this computational bottleneck. 
+Finally, to address the "data silos" created by Spark partitions, we introduce a Gaussian 
+kernel-based fusion layer.
+As illustrated in Fig. 1, the overall architecture mainly consists of three core stages: 
+first, we adopt the improved distributed Drain algorithm to perform parallel parsing and 
+structuring of raw log streams; second, we introduce the RTree spatial index and Boru -
+vka algorithm at local nodes to optimize HDBSCAN clustering; finally, we implement 
+cross-partition cluster fusion via the Gaussian kernel function and generate multi-level 
+anomaly scores based on the GLOSH mechanism.
+3.1 Distributed improvements to the drain algorithm
+Log parsing is a critical preprocessing step that converts unstructured text into struc -
+tured data. The traditional Drain algorithm employs a fixed-depth parse tree, which per-
+forms well in single-machine environments. However, in distributed scenarios, template 
+drift or inconsistency issues frequently arise across different nodes due to the varying 
+arrival order of log data. In addition, the static template mechanism fails to adapt effec -
+tively to new log formats introduced by system upgrades.
+To address the above limitations, we design a distributed parsing module that incorpo-
+rates the mechanisms of dynamic parse tree expansion and global incremental synchro -
+nization. First, during the parsing phase, we leverage Spark mapPartitions to generate 
+local candidate templates in parallel on each Worker node. To eliminate template ambi -
+guity in distributed environments, the Driver node introduces a global deduplication 
+and synchronization mechanism based on Jaccard similarity. This mechanism uses 
+Fig. 1 Overall System Framework Diagram
+ 
+
+Page 7 of 21
+Wu et al. Discover Computing          (2026) 29:393 
+broadcast variables to synchronize the merged global template library to all computing 
+nodes in real time, ensuring consistency of parsing standards. The calculation of Jaccard 
+similarity is shown in Eq. (1):
+ 
+J (A, B)= |A ∩ B |
+|A ∪ B | (1)
+where A denotes the token set of the current log message, and B denotes the token set 
+of the existing log event template. When the maximum similarity between the log and 
+the leaf node templates falls below the preset threshold st, the algorithm triggers the 
+dynamic expansion mechanism to generate new paths and template IDs in the parse 
+tree, thus achieving adaptive coverage of newly emerged log formats. Figure 2 presents 
+an example of converting unstructured logs into structured data.
+3.2 Statistical feature engineering for structured logs
+Following the log parsing phase, structured log events must be converted into numerical 
+vectors before clustering. As illustrated in Stage 2 of Fig. 1, instead of relying on sparse 
+textual representations (such as one-hot encoding, TF-IDF, or semantic embeddings), 
+we design dataset-specific, handcrafted statistical feature vectors over logical blocks or 
+sliding windows. This statistical approach effectively captures the operational dynamics, 
+temporal transitions, and severity distributions essential for distance-based clustering 
+algorithms. Specifically, the feature extraction maps log templates to multi-dimensional 
+numerical vectors based on the structural characteristics of each dataset:
+HDFS: Logs are inherently grouped by Block ID. For each block, we extract a 
+23-dimensional feature vector. This vector encapsulates block-level metrics including log 
+counts, execution timings, severity ratios, template occurrence entropy, template rarity, 
+and crucial transition dynamics such as template-transition entropy and stage-transition 
+entropy.
+BGL: Lacking explicit block identifiers, BGL logs are aggregated using a sliding time 
+window. We construct an 8-dimensional feature vector for each window, capturing core 
+operational statistics: total log count, average and maximum time intervals, alert ratio, 
+Fig. 2 Unstructured Log Conversion Result Diagram
+ 
+
+Page 8 of 21
+Wu et al. Discover Computing          (2026) 29:393 
+fatal ratio, maximum consecutive identical events, global entropy, and the ratio of rare 
+templates.
+OpenStack: Similarly utilizing sliding windows for cloud environments, we expand the 
+BGL-style core statistics into a 12-dimensional feature vector. This specifically incorpo -
+rates cross-component interaction features–such as service ratio, resource count, error 
+service ratio, and differential alert counts–to accurately represent the complex resource 
+scheduling topology in OpenStack.
+3.3 Improved HDBSCAN algorithm
+After obtaining structured log feature vectors, the traditional HDBSCAN algorithm can 
+identify multi-density clusters, but its nearest neighbor search has a time complexity as 
+high as O (n2), leading to severe computational bottlenecks when processing millions 
+of log samples. In addition, traditional methods struggle to effectively handle data skew 
+problems in distributed environments.
+T o break through this efficiency bottleneck, this paper introduces RTree spatial index 
+technology in the intra-partition clustering phase. Theoretically, traditional distance-
+based clustering suffers from severe computational redundancy in metric spaces, 
+requiring exhaustive pairwise Euclidean distance evaluations. By employing RTree, we 
+project high-dimensional log vectors into a hierarchical spatial index based on Mini -
+mum Bounding Rectangles (MBRs). The theoretical justification lies in the spatial prun -
+ing property: when querying the k-nearest neighbors of a target point, the algorithm 
+computes the distance to the MBRs rather than individual points. If the minimum 
+distance to an MBR exceeds the current nearest neighbor radius, the entire subtree is 
+mathematically pruned without precision loss. By aggregating spatially adjacent feature 
+vectors through this bounding hierarchy, the upper bound of the time complexity for 
+k-nearest neighbor search is strictly reduced from O (n2) to O (logn + k), which greatly 
+improves query efficiency. Based on the optimized neighbor relationships, the algorithm 
+further calculates the core distance and reachability distance. The definition of core dis -
+tance is shown in Eq. 2:
+ 
+core_ dist(x, k)=
+{
+min {d | |{y ∈ D |dist(x, y)≤ d}| ≥k}, if|Nk(x)|≥ k
++ ∞ , otherwise  (2)
+where dist (x, y)=
+√∑m
+i=1(x i− yi)2 is the multi-dimensional Euclidean distance. 
+Based on the core distance, the reachability distance is defined as Eq. (3):
+ reach _dist(x, y) = max (core _dist(x, k), dist(x, y)) (3)
+where x is a core point satisfying core_dist(x, k) < +∞ .
+To enhance the capability of capturing non-spherical clusters, this paper uses the 
+Boruvka algorithm to construct local minimum spanning trees (MST). This algorithm 
+preserves the strongest connection relationships between core points, and its specific 
+optimization objective is shown in Eq. (4):
+ 
+MST (D core
+i ) = arg min
+T ⊆E
+∑
+(x,y)∈T
+reach_dist(x, y) (4)
+
+Page 9 of 21
+Wu et al. Discover Computing          (2026) 29:393 
+Subsequently, the algorithm generates a hierarchical clustering tree by sorting edge 
+weights, and extracts the final local stable clusters by calculating the stability of clusters. 
+The calculation of the stability score stability(C ) takes into account the existence dura-
+tion and scale of the cluster under different distance thresholds, as shown in Eq. (5):
+ 
+stability(C )=
+∑
+t∈[tstart,tend ]
+( ∆ t
+tmax
+)
+·| C t | (5)
+where tstart and tend represent the distance thresholds at which cluster C is formed and 
+eliminated, respectively; ∆t is the survival cycle of the cluster; tmax is used for normal -
+ization; and |Ct| denotes the number of samples contained in the cluster under threshold 
+t. This mechanism effectively filters out noise clusters, significantly reducing the compu-
+tational overhead in the subsequent global merging phase.
+3.4 Global cluster fusion and multi-level anomaly determination
+Although distributed computing improves processing speed, it also leads to the data silo 
+phenomenon, where the same type of anomaly pattern may be split across different par -
+titions, resulting in missed detections from a local perspective. To solve this problem, 
+this paper designs a cross-partition cluster merging strategy based on Gaussian kernel 
+function. The theoretical justification for selecting the Gaussian (Radial Basis Function, 
+RBF) kernel, rather than linear distance thresholds, lies in its capacity to map finite-
+dimensional cluster boundaries into an infinite-dimensional Hilbert space. In distrib -
+uted systems, cross-partition log anomalies often exhibit complex, non-linear geometric 
+boundaries. The Gaussian kernel provides a continuous, strictly positive similarity mea -
+sure that decays exponentially with spatial distance, thereby mathematically preventing 
+the arbitrary cutoff problems caused by rigid distance thresholds.
+After each partition synchronizes the metadata of local clusters to the Driver node, we 
+use the Gaussian kernel function to calculate the similarity between cross-partition clus-
+ters, thus achieving cluster fusion from a global perspective. The similarity calculation 
+between cluster Ci and Cj  is shown in Eq. (6):
+ 
+similarity(Ci,C j)= exp
+(
+− distmin (C i,C j)2
+2σ2
+)
+ (6)
+where distmin (C i,C j) denotes the minimum point-to-point distance between the two 
+local clusters, and σ is the Gaussian kernel bandwidth parameter. The bandwidth σ theo-
+retically controls the spatial receptive field of the fusion module; a smaller σ enforces 
+strict local boundary sensitivity, while a larger σ tolerates sparse global variations. This 
+mechanism can merge clusters that are physically separated but semantically closely 
+related, thus effectively capturing cross-node correlated anomalies.
+In the final anomaly determination phase, to balance local density deviation and global 
+distribution characteristics, this paper proposes a Global–Local Outlier Score Hybrid 
+(GLOSH) fusion scoring mechanism. Theoretically, purely density-based algorithms 
+exhibit severe "spatial bias": they are highly sensitive to local density variations but fail to 
+mathematically distinguish between a genuine anomaly in a dense cluster and a normal 
+data point residing in a globally sparse region. T o resolve this theoretical flaw, GLOSH 
+is formulated as an ensemble optimization problem. It acts as a hybrid regularizer that 
+
+Page 10 of 21
+Wu et al. Discover Computing          (2026) 29:393 
+restricts local outlier inflation by introducing a global contextual penalty. Instead of rely-
+ing solely on local outlier factors, this mechanism calculates the final anomaly score 
+through weighted fusion, as shown in Eq. (7):
+ 
+GLOSH global(x)= ω × reach_dist(x, center(C global))
+reach_distglobal−max
++ (1 − ω )× GLOSH local(x) (7)
+where ω is a weighting factor, the purpose of which is to prioritize local density devia -
+tions while maintaining the global structural "anchor point", thereby reducing false 
+alarms caused by normal local fluctuations in distributed nodes. By linearly combining 
+the normalized global reachability distance with the local outlier factor, the algorithm 
+theoretically bounds the output score within [0,  1], ensuring that spatial data skew -
+ness on individual computing nodes does not disproportionately skew the final risk 
+evaluation.
+4 Results and discussion
+To comprehensively verify the effectiveness of the proposed log anomaly detection 
+method based on improved HDBSCAN and distributed collaboration, we conducted 
+experiments focusing on three key metrics: parsing performance, detection accuracy, 
+and efficiency. We utilized the publicly available HDFS, BGL, and OpenStack benchmark 
+datasets from the LogHub repository [ 38] and strictly followed the universal evaluation 
+specifications in the log anomaly detection field to ensure the objectivity and compara -
+bility of the experimental results. LogHub also provides a small-scale dataset containing 
+only 2000 log messages for each dataset [39], where each log message is manually labeled 
+with its corresponding event template. We used these small-scale datasets to evaluate 
+the log parsing accuracy.
+4.1 Datasets
+  • HDFS: A benchmark industrial dataset containing 1.2 billion log records (10GB) 
+collected from an HDFS cluster over seven days, involving 10 DataNodes and one 
+NameNode. It contains five types of labeled anomalies, such as “Block corruption” 
+and “DataNode offline, ” with anomalies accounting for 3.2% of the total. Log 
+sequences are naturally partitioned by block_id [5].
+  • BGL (Blue Gene/L): Collected from the Blue Gene/L supercomputer at Lawrence 
+Livermore National Laboratory (LLNL), which features 131,072 processors and 32TB 
+of RAM. The dataset covers over 200 days of operation with 4,747,963 records, of 
+which 348,460 are manually labeled as anomalies. As there are no explicit sequence 
+labels, time-based sliding windows were used for extraction [40].
+  • OpenStack: A collection of logs from core components like Nova and Neutron on 
+the OpenStack cloud platform. It contains 207,820 temporal log records across 
+normal and anomalous scenarios, including standardized fields such as timestamps, 
+log levels, and component IDs.
+4.2 Experimental setup
+Hardware Environment: The distributed cluster consists of a Spark cluster (1 master 
+node + 3 slave nodes) composed of 4 servers equipped with Intel Xeon (R) Gold 6240 
+processors and 172 GB of RAM.
+
+Page 11 of 21
+Wu et al. Discover Computing          (2026) 29:393 
+Software Environment: Spark 3.3.1, Hadoop 3.1.3, JDK 1.8, and Scala 2.11.12.
+4.3 Evaluation metrics
+Experimental evaluation metrics were set from two dimensions: accuracy and efficiency, 
+defined as follows:
+Accuracy Metrics: Precision, Recall, and F1-score were adopted, where
+ Precision= TP
+TP + FP  (8)
+ Recall= TP
+TP + FN  (9)
+ F1-score = 2× Precision× Recall
+Precision+ Recall  (10)
+Since our proposed framework are unsupervised clustering algorithms, a mapping strat -
+egy is required to construct the confusion matrix (True Positives (TP), False Positives 
+(FP), True Negatives (TN), and False Negatives (FN)). In industrial systems, normal 
+log behaviors constitute the vast majority of the data and naturally form dense, stable 
+clusters, whereas anomalies are rare and deviate from these patterns. Therefore, in our 
+evaluation, log sequences or sliding windows that are identified as noise (outliers) by the 
+clustering algorithm, or those whose GLOSH anomaly scores exceed the normal thresh -
+old, are predicted as " Anomalies" (Positives). Conversely, samples belonging to normal 
+dense clusters are predicted as "Normal" (Negatives). By comparing these binary pre -
+dictions against the manual ground-truth labels provided by the LogHub datasets, we 
+compute the confusion matrix required for Eqs. ( 8)–( 10). For the log parsing task, to 
+evaluate the accuracy of different log parsing algorithms, we used the Parsing Accuracy 
+(PA) metric proposed by Zhu et al. [38], which is the most commonly used indicator. PA 
+is defined as the ratio of the number of correctly parsed log messages to the total num -
+ber of log messages.
+Efficiency Metrics: For the log parsing task, efficiency was measured by parsing time. 
+For the anomaly detection task, time consumption was divided into training time and 
+testing time. Among them, the proposed method is unsupervised, so only the clustering 
+and anomaly determination time are counted, while supervised/semi-supervised meth -
+ods recorded both model training time and inference time.
+4.4 Model validation
+We systematically verified the effectiveness of the proposed log anomaly detection 
+method based on improved HDBSCAN and distributed collaboration through com -
+parative experiments in four dimensions: log parsing performance, detection accuracy, 
+detection efficiency, and window size sensitivity. To ensure the statistical significance of 
+the results and account for potential variability arising from Spark’s distributed parti -
+tioning and the clustering process, each experiment was repeated 10 times using differ -
+ent random seeds for data sharding. The results in the following tables are reported as 
+the average values across these runs, accompanied by their respective standard devia -
+tions (µ ± σ). Classical log parsing algorithms (Drain, Spell, IPLOM), traditional cluster-
+ing methods (HDBSCAN, Log2Vec, MeanShift), and mainstream deep learning models 
+
+Page 12 of 21
+Wu et al. Discover Computing          (2026) 29:393 
+(DeepLog, LogRobust, PLELog, SEN-NBFS) were selected as baselines for testing on 
+three public benchmark datasets (HDFS, BGL, OpenStack). To represent the optimal 
+theoretical performance of the deep learning baselines, their performance metrics are 
+directly cited from their respective original publications based on the same LogHub 
+dataset. While hardware environments naturally vary, this setup allows for a rigorous 
+comparison of algorithmic detection capabilities. Detailed analysis was carried out 
+below in combination with experimental data.
+4.4.1 Log parsing performance
+Log parsing is a critical preprocessing step that converts unstructured text into struc -
+tured data, and its efficiency directly determines the usability of the system in large-scale 
+distributed scenarios. Tables 1 and 2 show the performance comparison between the 
+proposed improved distributed Drain algorithm and classical parsing algorithms (Drain, 
+Spell, IPLoM) on the HDFS and BGL datasets.
+In terms of parsing efficiency, benefiting from the Spark distributed architecture’s par-
+allel processing capability and the RDD memory-disk hybrid persistence strategy, the 
+proposed method achieved significant performance advantages. As shown in Table 1, 
+on the HDFS dataset, the time consumption of the improved algorithm was only 66.7 s, 
+which was about 4.9 times faster than the original single-machine Drain algorithm 
+(325.7  s) and more than 10 times faster than the longest common subsequence-based 
+Spell algorithm (676.45 s). On the BGL dataset with more complex log templates (Table 
+2), this advantage remained evident, with the time consumption of only 48.5 s, far lower 
+than that of the comparison algorithms.
+In terms of parsing accuracy, despite the introduction of distributed sharding pro -
+cessing, the proposed method effectively avoided template inconsistency problems in 
+distributed environments through the mechanisms of "dynamic parse tree expansion" 
+and "global incremental synchronization". Experimental data showed that the pars -
+ing accuracy of the method reached 0.99 and 0.98 on HDFS and BGL datasets, respec -
+tively, which was basically equivalent to that of the single-machine Drain algorithm and 
+significantly higher than that of Spell (0.87). This result demonstrated that the method 
+preserved the high-fidelity restoration capability of log semantic templates while sub -
+stantially reducing the computational load.
+4.4.2 Anomaly detection performance
+To verify the effectiveness of anomaly detection, we compared our detection framework 
+based on the improved HDBSCAN with current mainstream large language models and 
+Table 1 Parsing performance comparison on the HDFS dataset
+Metric Distributed drain Drain Spell IPLoM
+Time (s) 66.7 325.7 676.45 333.03
+PA 0.99 0.99 0.87 0.99
+Table 2 Parsing performance comparison on the BGL dataset
+Metric Distributed drain Drain Spell IPLoM
+Time (s) 48.5 115.96 447.14 140.57
+PA 0.98 0.99 0.98 0.99
+
+Page 13 of 21
+Wu et al. Discover Computing          (2026) 29:393 
+deep learning models. Tables 3, 4, 5 detail the precision, recall, and F1-score of each 
+model on the three datasets.
+As shown in Table 3, the F1-score of the proposed method reached 0.994, which was 
+significantly superior to traditional HDBSCAN (0.759). This superior performance was 
+mainly attributed to the integrated Borŭvka minimum spanning tree algorithm, which 
+enhanced the ability to identify non-spherical clusters. Compared with the supervised 
+deep learning model LogRobust (F1=0.997) and the large language model-based LLM -
+eLog (F1=0.994), the performance gap of the proposed method was minimal or non-
+existent, but it importantly did not require expensive label training costs or massive 
+computational overhead. Furthermore, the fairness and significance of this comparison 
+lie in the fact that single-machine algorithms inherently have access to global data for 
+clustering or learning. In contrast, our distributed approach faces the severe challenge of 
+"Data Silos" across different Worker nodes. Achieving comparable or superior accuracy 
+(e.g., outperforming the deep learning model DeepLog with an F1-score of 0.922 and 
+remaining highly competitive with SEN-NBFS with an F1 of 0.990) demonstrates that 
+our global incremental synchronization and Gaussian kernel fusion mechanisms effec -
+tively reconstruct global consistency, proving the algorithm’s robustness in large-scale, 
+fragmented data environments.
+The BGL dataset contains a large number of non-sequential isolated anomalies 
+and density anomalies, which pose challenges to models such as DeepLog that rely 
+on sequence patterns. As shown in Table 4, the F1-score of DeepLog on this dataset 
+was only 0.227 because it was difficult to capture anomaly patterns without temporal 
+dependencies. On the contrary, the proposed improved HDBSCAN method success -
+fully captured these anomalies through multi-density clustering and global Gaussian 
+kernel merging strategy, achieving an F1-score of 0.990. This result not only greatly 
+exceeded traditional HDBSCAN (0.737), but also demonstrated performance on par 
+with cutting-edge models like SEN-NBFS (F1=0.990) and LLMeLog (F1=0.991). Further-
+more, it slightly outperformed the semi-supervised model PLELog (0.982), proving the 
+Table 3 Model performance comparison (HDFS)
+Metric Proposed work HDBSCAN LogRobust DeepLog PLELog SEN-NBFS LLMeLog
+Precision 0.997±0.0023 0.811 0.999 0.945 0.950 1 0.993
+Recall 0.992±0.0004 0.716 0.995 0.900 0.963 0.99 0.996
+F1 0.994±0.0007 0.759 0.997 0.922 0.957 0.99 0.994
+Table 4 Model performance comparison (BGL)
+Metric Proposed work HDBSCAN LogRobust DeepLog PLELog SEN-NBFS LLMeLog
+Precision 0.998±0.0012 0.768 0.999 0.138 0.965 0.98 0.996
+Recall 0.982±0.0001 0.716 0.998 0.63 0.999 0.99 0.986
+F1 0.990±0.0005 0.737 0.999 0.227 0.982 0.99 0.991
+Table 5 Model performance comparison (OpenStack)
+Metric Proposed work HDBSCAN LogRobust DeepLog MeanShift SEN-NBFS
+Precision 0.964±0 0.543 0.89 0.95 0.94 0.99
+Recall 1±0 0.864 0.81 0.99 0.86 1
+F1 0.982±0 0.667 0.848 0.97 0.90 0.99
+
+Page 14 of 21
+Wu et al. Discover Computing          (2026) 29:393 
+robustness of the method in handling complex and multi-type anomalies without relying 
+on prior label knowledge.
+For the OpenStack dataset in cloud environments, Table 5 shows that the proposed 
+method achieved a perfect recall rate of 1.0 and an F1-score of 0.982. In contrast, the 
+F1-score of traditional HDBSCAN was only 0.667. This indicated that after introducing 
+RTree spatial index and cross-partition collaboration mechanism, the model could effec-
+tively correlate anomaly signs scattered on different computing nodes, overcoming the 
+missed detection problem caused by "data silos" in distributed scenarios.
+Furthermore, the extremely low standard deviations observed in our proposed method 
+across multiple runs–such as a maximum σ of only 0.0023 for precision on the HDFS 
+dataset, σ ≤ 0.0012 on the BGL dataset, and even achieving zero variance ( σ =0 ) on 
+the OpenStack dataset–underscore its remarkable stability compared to traditional 
+HDBSCAN. This statistical robustness is primarily attributed to our global incremental 
+synchronization mechanism, which minimizes template drift across partitions, ensuring 
+that the feature space remains consistent regardless of how the logs are physically dis -
+tributed across the Spark nodes.
+4.4.3 Detection efficiency analysis
+In addition to detection accuracy, the time complexity of the model is another key indi -
+cator to measure its applicability to real-time production environments. Table 6 records 
+the time consumption of each model in the training and testing phases.It is important 
+to acknowledge that the training and testing times reported in Table 6 involve different 
+hardware configurations. DeepLog and LogRobust typically rely on high-performance 
+GPUs in a single-machine setup, whereas the proposed work operates on a distributed 
+Spark cluster composed of four CPU-based servers. The comparison aims to illustrate 
+the architectural superiority of distributed computing over centralized processing. Even 
+accounting for advancements in hardware since the publication of these baselines, the 
+transition from hour-level to second-level processing underscores the proposed frame -
+work’s capability to break the computational bottlenecks inherent in big data analytics.
+As shown in Figs. 3 and 4, the distributed collaborative framework proposed in this 
+paper exhibits significant advantages in terms of efficiency. For the HDFS dataset, the 
+total time consumption of the whole process was only 59.5  s. In contrast, the LSTM-
+based DeepLog required nearly 2  h for training and detection, while the total time 
+consumption of LogAnomaly even exceeded 5  h. It should be noted that deep learn -
+ing methods typically record serial processing times on high-end GPUs, whereas our 
+research records parallel processing times on a standard CPU cluster. Rather than a direct 
+algorithmic speed race, this comparison highlights the difference between a "single-
+node bottleneck architecture" and a "distributed scalable architecture". Single-machine 
+Table 6 Model training and testing time comparison on HDFS and BGL datasets
+Method HDFS BGL
+Training Testing Training Testing
+PLELog 43 m 42 s 24 m 10 s
+LogAnomaly 4 h 40 m 47 m 4 h 20 m 39 m
+LogRobust 1 h 20 m 49 s 30 m 15 s
+DeepLog 1 h 50 m 20 m 44 m 7 m
+HDBSCAN 15.7m 9.6m
+Proposed Work 59.5s 33.3s
+
+Page 15 of 21
+Wu et al. Discover Computing          (2026) 29:393 
+deep learning algorithms cannot significantly reduce processing time simply by adding 
+more machines. Conversely, our method demonstrates hardware-cost friendliness and 
+true horizontal scalability. Even compared with traditional single-machine HDBSCAN 
+(about 30  min), the proposed method achieved an order-of-magnitude acceleration. 
+This efficiency improvement mainly stemmed from two aspects: first, the RTree index 
+reduced the time complexity of nearest neighbor search from O (n2) to O (logn + k); 
+second, parallel computing based on the Spark framework eliminated the computational 
+bottleneck of single nodes. This comparison fundamentally demonstrates the through -
+put advantages of our distributed collaborative framework for industrial real-time pro -
+duction environments.
+4.4.4 Impact of window size
+Since the BGL and OpenStack datasets lack explicit sequence identifiers, the time slid -
+ing window size emerges as a key hyperparameter that affects detection performance. 
+Fig. 4 Execution time on BGL dataset
+ 
+Fig. 3 Execution time on HDFS dataset
+ 
+
+Page 16 of 21
+Wu et al. Discover Computing          (2026) 29:393 
+Tables 7 and 8 show the performance variation trends under different window sizes, and 
+Figs. 5 and 6 illustrate the performance variation trends of the two datasets under differ-
+ent window sizes.
+BGL Dataset (Advantage of Short Windows): As shown in Fig. 5, the BGL dataset 
+achieved the optimal F1-score (0.9897) when the window size was 1 min. As the win -
+dow size increased (e.g., to 10 min), the recall rate decreased from 0.98 to 0.83. This was 
+because anomalies in BGL were mostly transient faults, and an excessively large win -
+dow introduced a large amount of normal log noise, masking anomaly features, which 
+reflected the trade-off between “noise interference and feature capture” .
+OpenStack Dataset (Advantage of Long Windows): On the contrary, Fig. 6 shows that 
+the OpenStack dataset performed better with longer windows (100–150 min), with the 
+highest F1-score reaching 0.9818. When the window size was too short (e.g., 1 min), the 
+F1-score was close to 0. This was determined by the persistence of cloud platform anom-
+alies (such as virtual machine creation timeouts and network retries). Short windows 
+cut off contextual correlations, resulting in the model’s inability to capture the complete 
+anomaly life cycle.
+Table 7 Performance comparison of window sizes on BGL
+Window (m) Precision Recall F1-score FPR Time (ms)
+1 0.9978 0.9817 0.9897 0.0002 70649
+3 0.9997 0.9420 0.9700 0.0000 68658
+5 0.9985 0.9134 0.9541 0.0001 67391
+10 0.9999 0.8385 0.9121 0.0000 66171
+15 0.9976 0.8867 0.9389 0.0002 63279
+Table 8 Performance comparison of window sizes on OpenStack
+Window (m) Precision Recall F1-score FPR Time (ms)
+1 0.0036 1.0000 0.0071 0.6827 22704
+20 0.2951 0.8500 0.4381 0.0770 13803
+30 0.7295 0.8900 0.8018 0.0188 12366
+50 0.8403 1.0000 0.9132 0.0181 10903
+100 0.9029 1.0000 0.9490 0.0190 9373
+150 0.9643 1.0000 0.9818 0.0084 9291
+Fig. 5 F1-score and time trends by window size(BGL)
+ 
+
+Page 17 of 21
+Wu et al. Discover Computing          (2026) 29:393 
+In summary, while our empirical study demonstrates the necessity of tuning fixed 
+window sizes to specific datasets, this manual approach inherently lacks generalization 
+across heterogeneous systems. A short window of 1–3  min captures high-frequency 
+transient anomalies effectively, whereas a long window of over 100 min is required for 
+long-cycle cross-component transactions. To overcome the limitations of dataset-spe -
+cific tuning, future iterations of this framework would greatly benefit from adaptive 
+windowing methods and dynamic segmentation approaches. Unlike fixed manual win -
+dows–which risk artificially truncating long-running transactions or diluting bursty 
+transient faults with normal background logs–dynamic segmentation adjusts temporal 
+boundaries autonomously based on real-time log arrival rates, session density, or seman-
+tic contextual shifts. By integrating adaptive mechanisms, the system could dynamically 
+scale its temporal receptive field, thereby achieving robust generalization across diverse 
+system architectures without requiring manual hyperparameter optimization.
+4.4.5 Scaling experiments
+To validate the scalability and industrial-grade deployment capability of our distributed 
+anomaly detection framework, we conducted comprehensive strong and weak scaling 
+experiments on the BGL dataset. The cluster scale was varied across 3, 6, and 9 worker 
+nodes. Each node has a 12-core CPU and 32GB of RAM. We also varied the data volume 
+(25%, 50%, and 100% of the full dataset) and the number of RDD partitions (64, 128, 256, 
+and 512). Strong scaling analysis, weak scaling analysis, and the impact of partitions are 
+shown in Figs. 7, 8 and 9.
+Strong Scaling Analysis:Strong scaling evaluates the framework’s ability to reduce exe-
+cution time as computational resources increase, while keeping the data size constant. 
+As illustrated in the results, for the 100% full BGL dataset (at 64 partitions), the execu -
+tion time drops significantly from 118.9 s on 3 nodes, to 49.9 s on 6 nodes, and further to 
+33.0 s on 9 nodes. The near-linear reduction in execution time confirms that our distrib-
+uted Drain and localized HDBSCAN optimizations effectively utilize parallel resources 
+without severe communication bottlenecks.
+Weak Scaling Analysis:Weak scaling measures the framework’s efficiency when the 
+workload (data size) scales proportionally with the number of computational nodes. We 
+evaluated the execution time for 25% data on 3 nodes, 50% data on 6 nodes, and 100% 
+Fig. 6 F1-score and time trends by window size (OpenStack)
+ 
+
+Page 18 of 21
+Wu et al. Discover Computing          (2026) 29:393 
+data on 9 nodes (at 64 partitions). The execution times remained remarkably stable: 
+34.2s, 36.3s, and 33.0s, respectively. This nearly constant execution time under propor -
+tional workload expansion demonstrates that our global incremental synchronization 
+and Gaussian kernel fusion mechanisms possess perfect weak scalability, ensuring stable 
+throughput in massive, dynamic IoT environments.
+Impact of Partitions:The experimental results also reveal the sensitivity of the Spark 
+framework to the number of partitions. Across all node configurations, optimal perfor -
+mance is generally achieved at 64 or 128 partitions. Increasing the partitions to 512 con -
+sistently leads to a degradation in performance (e.g., execution time increases to 126.6s 
+on 3 nodes and 86.3s on 6 nodes for the full dataset). This is because an excessive num -
+ber of partitions triggers severe task scheduling overhead and high network I/O during 
+Fig. 8 Weak scaling analysis results
+ 
+Fig. 7 Strong scaling analysis results
+ 
+
+Page 19 of 21
+Wu et al. Discover Computing          (2026) 29:393 
+the shuffle phases. Therefore, maintaining a moderate partition count is crucial for opti -
+mizing the global cluster fusion stage.
+5 Conclusion
+Aiming at the challenges of low parsing efficiency, difficulty in identifying multi-type 
+anomalies, and poor scalability in log anomaly detection for distributed systems, this 
+paper proposes an end-to-end detection framework based on an improved HDBSCAN 
+algorithm and distributed collaboration techniques. At the parsing level, we introduce 
+the mechanisms of dynamic parse tree expansion and global incremental synchroniza -
+tion, so that the improved distributed Drain algorithm effectively addresses the issues 
+of template inconsistency and memory overflow. When combined with the Spark RDD 
+persistence strategy, this algorithm significantly reduces computational overhead. At the 
+detection level, the optimized HDBSCAN algorithm leverages the RTree spatial index to 
+reduce the time complexity of nearest neighbor search to O(logn+k). Moreover, when 
+combined with the fusion strategy integrating Boruvka MST and the Gaussian kernel 
+function, this optimized algorithm breaks through the computational bottleneck in 
+large-scale data processing and significantly enhances the ability to capture non-spher -
+ical clusters and cross-node correlated anomalies. Experiments show that the proposed 
+method delivers a parsing speed that is approximately 4.9 times faster than that of tradi -
+tional methods on the HDFS, BGL, and OpenStack datasets, with the highest F1-score 
+reaching 0.994, thus achieving dual improvements in both accuracy and efficiency. 
+Future work will focus on three directions: first, introducing lightweight pre-trained 
+models to enhance semantic understanding; second, exploring online incremental learn-
+ing strategies to improve the model’s adaptability to system evolution;and third, devel -
+oping adaptive dynamic windowing mechanisms to autonomously optimize temporal 
+segmentation across diverse and heterogeneous cloud environments.
+Author contributions
+X.W. contributed to Conceptualization, Methodology, Investigation, Writing—Original Draft. J.W. contributed to 
+Supervision, Funding Acquisition, Project Administration, Writing—Review and Editing. X.L. contributed to Software, 
+Fig. 9 Impact of partition number
+ 
+
+Page 20 of 21
+Wu et al. Discover Computing          (2026) 29:393 
+Validation, Resources. J.Z. contributed to Data Curation, Formal Analysis, Methodology. H.C. contributed to Formal 
+Analysis, Visualization, Investigation. All authors have read, revised, and approved the final manuscript for publication.
+Funding
+No funding.
+Data availability
+The syslog data that support the findings of this study are available in the LogHub public repository with the identifier(s). 
+https:// doi. org/ 10. 48550/arXiv. 2008. 06448
+Declarations
+Ethics approval and Consent to participate
+Not applicable.
+Consent for publication
+Not applicable.
+Competing interests
+The authors declare no competing interests.
+Received: 13 April 2026 / Accepted: 4 June 2026
+References
+1. Lin Q, Zhang H, Lou JG. Log clustering based problem identification for online service systems. In: Proceedings of the 38th 
+international conference on software engineering companion. 2016; p. 102–11.
+2. Mi H, Wang H, Zhou Y, et al. Toward fine-grained, unsupervised, scalable performance diagnosis for production cloud 
+computing systems. IEEE Trans Parallel Distrib Syst. 2013;24(6):1245–55.
+3. Breier J, Branišová J. Anomaly detection from log files using data mining techniques. In: Information science and applica-
+tions. Springer, 2015; p. 449–457.
+4. Zhang S, Ji Y, Luan J. End-to-end automl for unsupervised log anomaly detection. In: Proceedings of the 39th IEEE/ACM 
+international conference on automated software engineering. 2024; p. 1680–92.
+5. He P , Zhu J, He S, et al. An evaluation study on log parsing and its use in log mining. In: 2016 46th annual IEEE/IFIP interna-
+tional conference on dependable systems and networks (DSN), IEEE, 2016; p. 654–661.
+6. Lang D. Using sec. ; login:: the magazine of USENIX & SAGE 2013;38(6):38–43.
+7. Li Z, Shi J, Van Leeuwen M. Graph neural networks based log anomaly detection and explanation. In: Proceedings of the 
+2024 IEEE/ACM 46th international conference on software engineering: companion proceedings. 2024; p. 306–7.
+8. Du M, Li F, Zheng G. Deeplog: Anomaly detection and diagnosis from system logs through deep learning. In: Proceedings 
+of the 2017 ACM SIGSAC conference on computer and communications security. 2017; p. 1285–98.
+9. Liang F, Zhang Z, Lu H. Communication-efficient large-scale distributed deep learning: a comprehensive survey. 2024. 
+arXiv:2404.06114 arXiv preprint.
+10. He P , Zhu J, Zheng Z. Drain: An online log parsing approach with fixed depth tree. In: 2017 IEEE international conference 
+on web services (ICWS). IEEE; 2017; p. 33–40.
+11. Campello RJ, Moulavi D, Sander J. Density-based clustering based on hierarchical density estimates. In: Pacific-Asia confer-
+ence on knowledge discovery and data mining. Springer; 2013; p. 160–72.
+12. Vaarandi R, Pihelgas M. Logcluster-a data clustering and pattern mining algorithm for event logs. In: 2015 11th interna-
+tional conference on network and service management (CNSM), IEEE, 2015; p. 1–7.
+13. Ren X, Zhang L, Xie K. A parallel approach of weighted edit distance calculation for log parsing. In: IEEE 2nd international 
+conference on computer and communication engineering technology (CCET). IEEE; 2019; p. 101–4.
+14. Dai H, Li H, Chen CS, et al. Logram: Efficient log parsing using n n-gram dictionaries. IEEE Trans Softw Eng. 
+2020;48(3):879–92.
+15" GrobidStyleApplied="Changed. Zhang S, Meng W, Bu J. Syslog processing for switch failure diagnosis and prediction in 
+datacenter networks. In: IEEE/ACM 25th international symposium on quality of service (IWQoS). 2017; p. 1–10.
+16. Makanju AA, Zincir-Heywood AN, Milios EE. Clustering event logs using iterative partitioning. In: Proceedings of the 15th 
+ACM SIGKDD international conference on Knowledge discovery and data mining, 2009; p. 1255–1264.
+17. Du M, Li F . Spell: Streaming parsing of system event logs. In: IEEE 16th international conference on data mining (ICDM). 
+IEEE; 2016; p. 859–64.
+18. Ding N, Ma H, Gao H, et al. Real-time anomaly detection based on long short-term memory and gaussian mixture model. 
+Comput Electr Eng. 2019;79:106458.
+19. Zeufack V, Kim D, Seo D, et al. An unsupervised anomaly detection framework for detecting anomalies in real time 
+through network system’s log files analysis. High-Confidence Comput. 2021;1(2):100030.
+20. Wang C, Xu D, Li Z. Log2graphs: An unsupervised framework for log anomaly detection with efficient feature extraction. 
+2024. arXiv:2409.11890 arXiv preprint.
+21. Niwa T, Kasuya Y, Kitahara T. Anomaly detection for openstack services with process-related topological analysis. In: 2017 
+13th international conference on network and service management (CNSM), IEEE, 2017; p. 1–5.
+22. Meng W, Liu Y, Huang Y. A semantic-aware representation framework for online log analysis. In: 2020 29th international 
+conference on computer communications and networks (ICCCN). IEEE; 2020; p. 1–7.
+23. Farzad A, Gulliver TA. Log message anomaly detection with fuzzy c-means and mlp. Appl Intell. 2022;52(15):17708–17.
+24" GrobidStyleApplied="Changed. Meng W, Liu Y, Zhu Y. Loganomaly: Unsupervised detection of sequential and quantita-
+tive anomalies in unstructured logs. IJCAI. 2019; p. 4739–45.
+
+Page 21 of 21
+Wu et al. Discover Computing          (2026) 29:393 
+25. Yang L, Chen J, Wang Z. Semi-supervised log-based anomaly detection via probabilistic label estimation. In: 2021 IEEE/
+ACM 43rd international conference on software engineering (ICSE). IEEE; 2021; p. 1448–60.
+26. Le VH, Zhang H. Log-based anomaly detection without log parsing. In: 36th IEEE/ACM international conference on auto-
+mated software engineering (ASE). IEEE; 2021; p. 492–504.
+27. Hariharan M, Mishra A, Ravi S, et al. Detecting log anomaly using subword attention encoder and probabilistic feature 
+selection. Appl Intell. 2023;53(19):22297–312.
+28. Zhang X, Xu Y, Lin Q. Robust log-based anomaly detection on unstable log data. In: Proceedings of the 2019 27th ACM 
+joint meeting on European software engineering conference and symposium on the foundations of software engineer-
+ing. 2019; p. 807–17.
+29. Guo H, Yang J, Liu J. Logformer: A pre-train and tuning pipeline for log anomaly detection. In: Proceedings of the AAAI 
+conference on artificial intelligence. 2024; p. 135–43.
+30. Yu Z, Yang S, Li Z, et al. Logms: a multi-stage log anomaly detection method based on multi-source information fusion 
+and probability label estimation. Front Phys. 2024;12:1401857.
+31. Guan W, Cao J, Qian S. Logllm: Log-based anomaly detection using large language models. 2024. arXiv:2411.08561 arXiv 
+preprint.
+32. He M, Jia T, Duan C, et al. Llmelog: An approach for anomaly detection based on llm-enriched log events. In: 2024 IEEE 
+35th international symposium on software reliability engineering (ISSRE), 2024; p. 132–143,  h t t    p  s :  /  / d  o i . o r  g /  1  0 . 1 1 0 9 / I S S R E 6 
+2 3 2 8 . 2 0 2 4 . 0 0 0 2 3     .   
+33. Henriques J, Caldeira F, Cruz T, et al. Combining k-means and xgboost models for anomaly detection using log datasets. 
+Electronics. 2020;9(7):1164.
+34. Astekin M, Zengin H, Sözer H. Evaluation of distributed machine learning algorithms for anomaly detection from large-
+scale system logs: a case study. In: 2018 IEEE international conference on big data (big data). IEEE; 2018; p. 2071–7.
+35. Vervaet A. Monilog: An automated log-based anomaly detection system for cloud computing infrastructures. In: 2021 IEEE 
+37th international conference on data engineering (ICDE). IEEE; 2021; p. 2739–43.
+36. Shrivashtav A, Kushwaha A. Machine learning based frameworks for real-time anomaly detection in big data environ-
+ments. 2025.
+37. Astekin M, Zengin H, Sözer H. Dilaf: A framework for distributed analysis of large-scale system logs for anomaly detection. 
+Softw Pract Exper. 2019;49(2):153–70.
+38. Zhu J, He S, He P , et al. Loghub: A large collection of system log datasets for ai-driven log analytics. In: 2023 IEEE 34th 
+international symposium on software reliability engineering (ISSRE), IEEE, 2023; p. 355–366.
+39. Jiang Z, Liu J, Huang J. A large-scale evaluation for log parsing techniques: How far are we? In: Proceedings of the 33rd 
+ACM SIGSOFT international symposium on software testing and analysis. 2024; p. 223–34.
+40. Pan J, Liang WS, Yidi Y. Raglog: Log anomaly detection using retrieval augmented generation. In: 2024 IEEE world forum on 
+public safety technology (WFPST), IEEE, 2024; p. 169–174.
+Publisher's Note
+Springer Nature remains neutral with regard to jurisdictional claims in published maps and institutional affiliations.

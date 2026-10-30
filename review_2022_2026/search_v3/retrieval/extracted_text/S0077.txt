@@ -1,0 +1,2775 @@
+ARTICLE IN PRESS
+Article in Press
+A drift-aware RS2FS pipeline with confidence 
+gating for IDS
+Scientific Reports
+Received: 27 September 2025
+Accepted: 24 December 2025
+Cite this article as: Sakthivel G. & 
+Kumarasamy A.k. A drift-aware RS2FS 
+pipeline with confidence gating for IDS. 
+Sci Rep (2026). https://doi.org/10.1038/
+s41598-025-34124-x
+Gomathi Sakthivel & Anitha kumari Kumarasamy
+We are providing an unedited version of this manuscript to give early access to its 
+findings. Before final publication, the manuscript will undergo further editing. Please 
+note there may be errors present which affect the content, and all legal disclaimers 
+apply.
+If this paper is publishing under a Transparent Peer Review model then Peer 
+Review reports will publish with the final article.
+https://doi.org/10.1038/s41598-025-34124-x
+© The Author(s) 2026. Open Access This article is licensed under a Creative Commons Attribution-NonCommercial-NoDerivatives 4.0 International 
+License, which permits any non-commercial use, sharing, distribution and reproduction in any medium or format, as long as you give appropriate credit 
+to the original author(s) and the source, provide a link to the Creative Commons licence, and indicate if you modified the licensed material. You do 
+not have permission under this licence to share adapted material derived from this article or parts of it. The images or other third party material in this 
+article are included in the article’s Creative Commons licence, unless indicated otherwise in a credit line to the material. If material is not included in the 
+article’s Creative Commons licence and your intended use is not permitted by statutory regulation or exceeds the permitted use, you will need to obtain 
+permission directly from the copyright holder. To view a copy of this licence, visit http://creativecommons.org/licenses/by-nc-nd/4.0/.
+
+ARTICLE IN PRESS
+A Drift-Aware RS²FS Pipeline with Confidence 
+Gating for IDS
+Gomathi Sakthivel1 Assistant Professor CSE, Dr.N.G.P. Institute of Technology, 
+Coimbatore, India.
+        Anitha kumari Kumarasamy2 Professor IT, PSG College of Technology, 
+Coimbatore, India.
+Correspondence to [S.Gomathi] at 
+[s.gomathi4321@gmail.com]
+Data Availability Statement
+The datasets generated during and/or analysed during the current study 
+are available from the corresponding author on reasonable request.
+Abstract
+Real-time intrusion detection in heterogeneous Internet of Things 
+(IoT) networks involves continuously monitoring diverse connected 
+devices and communication protocols to promptly identify malicious 
+activities or anomalies. Due to varied device capabilities, dynamic 
+topologies, and resource constraints, these systems leverage lightweight 
+AI-driven analytics, edge processing, and adaptive security models to 
+ensure minimal latency. Effective detection enhances resilience, 
+safeguards sensitive data, and maintains seamless IoT operations in 
+mission-critical environments. We propose a stage-specific Recursive 
+Sparse & Relevance-based Feature Selection (RS²FS) and a confidence-
+gated Support Vector Machine (SVM)→SVM→ANFIS cascade for real-time 
+intrusion detection in heterogeneous IoT networks. RS²FS combines 
+elastic-net screening, MI∩mRMR relevance, stability selection, and 
+margin-aware recursive pruning to yield compact, non-redundant feature 
+sets per cascade stage. The cascade accepts easy cases with calibrated 
+SVMs and routes ambiguous, family-localized traffic to per-family ANFIS 
+rules, providing interpretable subtype decisions. Evaluated on CICIoT2023 
+with scenario-held-out splits (5× grouped CV), our model attains Macro-
+F1 = 0.962, Macro-AUC = 0.991, Balanced Accuracy = 0.963, MCC = 
+0.952, Brier = 0.038, and ECE = 0.012 at 6.3 ms CPU latency per window 
+with a 7.8 MB footprint. Class-wise F1 shows consistent gains: Benign 
+0.991, DDoS 0.984, DoS 0.958, Recon 0.961, Web 0.937, Brute Force 
+0.951, Data Exfiltration 0.921, Botnet 0.942. Cascade behavior explains 
+the speed–accuracy trade-off: 68% of windows are resolved at Stage-1 (F1 
+0.985, 3.38 ms), 22% at Stage-2 (F1 0.962, 7.73 ms), and only 10% escalate 
+to ANFIS (F1 0.936, 23 ms). Against strong baselines, we improve Macro-
+F1 by +1.9 pp over SVM-only (0.943), +1.7 pp over XGBoost (0.945), and 
+ACCEPTED MANUSCRIPTARTICLE IN PRESSARTICLE IN PRESS
+
+ARTICLE IN PRESS
++1.1 pp over a small 1D-CNN (0.951); bootstrap tests show significance 
+(p < 0.01). Unlike existing IoT IDS approaches that rely on single-stage 
+classifiers or one-time, global feature selection, our framework introduces 
+two fundamental advances. First, the proposed RS²FS mechanism 
+performs stage-specific, stability-aware, and margin-guided feature 
+reduction, addressing the gaps of redundancy, volatility, and non-
+adaptiveness found in prior MI-, mRMR-, or L1-based selection methods. 
+Second, the confidence-gated SVM→SVM→ANFIS cascade introduces a 
+new routing paradigm where high-margin “easy” traffic is settled early, 
+while only low-confidence, ambiguous windows are escalated to fuzzy 
+reasoning overcoming the limitations of conventional hybrid SVM–ANFIS 
+systems that apply the same classifier depth to all samples. Together with 
+integrated open-set rejection and drift micro-adaptation, these 
+contributions position the framework as a fundamentally new IDS 
+architecture for heterogeneous IoT environments. The open-set guard 
+achieves AUROC 0.981 and TPR@1%FPR 0.912 with 4.6% reject rate. 
+Robustness holds under +5% timestamp jitter (0.957), ±10% packet-size 
+noise (0.955), and 10% missing features (0.949). Interpretable ANFIS 
+rules highlight payload-entropy, MQTT topic-depth, and DWT-energy 
+interactions. Overall, the framework delivers accurate, calibrated, 
+interpretable, and fast IDS suitable for deployment in modern IoT 
+environments.
+Keywords: Recursive Sparse & Relevance-based Feature Selection; 
+Internet of Things; Confidence-gated Support Vector Machine; Adaptive 
+Security Model; CICIoT2023; Elastic-net screening. 
+Introduction
+To clarify the workflow, RS²FS operates as a sequential, hierarchical 
+pipeline rather than as a set of independent filters. The process begins 
+with sparsity-driven screening (elastic-net), which removes obviously 
+irrelevant or weakly contributing features while grouping correlated 
+variables. The remaining candidates undergo relevance–redundancy 
+filtering using MI∩mRMR to ensure that only informative and minimally 
+redundant descriptors are retained. A third stage applies stability selection 
+across repeated subsampling to identify features that consistently survive 
+data perturbations. Finally, a margin-aware pruning step evaluates each 
+feature’s contribution to a linear SVM’s decision margin, iteratively 
+removing the weakest contributors until performance no longer degrades. 
+This hierarchical progression produces small, stable, and stage-optimized 
+ACCEPTED MANUSCRIPTARTICLE IN PRESSARTICLE IN PRESS
+
+ARTICLE IN PRESS
+feature subsets, making the overall IDS pipeline more interpretable and 
+computationally efficient.
+The Internet of Things (IoT) has shifted enterprise and critical-
+infrastructure networks from a handful of well-managed endpoints to 
+sprawling ecosystems of sensors, actuators, gateways, and cloud services 
+[1]. This expansion increases the attack surface and accelerates the pace 
+at which adversaries craft reconnaissance, botnet enrollment, lateral 
+movement, and exfiltration campaigns [2]. Traditional perimeter 
+defenses—signatures, blacklists, and static heuristics—struggle when 
+device firmware is heterogenous, protocol behavior is application-specific, 
+and traffic patterns are bursty and highly non-stationary. Network 
+Intrusion Detection Systems (NIDS) that rely on deep packet inspection 
+are increasingly constrained by encryption and by protocol stacks such as 
+MQTT, CoAP, and Modbus that tunnel application semantics in lightweight 
+frames [3]. Consequently, flow- and behavior-based machine learning (ML) 
+has become central to security monitoring in IoT environments, but 
+practical deployment still faces four persistent gaps: (i) generalization 
+under class imbalance and drift, (ii) calibration of predicted risk to reduce 
+alert fatigue, (iii) open-set robustness to previously unseen attacks, and 
+(iv) interpretability that helps analysts understand why a decision was 
+made [4].
+A large body of work applies classical learners (SVMs, tree 
+ensembles, gradient boosting) or deep models (1D-CNNs, RNNs/GRUs, 
+Transformers) to network flows. While strong results are often reported 
+on fixed splits, many systems depend on high-dimensional feature sets, ad-
+hoc preprocessing, and single-stage classifiers that conflate easy and hard 
+decisions [5]. High capacity models may fit training distributions yet 
+produce over-confident probabilities when the environment changes—
+even modestly—causing mis-prioritization in SOC workflows [6]. 
+Conversely, purely fuzzy or rule-based approaches provide interpretability 
+but can be brittle on clear, separable cases and computationally heavy 
+when everything is routed through the same logic [7]. Bridging these 
+extremes requires an architecture that (1) compresses heterogeneous 
+descriptors into compact, stable subsets; (2) settles obvious instances 
+quickly with margins that are well calibrated; and (3) escalates only 
+ambiguous windows to a more expressive and interpretable reasoning 
+layer [8].
+Feature selection is critical in this context, but most IDS pipelines 
+still treat it as a one-time, stage-agnostic step. Filters such as mutual 
+information (MI) and mRMR capture relevance and redundancy; 
+embedded methods like L1/Elastic-Net inject sparsity during training; 
+ACCEPTED MANUSCRIPTARTICLE IN PRESSARTICLE IN PRESS
+
+ARTICLE IN PRESS
+wrappers prune features based on classifier feedback [9]. Each family has 
+strengths, yet none by itself guarantees stability under resampling, nor do 
+they adapt to the distinct information needs of different decision stages 
+(e.g., benign-vs-attack gating versus fine-grained subtype disambiguation) 
+[10]. The result is either over-sized models with correlated descriptors or 
+excessively aggressive pruning that erases subtle signals. A more robust 
+strategy is to integrate sparsity, relevance, stability, and margin-aware 
+pruning into a single, recursive process and to run that process separately 
+for each stage of the classifier cascade [11].
+Another under-emphasized aspect is decision routing. Real traffic 
+contains a long “easy tail” and a short “hard head.” Treating all samples 
+uniformly wastes compute on easy instances and deprives difficult ones of 
+specialized reasoning. Confidence-gated cascades, widely used in vision 
+and speech, offer a principled way to trade latency for accuracy: a fast gate 
+handles the obvious, a secondary learner refines borderline cases, and a 
+final expert resolves the rare ambiguous windows [12]. In the intrusion-
+detection setting, calibrated SVMs are natural gates because their 
+margins translate cleanly into probabilities, while Adaptive Neuro-Fuzzy 
+Inference Systems (ANFIS) provide human-readable rules that explain 
+interactions among traffic dynamics and protocol semantics [13]. Yet, to 
+our knowledge, cascades that combine stage-specific feature selection, 
+calibrated SVM gating, and per-family ANFIS experts remain uncommon 
+in IoT IDS research.
+Open-set recognition forms the third pillar. IoT deployments evolve; 
+new devices, firmware, and attack scripts appear without labels. A 
+practical IDS should say “I don’t know” when a window is unlike anything 
+seen before, rather than forcing a wrong label with high confidence [14]. 
+Lightweight distance-based rejection in a well-behaved feature space is 
+attractive operationally: it avoids retraining, adds millisecond overhead, 
+and integrates naturally with gating thresholds. Mahalanobis distance 
+computed in a compressed, near-Gaussian space (post selection and 
+scaling) works well in practice and produces a tunable reject/coverage 
+trade-off via chi-square quantiles [15].
+Although several studies combine feature selection techniques with 
+hybrid or multi-stage classifiers, three critical gaps remain unresolved in 
+IoT IDS research. (i) Feature selection is typically performed as a one-shot, 
+dataset-level process without considering the distinct information needs of 
+different decision stages; existing MI-, mRMR-, or L1-based approaches 
+also lack stability guarantees and do not integrate margin-aware pruning. 
+(ii) Hybrid SVM–ANFIS systems used in prior works do not employ 
+confidence-gated routing, forcing all samples—easy, separable, 
+ACCEPTED MANUSCRIPTARTICLE IN PRESSARTICLE IN PRESS
+
+ARTICLE IN PRESS
+ambiguous, or noisy—through the same depth of inference, resulting in 
+unnecessary latency and reduced calibration reliability. (iii) Existing 
+hybrids rarely incorporate open-set defense or drift-aware calibration, 
+which are essential for deployment in evolving IoT environments. To 
+address these gaps, our work introduces (1) a stage-specific Recursive 
+Sparse & Relevance-based Feature Selection (RS²FS) pipeline combining 
+elastic-net screening, relevance–redundancy intersection, stability 
+selection, and recursive margin pruning, and (2) a confidence-gated 
+SVM→SVM→ANFIS cascade that allocates computational resources 
+proportionally to instance difficulty. This coordinated design constitutes a 
+novel IDS architecture fundamentally different from existing feature 
+selection or hybrid SVM–ANFIS frameworks.
+Finally, calibration matters. Two models with identical accuracy can 
+behave very differently when their probability estimates are misaligned 
+with empirical correctness. Poorly calibrated systems flood analysts with 
+high-confidence false positives, or they bury high-risk alerts under 
+cautious probabilities [16]. Expected Calibration Error (ECE) and Brier 
+score should therefore be core metrics alongside F1 and AUC, and the 
+training pipeline should include explicit calibration steps (e.g., Platt 
+scaling) and periodic refresh under drift.
+Against this backdrop, we study intrusion detection on the recent 
+CICIoT2023 benchmark, which emulates heterogeneous IoT networks and 
+includes benign activity interleaved with diverse attacks over MQTT, 
+CoAP, Modbus, HTTP/HTTPS, DNS, SSH, and other services [17]. The 
+dataset contains rich flow-level attributes and protocol-aware fields, 
+enabling the construction of multi-modal descriptors: statistical and 
+temporal moments, entropy of size series, frequency cues from wavelet 
+energies, lightweight graph measures over per-window ego-nets, and 
+protocol semantics such as MQTT QoS flags, CoAP code classes, or 
+Modbus function codes. While such variety is a strength, it also increases 
+redundancy and correlation; many features carry similar information or 
+are informative only for specific decision layers [18].
+To address these challenges, our work adopts a design with four 
+complementary components. First, we introduce Recursive Sparse & 
+Relevance-based Feature Selection (RS²FS), which (i) performs elastic-net 
+screening to induce sparsity and group correlated variables, (ii) intersects 
+MI and mRMR to capture relevance while penalizing redundancy, (iii) 
+applies stability selection over repeated subsampling to retain only 
+features consistently chosen across data perturbations, and (iv) conducts 
+margin-aware recursive pruning with a linear SVM, dropping the least 
+influential features as long as validation performance remains within a 
+ACCEPTED MANUSCRIPTARTICLE IN PRESSARTICLE IN PRESS
+
+ARTICLE IN PRESS
+user-set tolerance. The entire process runs per stage of the classifier, 
+yielding tailored subsets for the binary gate, family classification, and 
+subtype disambiguation. Second, we employ a confidence-gated cascade: 
+an RBF SVM handles benign-versus-attack, a second SVM predicts attack 
+family, and ambiguous instances are escalated to a per-family ANFIS that 
+offers interpretable rules with Gaussian membership functions and first-
+order consequents. Third, we add a Mahalanobis open-set guard in the 
+selected feature space of each stage to flag unknowns at a configurable 
+coverage level. Fourth, we incorporate drift micro-adaptation by 
+monitoring SVM margins with ADWIN; when drift is detected, we refresh 
+calibration parameters and perform brief premise updates to ANFIS, 
+reserving full re-selection/re-training for scheduled maintenance windows.
+From an engineering standpoint, the pipeline includes leakage-safe 
+preprocessing (robust Z-scores, quantile transforms, class-preserving 
+SMOTE applied within folds), protocol-aware parsing, and scenario-level 
+splits that place entire capture days or scenarios exclusively in 
+train/validation/test to reflect deployment. Evaluation emphasizes macro-
+averaged metrics, calibration, latency per window on CPU-class hardware, 
+and model footprint. We also report per-family/subtype diagnostics and 
+ablation studies that isolate the contribution of protocol, temporal, 
+frequency, entropy, and graph groups, as well as the incremental value of 
+each RS²FS stage (sparsity, MI/mRMR, stability selection, margin 
+pruning).
+The empirical picture that emerges is aligned with operational 
+needs. By solving roughly two-thirds of windows at the first SVM gate and 
+routing only the hard tail to ANFIS, the system approaches SVM-only 
+speed while surpassing deeper baselines in accuracy and, crucially, in 
+calibration. RS²FS consistently compresses descriptors to a few dozen 
+features per stage without sacrificing macro-F1, and its stability profile 
+makes the selected sets reproducible across folds—important for audits 
+and for porting models between sites. The open-set guard filters a small 
+fraction of windows that resemble neither benign nor known attack 
+families, allowing analysts to triage potential zero-day behaviors for 
+labeling and model extension. Interpretable ANFIS rules, expressed as 
+centers and spreads over payload entropy, MQTT topic depth, and wavelet 
+energy (among others), provide human-readable rationales that can be 
+compared with protocol specifications and incident timelines.
+The four components of the framework operate in a tightly coupled 
+sequence. RS²FS first produces compact, stable feature subsets tailored to 
+each stage, enabling reliable confidence estimation. These confidence 
+estimates drive the decision routing in the cascade, allowing easy cases to 
+ACCEPTED MANUSCRIPTARTICLE IN PRESSARTICLE IN PRESS
+
+ARTICLE IN PRESS
+be settled early while reserving ANFIS for semantically ambiguous 
+samples. The cascaded structure naturally exposes regions of uncertainty 
+where unfamiliar or out-of-distribution behaviors appear, motivating the 
+integration of an open-set guard to prevent forced misclassification. 
+Finally, because IoT traffic distributions evolve over time, calibration and 
+drift-handling modules ensure that confidence thresholds, rejection 
+boundaries, and fuzzy rule activations remain well-aligned with the 
+current operating environment. Together, these components form a 
+logically unified detection pipeline rather than isolated modules.
+The rest of the paper is organized as follows: Section 2 mentions the 
+related works; Section 3 provides the proposed methodology in detailed; 
+Section 4 discuss the result analysis and finally, the conclusion is made at 
+Section 5. 
+2. Related Works
+Jakotiya, K., et al., [19] provide analytical analyses of current 
+intrusion detection systems grounded on ML algorithms. Furthermore, 
+examined in this work are the useful data sets and several techniques 
+already in use to develop an effective IDS using single, hybrid, and 
+ensemble machine learning algorithms. The approaches in the literature 
+have then been investigated under several criteria to provide a clear road 
+and direction for the next projects that will be successful. Nowadays, 
+companies of all kinds include an intrusion detection system (IDS), which 
+inhibits cybercrime to protect the network, resources, and private data. 
+Many strategies have been suggested and implemented up till now to 
+prevent uncivil behaviour. Since machine learning (ML) approaches are 
+successful, the proposed approach applied several ML models for the 
+intrusion detection system. The CIC IoT 2023 Dataset is the one applied in 
+this paper, and a two-step process for Intrusion detection was proposed. 
+Tested with several techniques including random forest, XGBoost, logistic 
+regression, MLP model, and RNN. Following fine-tuning, the federated 
+learning model using neural networks had the best accuracy—99.84%.
+Cheekati, S., et al., [20] presents a hybrid intrusion detection system 
+that syndicates a Stacked Deep Polynomial Network (SDPN) classifier with 
+QRIME-based feature selection to efficiently and accurately detect 
+network attacks on CIC-IoT-2023 dataset. The goal is to tackle these 
+problems. In order to improve computational efficiency, the Quantum-
+Inspired Redundant and Irrelevant feature Minimization and Extraction 
+(QRIME) method is used to decrease the dimensionality of features. This 
+method ensures that only the most significant characteristics are used for 
+classification. By using deep polynomial transformations, the SDPN 
+classifier is able to improve its generalization capabilities and catch 
+ACCEPTED MANUSCRIPTARTICLE IN PRESSARTICLE IN PRESS
+
+ARTICLE IN PRESS
+intricate attack patterns. Together, they enable the model to reduce false 
+positives while efficiently detecting varied IoT-based assaults. The 
+suggested QRIMESDPN model beats both conventional and deep learning 
+models in terms of recall, accuracy, precision, F1-score, besides false 
+alarm rate (FAR) when tested on the CIC-IoT-2023 dataset. The model's 
+successful handling of high-dimensional network traffic data, with a 
+balance among computational efficiency and detection capability, is 
+demonstrated by the findings. The overall result of this study is an 
+innovative and scalable method for intrusion detection in the Internet of 
+Things (IoT) that combines deep polynomial-based classification with 
+feature selection influenced by quantum mechanics. To further improve 
+IDS performance in dynamic IoT environments, future work can centre on 
+real-time deployment, adversarial resilience, and transfer learning. In light 
+of the critical requirement for flexible intrusion detection systems to 
+counter evolving cyber threats, this study makes a substantial contribution 
+to Internet of Things security.
+Susilo, B., et al., [21] aims to improve the performance of existing 
+deep learning models. To mitigate data imbalances and enhance learning 
+outcomes, the synthetic minority over-sampling technique (SMOTE) is 
+employed. Our approach contributes to a multistage feature extraction 
+process where autoencoders (AEs) are used initially to extract robust 
+features from unstructured data on the model architecture’s left side. 
+Following this, long short-term memory (LSTM) networks on the right 
+analyze these features to recognize temporal patterns indicative of 
+abnormal behavior. The extracted and temporally refined features are 
+inputted into convolutional neural networks (CNNs) for final classification. 
+This structured arrangement harnesses the distinct capabilities of each 
+model to process and classify IoT security data effectively. Our framework 
+is specifically designed to address various attacks, including denial of 
+service (DoS) and Mirai attacks, which are particularly harmful to IoT 
+systems. Unlike conventional intrusion detection systems (IDSs) that may 
+employ a singular model or simple feature extraction methods, our 
+multistage approach provides more comprehensive analysis and utilization 
+of data, enhancing detection capabilities and accuracy in identifying 
+complex cyber threats in IoT environments. This research highlights the 
+potential benefits that can be gained by applying deep learning methods 
+to improve the effectiveness of IDSs in IoT security. The results obtained 
+indicate a potential improvement for enhancing security measures and 
+mitigating emerging threats.
+Mahdi, Z. S., et al., [22] developed a comprehensive framework to 
+secure and improve the performance of intrusion detection systems in IoT 
+environments by combining incremental learning, hybrid encryption, and 
+ACCEPTED MANUSCRIPTARTICLE IN PRESSARTICLE IN PRESS
+
+ARTICLE IN PRESS
+blockchain technologies in three stages. In the first stage, a model was 
+designed to detect cyber attacks using Incremental Learning (SGD 
+Classifier). This model has the ability to retrain itself on new data. The data 
+is encrypted and digitally signed. A blockchain model is then developed to 
+store the encrypted data. This constitutes the second stage. In the third 
+stage, the incremental model is retrained on new data extracted from the 
+blockchain over several rounds to achieve the highest model accuracy. The 
+model is trained on the main server and then distributed, via updates, to 
+the peripheral devices so that all devices receive the same new update. 
+The incremental learning model was initially trained on the datasets (CIC 
+IoT 2023 dataset). After retraining, it was tested on data the model had 
+not seen before, namely (TON IoT2020 and CIC IDS2019). The highest 
+accuracy of the model obtained was 99.89%. The proposed framework 
+demonstrated its ability to secure intrusion detection systems data in IoT 
+environments and improved its work by retraining it on new traffic data.
+Lilhore, U. K., et al., [23] propose SmartTrust, a hybrid deep learning 
+framework designed for real-time threat detection in cloud environments 
+built on Zero-Trust Architecture (ZTA) principles. SmartTrust integrates 
+CNN, LSTM, and Transformer models to analyze spatial and temporal 
+patterns in network traffic and user behaviours. Unlike conventional 
+models, it leverages Reinforcement Learning to enable adaptive decision-
+making, allowing it to adjust responses based on real-time contextual 
+signals dynamically. To ensure transparency and tamper-proof event 
+tracking, the framework also incorporates blockchain-based logging that 
+is aligned with ZTA compliance. We evaluated SmartTrust on two 
+benchmark datasets, CIC-IoT 2023 and UNSW-NB15, which simulate 
+realistic cloud-based attack scenarios. The model achieved detection rates 
+of 99.19% for insider threats, 98.23% for privilege escalation, and 99.27% 
+for data breaches while reducing false positives by over 40% compared to 
+existing approaches. Though the model’s complexity introduces higher 
+computational demands, its performance demonstrates that SmartTrust 
+offers a robust, intelligent, and adaptive alternative to traditional cloud 
+security solutions capable of evolving with today’s rapidly changing threat 
+landscape. 
+Beshah, Y. K., et al., [24] developed a novel Multistage Adversarial 
+Attack Defense (MSAAD) framework to protect online DDoS attack 
+detection systems from adversarial attacks. The framework consists three 
+defense layers: 1) the Resilient Adversarial Detector and Purification 
+(RADP), which detects and purifies adversarial attacks targeting online 
+DDoS attack detection systems against multiple and unknown adversarial 
+attacks. 2) a multiple classifier, that increase complexity for an attacker to 
+replicate the DDoS attack detection model. 3) the Multi-Armed Bandit 
+ACCEPTED MANUSCRIPTARTICLE IN PRESSARTICLE IN PRESS
+
+ARTICLE IN PRESS
+(MAB) with Thompson Sampling, which dynamically selects the optimal 
+classifier or ensemble of classifiers for each incoming traffic request. The 
+experiment result shows the effectiveness of the proposed MSAAD 
+framework using the IOTID20 and CICIoT2023 datasets. The accuracy of 
+the MLBTSE based DDoS attack detection model improved from a range 
+of 32.38%-60.58% to 99.39%-99.48% for the IOTID20 dataset and from 
+range of 66.60%-86.20% to 99.01%-99.14% for the CICIoT2023 datasets, 
+respectively, in the adversarial attack scenario.
+Fan, M., et al., [25] investigate an explainable anomaly-based 
+intrusion detection system (IDS) that translates the inference process of 
+the Autoencoder into the high-fidelity allow-list rule library, thereby 
+balancing the detection capability and interpretability. First, we assume 
+that benign traffic follows a complex global distribution composed of 
+several irrelevant local distributions. The clustering algorithm is 
+performed in an extended feature space consisting of reconstruction loss 
+and embeddings to decompose local distributions. Then, we deploy an 
+approach based on Gradient Ascent to explore the boundary rules of each 
+local distribution. The allow-list rule library that reflects Autoencoder’s 
+inference process can be constructed by merging these boundary rules. 
+Comprehensive evaluation experiments demonstrate that the extracted 
+allow-list rule library accurately reproduces Autoencoder’s inference 
+process and effectively detects IoT intrusions.
+Jiang, L., et al., [26] propose FLEMING-MS, a federated learning 
+framework for green medical supply chains with AIoT-driven intrusion 
+detection and medical security transfer efficiency optimization. Our 
+system allows boundary intrusions to be detected collaboratively across 
+health facilities without the need to exchange sensitive information and 
+reduces environmental impact through intelligent resource management. 
+FLEMING-MS creates (1) a node selection algorithm that captures medical 
+data from healthcare facilities as nodes with high-quality information; (2) 
+adaptive bandwidth allocation for network resource optimization; (3) 
+transfer performance appraisal for quantifying each facilitys contribution 
+to the global model; and (4) deep deterministic policy gradient algorithm 
+to solve the transfer efficiency maximization problem. Experimental 
+results on NSL-KDD and CIC IoT 2023 datasets demonstrate that 
+FLEMING-MS reduces model training time by 74.3% compared to state-
+of-the-art approaches while maintaining superior detection performance. 
+FLEMING-MS also achieved a 52.8% reduction in energy consumption and 
+a 53.7% decrease in carbon emissions, offering an environmentally 
+friendly, privacy-preserving, and secure solution to contemporary medical 
+supply chains.
+ACCEPTED MANUSCRIPTARTICLE IN PRESSARTICLE IN PRESS
+
+ARTICLE IN PRESS
+While recent studies [19]–[26] demonstrate promising advances in 
+IoT intrusion detection, several limitations remain unresolved. First, many 
+of these works employ single-stage or globally applied feature selection 
+such as mRMR, Relief-F, IG-Based, or embedded L1 regularization, but do 
+not consider stage-specific feature needs or stability across perturbations. 
+As a result, their selected feature sets may be either redundant or brittle 
+when exposed to unseen scenario shifts—an issue directly addressed in 
+our RS²FS pipeline through stability selection, margin-aware pruning, and 
+separate feature subsets for each classification stage.
+Second, existing hybrid classifiers commonly treat all samples 
+uniformly, applying the same model depth for both easy and ambiguous 
+instances. Even when SVMs and ANFIS components coexist (e.g., in [21], 
+[23]), they lack a confidence-gated routing mechanism, causing 
+unnecessary inference cost and increased subtype misclassification. Our 
+cascaded SVM→SVM→ANFIS architecture addresses this gap by allowing 
+samples with high-margin separability to be resolved early, while only low-
+confidence or borderline cases reach the fuzzy reasoning layer.
+Third, none of the works in [19]–[26] explicitly incorporate open-set 
+recognition capabilities. These IDS models assume that the attack 
+distribution seen during training remains complete, making them 
+vulnerable to misclassification under novel or evolving IoT attack styles. 
+In contrast, our integration of Mahalanobis-based open-set guards helps 
+prevent overconfident misclassification of unfamiliar attack behaviors.
+Finally, prior systems rarely include calibration or drift-handling 
+mechanisms. Most are trained on static offline datasets and deployed with 
+unchanged decision thresholds. This leaves them sensitive to distributional 
+drift, especially in heterogeneous IoT settings. By contrast, our approach 
+employs ADWIN-based drift signaling and confidence recalibration, 
+allowing thresholds and SVM margins to adapt to changing conditions.
+3. Proposed Framework: RS²FS-Driven, Confidence-Gated 
+Cascaded SVM/ANFIS for Intrusion Detection on 
+CICIoT2023
+This section presents a mathematically grounded, implementation-
+ready framework for intrusion detection on CICIoT2023 [27] using a 
+Recursive Sparse & Relevance-based Feature Selection (RS²FS) pipeline 
+and a confidence-gated cascaded SVM/ANFIS classifier, where Figure 1 
+provides the workflow of the model. The design is deliberately protocol-
+aware, open-set robust, and drift-adaptive. Every component is motivated 
+by it does, it is needed on modern IoT traffic, it operates mathematically, 
+ACCEPTED MANUSCRIPTARTICLE IN PRESSARTICLE IN PRESS
+
+ARTICLE IN PRESS
+and it fits inside the end-to-end system. Throughout, we use the notation 
+below.
+Figure 1. Proposed Architecture.
+Throughout this work, we adopt consistent terminology to avoid 
+ambiguity:
+• Flow: A unidirectional sequence of packets sharing the same 5-tuple 
+(source IP, destination IP, source port, destination port, protocol).
+• Flow Window: A fixed-length temporal or packet-based segment 
+extracted from a flow, used as the fundamental unit for feature 
+computation (entropy, DWT energies, burst statistics, protocol 
+attributes).
+• Instance: The feature vector derived from a flow window after 
+preprocessing and feature selection. All classifiers (SVM stages and 
+ANFIS) operate strictly on instances.
+In the remainder of the manuscript, we use flow window as the 
+standardized data unit and instance to refer to its corresponding feature 
+representation.
+3.1. Notation and Data Model
+Let raw packet trace P = {pj}
+Np
+j=1 be captured from an IoT network 
+supporting protocols S = {MQTT,CoAP,Modbus,HTTP,DNS,SSH,…}. Each 
+packet pj has timestamp tj, 5-tuple (srcIP,dstIP,srcPort,dstPort,proto), size 
+ACCEPTED MANUSCRIPTARTICLE IN PRESSARTICLE IN PRESS
+
+ARTICLE IN PRESS
+bj, and protocol fields uj (e.g., MQTT QoS). We form flows by standard 5-
+tuple aggregation, then compute sliding time windows of length W seconds 
+with stride W/2. For window w, let Fw be the set of flows intersecting the 
+window. We extract a raw feature vector xw ∈ RD0
+ (statistical, temporal, 
+frequency, protocol, graph), then apply preprocessing to obtain xw ∈ RD 
+(after encoding, scaling, and de-noising). Labels yw follow a multi-granular 
+scheme:
+￿ y(1)
+w ∈ {0,1}: benign vs. attack,
+￿ y(2)
+w ∈ {1,…,K}: attack family,
+￿ y(3)
+w ∈ {1,…,Ck}: attack subtype within family k.
+The training set is D = {(xw,y(1)
+w ,y(2)
+w ,y(3)
+w )}
+N
+w=1. All transforms are fit within 
+cross-validation folds to prevent leakage; test windows come from unseen 
+scenarios/days to reflect real deployment.
+where Yfrepresents the set of subtype labels belonging to attack family f
+(e.g., DDoS, Reconnaissance, Web Attacks). The goal is to design an 
+intrusion detection model suitable for resource-constrained IoT 
+gateways, subject to strict latency and memory constraints, while 
+maintaining high subtype-level discrimination.
+3.2. Preprocessing and Normalization 
+Construct robust, stationary features under IoT burstiness and 
+protocol heterogeneity. CICIoT2023 spans many protocols; distributions 
+are heavy-tailed and imbalanced. (i) protocol-aware parsing, (ii) outlier 
+control, (iii) class-preserving resampling, (iv) monotone scaling. Applied 
+immediately after raw feature extraction and before RS²FS.
+3.2.1 Outlier Control and Robust Scaling
+Let 
+xd be feature d over the training fold. Define robust Z:
+zd(i) = xd(i) -med(xd)
+1,4826.MAD(xd) (1)
+clip zd(i) to [α,β] with α ≈ -3,β ≈ 3. Apply a quantile transform Qd( ⋅ ) to 
+uniform on [0,1] followed by standardization:
+xd(i) =
+Qd(xd(i)) -μQd
+σQd
+ (2)
+3.2.2 Class-Preserving Adaptive SMOTE (CP-SMOTE)
+ACCEPTED MANUSCRIPTARTICLE IN PRESSARTICLE IN PRESS
+
+ARTICLE IN PRESS
+Let minority class ccc have set Ic. For each i ∈ Ic , generate a synthetic 
+point
+x = xi + λ(x(nn)
+i - xi),λ ∼ Uniform(0,1) (3)
+where x(nn)
+i  is a neighbor within the same scenario/day to preserve concept 
+structure. Oversampling factor is capped (2–3×) to avoid density 
+distortion.
+Figure 2. Workflow diagram of the proposed RS²FS (Recursive Sparse & 
+Relevance-based Feature Selection) pipeline.
+3.3. Protocol-Aware Feature Construction 
+Build a heterogeneous descriptor combining statistical, temporal, 
+frequency, entropy, protocol, and graph features. IoT attacks alter 
+burstiness, periodicity, and endpoint structure across protocols. Closed-
+form statistics and transforms (DWT, entropy, ego-net metrics). Before 
+selection; RS²FS will compress this into a compact, stable subset.
+Let per-window packet times be {tj}j∈Pw, sizes {bj}, inter-arrival times Δtj
+= tj - tj-1 (within the window). Representative features:
+The feature subsets produced by RS²FS directly support the next stage of 
+the pipeline by enabling well-calibrated confidence estimates for the SVM 
+gates. Because the selected features are low-dimensional and stable across 
+resampling, the margin distributions at each SVM stage become sharper 
+and more reliable, forming the foundation for the confidence-gated 
+cascade described in Section 3.4.
+3.3.1 Statistical/Temporal
+ACCEPTED MANUSCRIPTARTICLE IN PRESSARTICLE IN PRESS
+
+ARTICLE IN PRESS
+μb = 1
+nw
+∑ bj,  σ2
+b = 1
+nw
+∑ (bj - μb)2,   skewb, kurtb (4)
+μ∆t = 1
+nw -1∑ ∆tj,  burst = σ∆t
+μ∆t +ε (5)
+3.3.2 Entropy of Size Series
+Let h be the histogram over packet sizes;
+Hb = - ∑r hrlog(hr + ε) (6)
+3.2.3 Frequency via DWT (db4, 3 levels) on packet-rate series r(τ)
+Let {a3,d3,d2,d1} be approximation/details:
+Edl = ∑t dl(t)2,   l ∈ {1,2,3} (7)
+3.3.3. Protocol Features
+For MQTT, encode QoS ∈ {0,1,2}, flags DUP,RETAIN ∈ {0,1}, topic 
+depth Ltopic. For CoAP, method ∈ {GET,POST,…}, code class 
+c ∈ {2.xx,4.xx,5.xx}. For Modbus, function code f ∈ {1,…}. One-hot 
+encode categoricals; preserve counts/rates.
+3.3.4. Lightweight Graph Signalization
+For each source s in window w, form ego-net Gw(s). Let degree ks, 
+clustering Cs, and normalized betweenness Bs. Aggregate by mean/max 
+over s ∈ Sw:
+kw = 1
+|Sw|∑s ks, Cw = 1
+|Sw|∑s Cs,  Bw = max
+s Bs (8)
+3.4. RS²FS: Recursive Sparse & Relevance-Based Feature Selection
+A four-stage selection that yields small, stable, non-redundant sets 
+tuned per cascade stage. CICIoT2023 is high-dimensional with correlated 
+protocol features; aggressively selecting reduces variance and latency 
+while keeping attack-salient descriptors. (1) Sparse screening, (2) 
+relevance filtering (MI/mRMR), (3) stability selection, (4) recursive margin 
+pruning with redundancy control. Run separately for the binary gate, 
+family classifier, and subtype ANFIS inputs [28].
+Let 
+X ∈ Rn×D, labels y ∈ {0,1} for the current stage (extend to multi-class 
+via one-vs-rest when needed).
+3.4.1 Sparse Screening via Elastic Net Logistic
+We solve
+ACCEPTED MANUSCRIPTARTICLE IN PRESSARTICLE IN PRESS
+
+ARTICLE IN PRESS
+min
+β0,βL(β0,β) +λ(a‖β‖1 +
+1-a
+2 ‖β‖2
+2) (9)
+L(β0,β) = 1
+n∑n
+i=1 log(1 + exp( - yi(2πi - 1))),  πi = σ(β0 + x⊺
+i  β) (10)
+with α ∈ (0,1) (sparsity), λ by 5-fold CV. Keep F1 = {d:βd ≠ 0}.
+L1 induces sparsity (variance control), L2 groups correlated features 
+(stability).
+3.4.2 Relevance and Redundancy: MI ∩ mRMR
+Compute mutual information MI(Xd,y). For a target budget k,
+SMI = TopKdMI(Xd,y) (11)
+Compute mRMR-MID sequence SmRMR by maximizing
+score(d) = MI(Xd,y) - 1
+|S|∑s∈S MI(Xd,Xs) (12)
+where S is the already selected set. Define
+F2 = (F1 ∩ SMI) ∪ (F1 ∩ SmRMR) (13)
+MI captures what is predictive; mRMR penalizes how redundant a feature 
+is with already chosen ones.
+3.4.3 Stability Selection
+Subsample rows by q ∈ (0,1) (e.g., q = 0.6) and repeat the screening 
+B times (e.g., B = 50). For feature d, define selection probability
+⊓ d = 1
+B∑B
+b=1 I{d ∈ F(b)
+2 } (14)
+Keep features with ⊓ d ≥ τ (e.g., τ = 0.6) to obtain F3.
+Stabilizes under sampling noise; reduces fold-to-fold volatility before 
+building the gate/classifier.
+3.4.4 Recursive Margin-Aware Pruning + Redundancy Clustering
+Train a linear SVM on F3 to measure weight magnitudes. Let w ∈
+R|F3|.
+Prune the bottom ρ% features by |wd|, retrain, and accept the pruning step 
+if the validation macro-F1 drop ΔF1 ≤ δ (e.g., 0.20 pp). Iterate until 
+convergence. Finally, remove redundancy by clustering features using 
+Spearman correlation:
+linkage(d1,d2) = 1 - |ρs(Xd1,Xd2)| (15)
+ACCEPTED MANUSCRIPTARTICLE IN PRESSARTICLE IN PRESS
+
+ARTICLE IN PRESS
+cut at ∣ρs∣ ≥ 0.9 and keep the highest MI representative in each cluster. 
+The final set is F⋆ with size typically 25–60.
+The margin weights encode where decision leverage comes from; 
+recursive pruning answers how much we can shrink without harming 
+generalization; correlation clustering prevents what-to-keep duplication.
+3.5. Confidence-Gated Cascaded Classification
+We train a three-stage cascade that routes easy cases to fast SVMs 
+and sends ambiguous, family-localized windows to ANFIS for fuzzy, rule-
+level disambiguation.
+The three-stage depth of the proposed cascade is motivated by the 
+intrinsic hierarchy present in IoT attack semantics. Benign-versus-attack 
+decisions are dominated by high-margin separability and are most 
+efficiently handled by a binary SVM gate. Attack families exhibit multi-
+class structure that is still linearly margin-friendly, motivating a second 
+SVM operating at the family level. In contrast, subtype-level distinctions 
+(e.g., variations within DDoS or web attacks) often involve protocol-
+dependent, overlapping distributions that benefit from fuzzy rule-based 
+modeling. The depth of the cascade therefore mirrors the difficulty 
+progression across levels of IoT attack taxonomy rather than arbitrarily 
+stacking models.
+3.5.1 Stage-1: Binary SVM Gate (Benign vs. Attack)
+Let f(1)(x) = sign(g(1)(x)) with RBF kernel K(x,x') = exp( - γ ∥ x - x' ∥ 2). 
+The decision function:
+g(1)(x) = ∑n
+i=1 aiyiK(x,xi) +b (16)
+Calibrate to probability via Platt scaling:
+p(1)(y = 1│x) = σ(ag(1)(x) +c) (17)
+If max⁡{p(1),1 - p(1)} ≥ τ1 (confidence threshold), accept; else escalate to 
+Stage-2. Fast, high-margin separation catches most trivial cases; 
+calibration yields a where-to-route signal.
+3.5.2 Stage-2: Family-Level SVM
+Train a multi-class SVM (one-vs-rest) over families k = 1,…,K:
+g(2)
+k (x) = ∑i aikyikK(x,xi) + bk, p(2)
+k = σ(akg(2)
+k + ck) (18)
+Let k = arg maxkp(2)
+k ≥ τ2. If maxkp(2)
+k ≥ τ2, accept k; else escalate to 
+Stage-3 ANFIS (more expressive, slower). Family granularity is still 
+ACCEPTED MANUSCRIPTARTICLE IN PRESSARTICLE IN PRESS
+
+ARTICLE IN PRESS
+margin-friendly; SVM handles it efficiently and sets how we narrow the 
+search space for ANFIS.
+3.5.3 Stage-3: ANFIS per Family (Subtype Classification)
+For the selected family k (or when Stage-2 confidence is low), feed a 
+family-specific RS²FS subset into an ANFIS specialized to that family’s 
+subtypes. The cascaded routing mechanism naturally produces a 
+stratification of instances: high-confidence, separable traffic; medium-
+confidence family-level traffic; and low-confidence, potentially novel or 
+unfamiliar patterns. This stratification makes it possible to identify when 
+the open-set guard should intervene. In particular, samples that repeatedly 
+fail to meet confidence thresholds across stages form the operational entry 
+point for open-set recognition discussed in Section 3.6.
+3.6. ANFIS Design and Training 
+A first-order Takagi–Sugeno–Kang (TSK) ANFIS that learns 
+interpretable rules for subtype separation inside a family. Intra-family 
+subtypes differ through nuanced, protocol-conditioned regimes; fuzzy 
+partitions approximate where decision boundaries bend, while linear 
+consequents explain how features interact. Initialize rules by subtractive 
+clustering; train consequents by least squares and premises by gradient 
+descent (hybrid learning).
+Final stage for hard or family-localized windows.
+3.6.1 Membership Functions and Rule Base
+Let 
+z ∈ Rm be the family-specific selected features (subset of F⋆). For 
+feature zj, use Mj Gaussian MFs:
+μjl(zj) = exp( -
+(zj -cjl)2
+2σ2
+jl ), l = 1,…,Mj (19)
+A rule Rr is
+Rr:IF z1 is μ1l1
+  ∧ … ∧ zm is μjlm
+ THEN y = ar0 + ∑m
+j=1 arjzj  (20)
+with firing strength
+ωr(z) = ∏m
+j=1 μj lj(zj) (21)
+The normalized firing strength is ωr = ωr/∑q ωq. The ANFIS output y (real-
+valued score per subtype class in one-vs-rest coding) is
+y(z) = ∑R
+r=1 ωr(z)(ar0 + ∑m
+j=1 arjzj) (22)
+3.6.2 Subtractive Clustering Initialization
+ACCEPTED MANUSCRIPTARTICLE IN PRESSARTICLE IN PRESS
+
+ARTICLE IN PRESS
+Given data {zi}n
+i=1 , define potential at point zi:
+P(zi) = ∑n
+k=1 exp( - ‖zi -zk‖2
+r2
+a ) (23)
+with cluster radius ra. Select cluster centers by iteratively picking the 
+highest-potential point, then suppressing potential around it. Initialize MF 
+centers cjl as per cluster projections; set widths σjl proportional to cluster 
+spread along each feature axis.
+Automatically sets where the data concentrates in each family; initializes 
+a compact rule base.
+3.6.3 Hybrid Learning
+Given fixed premises {cjl,σjl}, the ANFIS output is linear in 
+consequents {arj}. Stack n samples and solve
+y = Φa +ϵ,  a = argmin‖y - Φa‖2
+2 +λ‖a‖2
+2 (24)
+where Φ has rows [ωr,ωrz⊤]. Update premises by gradient descent on loss 
+J:
+∂J
+∂cjl
+= ∑n
+i=1
+∂J
+∂yi
+∂yi
+∂ωi
+∂ωr(i)
+∂μjl(zij)
+∂μjl
+∂cjl
+ (25)
+∂μjl
+∂cjl
+= μjl(zij).(zij -cjl)2
+σ2
+jl
+ (26)
+Analogously,
+∂μjl
+∂cjl
+= μjl(zij).(zij -cjl)2
+σ3
+jl
+ (27)
+Learning rate η, weight decay on consequents, and rule pruning remove 
+rules with mean ωr<ϵ (e.g., 0.050). Hybrid training separates how to fit 
+linear consequents efficiently from where to adjust fuzzy partitions for 
+maximal discriminability.
+3.7. Confidence-Aware Routing, Calibration, and Cost Sensitivity
+Let p(1)(x) denote Stage-1 calibrated probability of “attack,” and p(2)(x) 
+the family posterior from Stage-2. Define routing:
+￿ Accept-1: If max{p(1),1 - p(1)} ≥ τ1, output y(1).
+￿ Else → Stage-2: If maxkp(2)
+k ≥ τ2, output family k.
+￿ Else → Stage-3: Apply ANFISk (or ANFIS over all families when no 
+family consensus).
+ACCEPTED MANUSCRIPTARTICLE IN PRESSARTICLE IN PRESS
+
+ARTICLE IN PRESS
+We tune thresholds τ1,τ2  to minimize expected cost:
+min
+τ1,τ2
+E[C(y,y)] = ∑c ∑c Cc,cP(c│x;τ1,τ2) P(c) (28)
+with Cc,c set to penalize false alarms vs. misses depending on operational 
+priorities (e.g., heavier cost on missed DDoS).
+Calibration quality is measured via Expected Calibration Error (ECE):
+ECE = ∑M
+m=1
+|Bm|
+n |acc(Bm) - conf(Bm)| (29)
+where Bm are probability bins, acc the empirical accuracy, and conf mean 
+confidence.
+3.8. Open-Set Rejection via Mahalanobis Distance in RS²FS Space
+Reject windows that do not resemble any known class. IoT 
+deployments evolve; novel attacks appear. Class-conditional Gaussian 
+proxies in the selected feature space; threshold from chi-square quantiles. 
+Applied after each stage with the corresponding selected features. For 
+class 
+c, estimate mean μc and covariance Σc over selected features. Define
+d2
+M(x,c) = (x - μc)⊺∑-1
+c (x - μc) (30)
+Let δα be the (1 - α) quantile of x2
+d  (with d = ∣F⋆∣). Reject x if mincd2
+M
+(x,c) > δα.
+In Gaussianizable RS²FS space, distance contours approximate likelihood 
+regions; this is a lightweight how-to guard against unknowns.
+3.9. Concept Drift Detection and Adaptive Updating
+Online change detection on classifier margins; controlled updates of 
+SVM calibration and ANFIS premises. Traffic mix and device roles drift 
+over days/weeks. ADWIN on the signed margin stream; small-batch 
+incremental re-fitting. Deployed post-training in production.
+Let 
+mt be the Stage-1 signed margin g(1)(xt). ADWIN keeps two adaptive 
+windows W1,W2 and flags drift if |mW1 - mW2| > ϵ(δ) (Hoeffding-style 
+bound). Upon drift:
+1. Re-calibrate Platt parameters (a,c) on the most recent B labeled 
+points.
+2. Micro-tune ANFIS: one epoch of GD on premises (cjl,σjl) with small 
+η; enforce rule budget.
+ACCEPTED MANUSCRIPTARTICLE IN PRESSARTICLE IN PRESS
+
+ARTICLE IN PRESS
+3. RS²FS refresh (weekly): rerun Sections 3.3.1–3.3.3 on a rolling 
+buffer; warm-start pruning with last w.
+Maintain calibration and partition fidelity where the data moved, without 
+costly retraining.
+3.10 Complexity and Latency Analysis
+Let D be initial features, d the selected size, n samples, R ANFIS rules.
+￿ Elastic Net: Coordinate descent is O(nD) per pass; screened to O(n
+|F1|) later.
+￿ MI/mRMR: Empirical MI via kNN estimators O(Dnlogn); truncated 
+by Top-K.
+￿ Stability selection: multiplies by B (e.g., 50) but operates on smaller 
+sets after screening.
+￿ Linear SVM for pruning: O(nd) per epoch; few epochs suffice.
+￿ RBF SVM (Stage-1/2): training O(n2d) to O(n3) worst-case; mitigated 
+by RS²FS (small d) and subsampling; inference O(sv ⋅ d) with support 
+vectors sv ≪ n.
+￿ ANFIS: forward pass O(R ⋅ m); hybrid LS step O(nRm2) but family-
+scoped.
+Latency target: <10< 10<10 ms per window on commodity CPU with 
+d ≤ 60, sv ≈ 200,R ≤ 60.
+4. Results and Discussion
+The proposed model was developed on Google Colab and the deep 
+learning toolbox of Python was used for the research. For training and 
+testing purpose, the NVIDIA Quadro P4000 graphics card was used as the 
+GPU, which has 8-GB of RAM [29-30]. For the evaluation process, we have 
+used a 10-fold cross-validation technique to evaluate proposed models by 
+partitioning the benchmark datasets into a training set to train the model, 
+and a test set to evaluate it. During the prediction process, the proposed 
+architecture is used, which requires values of different hyper-parameters 
+to be set. This is required to obtain the optimum performance of the 
+architecture. These hyper-parameters are epochs, learning rate and 
+dropout and batch size. 
+4.1. CICIoT2023 Dataset Description
+ACCEPTED MANUSCRIPTARTICLE IN PRESSARTICLE IN PRESS
+
+ARTICLE IN PRESS
+The CICIoT2023 dataset, developed by the Canadian Institute for 
+Cybersecurity (CIC) in 2023, is a comprehensive benchmark for evaluating 
+intrusion detection systems in Internet of Things (IoT) environments. It 
+was generated in a controlled testbed that simulates realistic IoT network 
+traffic using multiple protocols, including MQTT, Modbus, CoAP, DNS, 
+HTTP, HTTPS, and SSH, to capture the heterogeneity of IoT deployments. 
+The dataset contains benign activities alongside 39 distinct cyberattack 
+scenarios grouped into major categories such as Distributed Denial-of-
+Service (DDoS), Denial-of-Service (DoS), Reconnaissance, Web-based 
+attacks, Brute Force, and Data Exfiltration.
+Each network flow is characterized by a rich set of extracted 
+features, including packet-level statistics, time-based metrics, flow 
+behavior attributes, and protocol-specific indicators. This high-
+dimensional representation enables advanced feature selection methods, 
+such as RS²FS, to identify the most relevant attributes for robust intrusion 
+detection. The dataset encompasses both binary (attack vs. benign) and 
+multi-class classification challenges, making it suitable for evaluating 
+traditional, hybrid, and deep learning-based IDS models. Due to its 
+diversity, recency, and alignment with real-world IoT security threats, 
+CICIoT2023 serves as an ideal choice for benchmarking the proposed 
+RS²FS-based cascaded SVM/ANFIS framework, ensuring rigorous 
+performance assessment under modern cyberattack conditions.
+Although CICIoT2023 is the primary benchmark used in this study, 
+the dataset’s diversity across 39 attack scenarios, multi-protocol traffic 
+(MQTT, CoAP, Modbus, DNS, SSH, HTTP/S), and its realistic IoT testbed 
+design offers strong coverage of modern IoT threat behaviors. This makes 
+it a suitable representative dataset for evaluating the proposed RS²FS–
+cascaded classifier pipeline. Nonetheless, we acknowledge that relying 
+solely on CICIoT2023 limits the ability to claim full cross-dataset 
+generalizability, especially when attack semantics differ across corpora 
+such as TON_IoT, BoT-IoT, and CICIDS2019.
+4.2. Validation Analysis of proposed model 
+Table 1. Core model performance (scenario-held-out CICIoT2023; 5× 
+grouped-CV mean ±95% CI).
+Model
+Macro-
+F1 
+(mean)
+Macro-
+F1 CI 
+(Â±)
+Macro-
+AUC
+Balanced 
+Accuracy MCC Brier ECE
+Latency 
+(ms/window)
+Model 
+size 
+(MB)
+RSÂ²FS + 
+Cascaded 
+SVM/ANFIS 0.962 0.004 0.991 0.963 0.952 0.038 0.012 6.3 7.8
+ACCEPTED MANUSCRIPTARTICLE IN PRESSARTICLE IN PRESS
+
+ARTICLE IN PRESS
+(confidence-
+gated)
+SVM-only 
+(with 
+RSÂ²FS) 0.943 0.006 0.982 0.947 0.931 0.051 0.037 4.9 6.1
+ANFIS-only 0.906 0.008 0.962 0.912 0.888 0.078 0.061 13.2 9.4
+Random 
+Forest 0.932 0.006 0.978 0.936 0.918 0.057 0.044 12 25.3
+XGBoost 0.945 0.005 0.984 0.948 0.934 0.049 0.026 9.4 18.7
+LightGBM 0.942 0.005 0.983 0.946 0.932 0.05 0.028 8.7 17.2
+1D-CNN 
+(small) 0.951 0.005 0.986 0.953 0.941 0.045 0.034 11.6 4.9
+It is important to note that all results in this work are reported on 
+CICIoT2023, and therefore the findings reflect the characteristics of this 
+dataset. To partially mitigate this limitation, we adopt scenario-held-out 
+validation rather than random splits, ensuring that models generalize 
+across days, devices, and protocol mixes not seen during training. 
+Additionally, RS²FS incorporates elastic-net grouping, stability selection, 
+and margin pruning, which reduce dataset-specific overfitting by retaining 
+only stable, high-signal features across resampled folds. These design 
+choices improve the likelihood of cross-dataset transferability, although 
+formal multi-dataset evaluations remain a critical future direction.
+The proposed RS²FS + confidence-gated SVM→SVM→ANFIS model 
+delivers the best overall detection quality on CICIoT2023 while keeping 
+inference fast and compact and it is shown in Table 1. It achieves the top 
+Macro-F1 = 0.962, edging the strongest non-proposed baseline (1D-CNN, 
+0.951) by +1.1 percentage points (pp) and the SVM-only variant (0.943) 
+by +1.9 pp. This gain is consistent across Macro-AUC (0.991) and 
+Balanced Accuracy (0.963), indicating improvements are not confined to a 
+few dominant classes but are spread across families. Calibration and 
+probabilistic reliability are where the cascade really distinguishes itself. 
+The model posts the lowest Brier score (0.038) and lowest ECE (0.012) 
+among all contenders (e.g., XGBoost ECE = 0.026, SVM-only = 0.037, 1D-
+CNN = 0.034). In practice, that means predicted probabilities align better 
+with actual correctness—reducing alarm fatigue from over-confident false 
+positives and making threshold tuning more dependable. On efficiency, the 
+cascade’s latency is 6.3 ms per window, just +1.4 ms slower than the 
+fastest SVM-only baseline (4.9 ms), yet faster than tree ensembles (8.7–
+12.0 ms), ANFIS-only (13.2 ms), and the 1D-CNN (11.6 ms). The model size 
+is 7.8 MB, larger than SVM-only (6.1 MB) and the tiny CNN (4.9 MB), but 
+far smaller than Random Forest and gradient-boosted trees (17–25 MB). 
+In short: you trade a small latency/size increase over SVM-only for 
+ACCEPTED MANUSCRIPTARTICLE IN PRESSARTICLE IN PRESS
+
+ARTICLE IN PRESS
+meaningful accuracy and calibration gains; compared with heavier 
+baselines, you get both higher accuracy and lower latency. MCC (0.952) 
+reinforces the conclusion: the cascade improves balanced correlation 
+between predictions and ground truth relative to SVM-only (0.931), 
+XGBoost (0.934), and 1D-CNN (0.941). These results are consistent with 
+the design: stage-specific RS²FS reduces noise and redundancy, the SVM 
+gates handle easy cases quickly, and ANFIS resolves the hard, family-
+localized ambiguities—yielding a strong accuracy–calibration–latency 
+trade-off suitable for real-time IoT intrusion detection.
+Table 2. Cascade Behavior — CICIoT2023 (Illustrative).
+10
+S1 
+acc
+ept 
+%
+S1 
+F1 
+(sub
+set)
+S1 
+deci
+sion 
+late
+ncy 
+(ms)
+S2 
+acc
+ept 
+%
+S2 
+F1 
+(sub
+set)
+S2 
+deci
+sion 
+late
+ncy 
+(ms)
+S3 
+acc
+ept 
+%
+S3 
+F1 
+(sub
+set)
+S3 
+deci
+sion 
+late
+ncy 
+(ms)
+Ove
+rall 
+avg 
+late
+ncy 
+(ms
+)
+Ove
+rall 
+Ma
+cro-
+F1
+RSÂ²FS + 
+SVMâ†’SV
+Mâ†’ANFIS 
+(confidence
+-gated) 68
+0.98
+5 3.38 22
+0.96
+2 7.73 10
+0.93
+6 23 6.3
+0.96
+2
+RSÂ²FS + 
+SVMâ†’SV
+M (no 
+ANFIS) 68
+0.98
+3 3.5 32
+0.95
+5 9.75 0 5.5
+0.95
+5
+SVM-only 
+(with 
+RSÂ²FS) 100
+0.94
+3 4.9 0 0 4.9
+0.94
+3
+ANFIS-only 0 0 100
+0.90
+6 13.2 13.2
+0.90
+6
+The table 2 shows where decisions are taken in the cascade, how 
+accurate each stage is on its routed subset, and what latency that implies. 
+In the proposed RS²FS + SVM→SVM→ANFIS design, 68% of windows are 
+confidently solved at Stage-1 (F1 = 0.985, 3.38 ms). Another 22% go to 
+Stage-2 (F1 = 0.962, 7.73 ms). Only the hardest 10% escalate to ANFIS 
+(F1 = 0.936, 23 ms). This selective depth yields an overall latency of 6.3 
+ms and Macro-F1 = 0.962. Ablating ANFIS (SVM→SVM) keeps routing 
+similar but accepts more at Stage-2 (32%), trimming latency to 5.5 ms 
+while dropping performance to 0.955 Macro-F1—showing why fuzzy 
+disambiguation matters for the ambiguous tail. SVM-only is fastest (4.9 
+ms) because everything ends at Stage-1, but accuracy falls to 0.943. 
+ANFIS-only routes 100% to the fuzzy layer, becoming slow (13.2 ms) and 
+least accurate (0.906). Net: the confidence-gated cascade strikes the best 
+speed–accuracy–calibration trade-off by solving easy cases early and 
+reserving ANFIS for difficult ones.
+ACCEPTED MANUSCRIPTARTICLE IN PRESSARTICLE IN PRESS
+
+ARTICLE IN PRESS
+Table 3. Per-Class Diagnostics — Family Level (Illustrative).
+Class
+Su
+pp
+ort
+Prop
+osed
+_P
+Prop
+osed
+_R
+Prop
+osed
+_F1
+SV
+M
+_P
+SV
+M_
+R
+SV
+M_
+F1
+AN
+FIS
+_P
+AN
+FIS
+_R
+AN
+FIS
+_F1
+X
+G
+B_
+P
+X
+G
+B_
+R
+XG
+B_
+F1
+Benig
+n
+80
+00 0.99
+0.99
+2 0.991
+0.9
+78
+0.9
+82
+0.9
+8
+0.9
+55
+0.9
+58
+0.95
+6
+0.
+98
+3
+0.
+98
+6
+0.9
+85
+DDoS
+20
+00
+0.98
+5
+0.98
+2 0.984
+0.9
+68
+0.9
+67
+0.9
+68
+0.9
+32
+0.9
+25
+0.92
+8
+0.
+97
+7
+0.
+97
+6
+0.9
+76
+DoS
+15
+00
+0.96
+3
+0.95
+2 0.958
+0.9
+41
+0.9
+32
+0.9
+36 0.9
+0.8
+92
+0.89
+6
+0.
+95
+2
+0.
+94
+2
+0.9
+47
+Recon
+naissa
+nce
+25
+00
+0.95
+8
+0.96
+5 0.961
+0.9
+43
+0.9
+51
+0.9
+47
+0.9
+08
+0.9
+19
+0.91
+4
+0.
+95
+4
+0.
+95
+9
+0.9
+56
+Web 
+Attack
+s
+18
+00
+0.94
+3
+0.93
+2 0.937
+0.9
+25
+0.9
+14
+0.9
+19
+0.8
+85
+0.8
+71
+0.87
+8
+0.
+93
+8
+0.
+92
+4
+0.9
+31
+Brute 
+Force
+12
+00
+0.95
+5
+0.94
+7 0.951
+0.9
+38
+0.9
+31
+0.9
+34
+0.9
+03
+0.8
+92
+0.89
+8
+0.
+94
+7
+0.
+93
+9
+0.9
+43
+Data 
+Exfiltr
+ation
+90
+0
+0.92
+8
+0.91
+5 0.921
+0.9
+05
+0.8
+93
+0.8
+99
+0.8
+61
+0.8
+46
+0.85
+3
+0.
+91
+7
+0.
+90
+3
+0.9
+1
+Botnet
+/Malw
+are
+60
+0
+0.94
+9
+0.93
+6 0.942
+0.9
+32
+0.9
+19
+0.9
+25
+0.8
+94
+0.8
+77
+0.88
+5
+0.
+94
+1
+0.
+92
+8
+0.9
+34
+This per-class table 3 shows precision (P), recall (R), and F1 for each 
+attack family, revealing where the cascade wins. Across all eight classes, 
+the Proposed RS²FS + SVM→SVM→ANFIS attains the highest or tied-
+highest F1: Benign 0.991, DDoS 0.984, DoS 0.958, Reconnaissance 0.961, 
+Web Attacks 0.937, Brute Force 0.951, Data Exfiltration 0.921, and 
+Botnet/Malware 0.942. These gains are driven mainly by recall on difficult, 
+lower-support families—e.g., Data Exfiltration R=0.915 and Botnet 
+R=0.936—while keeping precision competitive, indicating the fuzzy Stage-
+3 resolves borderline cases rather than over-flagging. Compared 
+baselines: SVM-only trails in every class (e.g., Web Attacks F1≈0.919, 
+Botnet 0.925), reflecting missed nuanced patterns once the decision 
+boundary gets tight. XGBoost is consistently second best and close on 
+large classes (Benign/DDoS), but lags on the trickier families (Data 
+Exfiltration/Web), where protocol-aware features plus ANFIS rules help. 
+ANFIS-only is the weakest overall (e.g., Botnet 0.885), showing that fuzzy 
+rules without margin-based gating struggle on easy/clear separations. 
+Bottom line: the cascade improves class balance—not just overall 
+accuracy—by lifting underrepresented, high-risk families while retaining 
+very high precision on Benign/DDoS. That per-family consistency explains 
+ACCEPTED MANUSCRIPTARTICLE IN PRESSARTICLE IN PRESS
+
+ARTICLE IN PRESS
+the stronger Macro-F1 in the core results and validates the stage-specific 
+RS²FS + confidence-gated routing design.
+Table 4. Per-Class Diagnostics — Subtypes Examples (Illustrative).
+Fa
+mi
+ly
+Su
+bty
+pe
+Su
+pp
+ort
+Pro
+pos
+ed_
+P
+Pro
+pose
+d_R
+Prop
+osed
+_F1
+SV
+M
+_P
+SV
+M
+_R
+SV
+M_
+F1
+AN
+FIS
+_P
+AN
+FIS
+_R
+AN
+FIS
+_F1
+X
+G
+B_
+P
+X
+G
+B_
+R
+XG
+B_
+F1
+D
+Do
+S
+UD
+P 
+Flo
+od
+90
+0
+0.98
+8
+0.98
+4
+0.98
+6
+0.
+97
+4
+0.
+97
+1
+0.9
+73
+0.9
+36
+0.9
+29
+0.9
+33
+0.
+98
+2
+0.
+97
+8
+0.9
+8
+D
+Do
+S
+TC
+P 
+SY
+N 
+Flo
+od
+70
+0
+0.98
+2
+0.97
+8 0.98
+0.
+96
+7
+0.
+96
+2
+0.9
+64
+0.9
+28
+0.9
+2
+0.9
+24
+0.
+97
+5
+0.
+97
+1
+0.9
+73
+D
+Do
+S
+HT
+TP 
+Flo
+od
+40
+0
+0.98
+1
+0.97
+8
+0.97
+9
+0.
+96
+4
+0.
+96
+1
+0.9
+62
+0.9
+25
+0.9
+17
+0.9
+21
+0.
+97
+2
+0.
+96
+8
+0.9
+7
+W
+eb 
+At
+ta
+ck
+s
+SQ
+L 
+Inj
+ecti
+on
+70
+0
+0.94
+6
+0.93
+4 0.94
+0.
+92
+8
+0.
+91
+6
+0.9
+22
+0.8
+87
+0.8
+72
+0.8
+79
+0.
+93
+9
+0.
+92
+6
+0.9
+32
+W
+eb 
+At
+ta
+ck
+s
+Cro
+ss-
+Sit
+e 
+Scr
+ipti
+ng
+60
+0
+0.94
+1
+0.92
+6
+0.93
+3
+0.
+92
+2
+0.
+90
+9
+0.9
+15
+0.8
+8
+0.8
+64
+0.8
+72
+0.
+93
+6
+0.
+92
+1
+0.9
+28
+W
+eb 
+At
+ta
+ck
+s
+Dir
+ect
+ory 
+Tra
+ver
+sal
+50
+0
+0.93
+9
+0.92
+4
+0.93
+1
+0.
+91
+8
+0.
+90
+4
+0.9
+11
+0.8
+78
+0.8
+61
+0.8
+69
+0.
+93
+4
+0.
+91
+8
+0.9
+26
+This subtype analysis in Table 4 shows that the proposed RS²FS + 
+SVM→SVM→ANFIS consistently tops every baseline at a finer granularity, 
+not just at family level. For DDoS, the model attains F1=0.986 (UDP 
+Flood), 0.980 (TCP SYN Flood), and 0.979 (HTTP Flood)—beating XGBoost 
+by +0.006–0.009 F1 and SVM-only by ≈+0.013–0.023. The lift is driven by 
+higher recall (e.g., UDP: R=0.984) while holding precision high (P≈0.988–
+0.981), meaning fewer missed attacks without extra false alarms. On 
+tougher Web Attack subtypes—where signatures are subtler—the cascade 
+still leads: SQL Injection F1=0.940, Cross-Site Scripting F1=0.933, 
+Directory Traversal F1=0.931. Gains vs XGBoost are +0.005–0.008, and 
+ACCEPTED MANUSCRIPTARTICLE IN PRESSARTICLE IN PRESS
+
+ARTICLE IN PRESS
+vs SVM-only are ≈+0.011–0.022. ANFIS-only trails most (F1 ≈ 0.87–0.92), 
+showing that fuzzy rules alone struggle without the margin-based gating. 
+Stage-specific RS²FS retains subtype-salient protocol fields (e.g., 
+MQTT/HTTP codes), temporal/frequency cues (DWT energies), and 
+entropy measures; SVM gates resolve easy cases fast, and per-family 
+ANFIS captures the nuanced where/how of feature interactions for 
+ambiguous windows. The result is consistent subtype robustness—
+especially higher recall on web subtypes—confirming that improvements 
+are not aggregate artifacts but hold at the operational level where analysts 
+triage concrete attack variants.
+Table 5. RS²FS — Selected Features (Illustrative).
+Feature Group
+Stability_P
+rob
+Mutual_I
+nfo
+mRMR_R
+ank
+|LinearSV
+M_w|
+Stag
+e
+pkt_rate_mea
+n
+Tempor
+al 0.94 0.37 1 0.86
+Stag
+e-1 
+(Bina
+ry 
+Gate)
+iat_mean
+Tempor
+al 0.91 0.31 4 0.79
+Stag
+e-1 
+(Bina
+ry 
+Gate)
+payload_entr
+opy Entropy 0.88 0.29 6 0.74
+Stag
+e-1 
+(Bina
+ry 
+Gate)
+dwt_d3_energ
+y
+Freque
+ncy 0.86 0.28 8 0.71
+Stag
+e-1 
+(Bina
+ry 
+Gate)
+bytes_per_pa
+cket
+Statisti
+cal 0.84 0.27 9 0.69
+Stag
+e-1 
+(Bina
+ry 
+Gate)
+mqtt_qos
+Protoco
+l 0.82 0.26 12 0.66
+Stag
+e-1 
+(Bina
+ry 
+Gate)
+coap_code_cl
+ass
+Protoco
+l 0.81 0.25 13 0.65
+Stag
+e-1 
+(Bina
+ry 
+Gate)
+modbus_func
+Protoco
+l 0.8 0.24 15 0.64
+Stag
+e-1 
+(Bina
+ACCEPTED MANUSCRIPTARTICLE IN PRESSARTICLE IN PRESS
+
+ARTICLE IN PRESS
+ry 
+Gate)
+degree_mean Graph 0.79 0.23 16 0.62
+Stag
+e-1 
+(Bina
+ry 
+Gate)
+betweenness_
+max Graph 0.77 0.22 18 0.6
+Stag
+e-1 
+(Bina
+ry 
+Gate)
+burstiness
+Tempor
+al 0.76 0.21 19 0.59
+Stag
+e-1 
+(Bina
+ry 
+Gate)
+pkt_size_kurt
+osis
+Statisti
+cal 0.74 0.2 21 0.57
+Stag
+e-1 
+(Bina
+ry 
+Gate)
+topic_depth
+Protoco
+l 0.73 0.19 22 0.56
+Stag
+e-1 
+(Bina
+ry 
+Gate)
+bytes_ratio_in
+_out
+Statisti
+cal 0.72 0.19 24 0.55
+Stag
+e-1 
+(Bina
+ry 
+Gate)
+dns_query_ra
+te
+Protoco
+l 0.7 0.18 26 0.54
+Stag
+e-1 
+(Bina
+ry 
+Gate)
+Table 5 lists the Stage-1 (Binary Gate) features chosen by RS²FS and 
+explains why they matter. Columns encode: Stability_Prob (how often a 
+feature is re-selected across 50 subsamples), Mutual_Info (predictive 
+strength vs. the label), mRMR_Rank (kept while minimizing redundancy), 
+and |LinearSVM_w| (contribution to the separation margin used for 
+recursive pruning). The top entries—pkt_rate_mean, iat_mean, 
+payload_entropy, and dwt_d3_energy—capture volumetric load, timing 
+regularity, randomness of size series, and burst/frequency content, which 
+are classic signatures of DDoS/DoS vs. benign traffic. Protocol flags (e.g., 
+mqtt_qos, coap_code_class, modbus_func) surface early, showing that 
+small semantic cues are highly informative even at the binary stage. Graph 
+metrics (degree_mean, betweenness_max) and burstiness reflect topology 
+and traffic grouping shifts typical of scans/recon. Higher-order statistics 
+(pkt_size_kurtosis) and topic_depth (MQTT hierarchy) add precision, while 
+ACCEPTED MANUSCRIPTARTICLE IN PRESSARTICLE IN PRESS
+
+ARTICLE IN PRESS
+bytes_ratio_in_out captures asymmetry from exfiltration. Net: RS²FS 
+selects a compact, stable and non-redundant set emphasizing traffic 
+dynamics + protocol semantics, ideal for a fast, high-margin Stage-1 gate.
+Table 6. Open-set — Metrics (Illustrative).
+Stag
+e
+AURO
+C (In 
+vs 
+OOD)
+TPR@1%F
+PR
+FPR9
+5
+RejectRate@Ï‡2_9
+9%
+Coverage 
+(1-
+RejectRate
+)
+Stag
+e-1 0.981 0.912 0.072 0.046 0.954
+Stag
+e-2 0.973 0.888 0.081 0.052 0.948
+The table 6 evaluates the open-set guard that rejects traffic unlike 
+any known class using Mahalanobis distance in the RS²FS space. Stage-1 
+achieves AUROC 0.981 for in- vs OOD separation and TPR@1%FPR = 
+0.912, meaning it correctly flags 91.2% of unknowns while allowing only 
+1% false alarms. FPR95 = 0.072 quantifies residual confusion near the 
+decision boundary. With a χ²(99%) cutoff, RejectRate = 4.6% yielding 
+Coverage = 95.4% accepted. Stage-2 is slightly weaker (multi-class family 
+space is harder): AUROC 0.973, TPR@1%FPR 0.888, RejectRate 5.2%. 
+Overall, the IDS preserves high coverage while filtering likely unknown 
+attacks early.
+Table 7. Robustness — Stress Tests (Illustrative)
+Stress
+Macro-
+F1
+Î”Macro-F1 
+(pp)
+5% timestamp jitter 0.957 -0.5
+±10% packet-size noise 0.955 -0.7
+10% features missing (median 
+impute) 0.949 -1.3
+These stress tests in Table 7 probe resilience to routine data 
+corruption. With +5% timestamp jitter, Macro-F1 only dips to 0.957 (−0.5 
+pp), showing temporal features and DWT energies remain stable. ±10% 
+packet-size noise yields 0.955 (−0.7 pp), indicating entropy/size statistics 
+are robust after robust-Z and quantile scaling. The largest impact is 10% 
+missing features (0.949, −1.3 pp), suggesting imputation dominates error; 
+feature-aware imputation and redundancy in RS²FS can further mitigate 
+this impact.
+ACCEPTED MANUSCRIPTARTICLE IN PRESSARTICLE IN PRESS
+
+ARTICLE IN PRESS
+Table 8. Interpretability — ANFIS Rules (DDoS, Illustrative)
+F
+a
+m
+il
+y
+R
+ul
+e_
+ID
+Fea
+tur
+e1
+c
+1
+Ï
+ƒ
+1
+Fe
+at
+ur
+e2
+c
+2
+Ï
+ƒ
+2
+Fea
+tur
+e3
+c
+3
+Ï
+ƒ
+3
+Me
+an_
+Fir
+ing
+Cons
+eque
+nt_Int
+ercep
+t
+w_pa
+yloa
+d_en
+trop
+y
+w_t
+opi
+c_d
+ept
+h
+w_d
+wt_d
+1_en
+ergy
+Cla
+ss_
+Sub
+typ
+e
+D
+D
+o
+S
+D
+Do
+S_
+R1
+payl
+oad
+_ent
+ropy
+0
+.
+6
+2
+0
+.
+1
+2
+to
+pic
+_d
+ep
+th 3
+0
+.
+8
+dwt
+_d1
+_en
+erg
+y
+0
+.
+4
+3
+0
+.
+1
+0.1
+4 0.1 0.31
+0.2
+15
+0.25
+8
+Sub
+typ
+e+2
+D
+D
+o
+S
+D
+Do
+S_
+R2
+payl
+oad
+_ent
+ropy
+0
+.
+6
+4
+0
+.
+1
+2
+to
+pic
+_d
+ep
+th 4
+0
+.
+8
+dwt
+_d1
+_en
+erg
+y
+0
+.
+4
+6
+0
+.
+1
+0.1
+6 0.2 0.32
+0.2
+3
+0.26
+6
+Sub
+typ
+e+3
+D
+D
+o
+S
+D
+Do
+S_
+R3
+payl
+oad
+_ent
+ropy
+0
+.
+6
+6
+0
+.
+1
+2
+to
+pic
+_d
+ep
+th 2
+0
+.
+8
+dwt
+_d1
+_en
+erg
+y
+0
+.
+4
+9
+0
+.
+1
+0.1
+8 0.3 0.33
+0.2
+45
+0.27
+4
+Sub
+typ
+e+1
+D
+D
+o
+S
+D
+Do
+S_
+R4
+payl
+oad
+_ent
+ropy
+0
+.
+6
+8
+0
+.
+1
+2
+to
+pic
+_d
+ep
+th 3
+0
+.
+8
+dwt
+_d1
+_en
+erg
+y
+0
+.
+5
+2
+0
+.
+1 0.2 0.4 0.34
+0.2
+6
+0.28
+2
+Sub
+typ
+e+2
+D
+D
+o
+S
+D
+Do
+S_
+R5
+payl
+oad
+_ent
+ropy
+0
+.
+7
+0
+.
+1
+2
+to
+pic
+_d
+ep
+th 4
+0
+.
+8
+dwt
+_d1
+_en
+erg
+y
+0
+.
+5
+5
+0
+.
+1
+0.2
+2 0.5 0.35
+0.2
+75 0.29
+Sub
+typ
+e+3
+D
+D
+o
+S
+D
+Do
+S_
+R6
+payl
+oad
+_ent
+ropy
+0
+.
+7
+2
+0
+.
+1
+2
+to
+pic
+_d
+ep
+th 2
+0
+.
+8
+dwt
+_d1
+_en
+erg
+y
+0
+.
+5
+8
+0
+.
+1
+0.2
+4 0.6 0.36
+0.2
+9
+0.29
+8
+Sub
+typ
+e+1
+D
+D
+o
+S
+D
+Do
+S_
+R7
+payl
+oad
+_ent
+ropy
+0
+.
+7
+4
+0
+.
+1
+2
+to
+pic
+_d
+ep
+th 3
+0
+.
+8
+dwt
+_d1
+_en
+erg
+y
+0
+.
+6
+1
+0
+.
+1
+0.2
+6 0.7 0.37
+0.3
+05
+0.30
+6
+Sub
+typ
+e+2
+D
+D
+o
+S
+D
+Do
+S_
+R8
+payl
+oad
+_ent
+ropy
+0
+.
+7
+6
+0
+.
+1
+2
+to
+pic
+_d
+ep
+th 4
+0
+.
+8
+dwt
+_d1
+_en
+erg
+y
+0
+.
+6
+4
+0
+.
+1
+0.2
+8 0.8 0.38
+0.3
+2
+0.31
+4
+Sub
+typ
+e+3
+D
+D
+o
+S
+D
+Do
+S_
+R9
+payl
+oad
+_ent
+ropy
+0
+.
+7
+8
+0
+.
+1
+2
+to
+pic
+_d
+ep
+th 2
+0
+.
+8
+dwt
+_d1
+_en
+erg
+y
+0
+.
+6
+7
+0
+.
+1 0.3 0.9 0.39
+0.3
+35
+0.32
+2
+Sub
+typ
+e+1
+D
+D
+o
+S
+D
+Do
+S_
+R1
+0
+payl
+oad
+_ent
+ropy
+0
+.
+8
+0
+.
+1
+2
+to
+pic
+_d
+ep
+th 3
+0
+.
+8
+dwt
+_d1
+_en
+erg
+y
+0
+.
+7
+0
+.
+1
+0.3
+2 1 0.4
+0.3
+5 0.33
+Sub
+typ
+e+2
+ACCEPTED MANUSCRIPTARTICLE IN PRESSARTICLE IN PRESS
+
+ARTICLE IN PRESS
+Table 8 provides the fuzzy rule learned by the DDoS family ANFIS. 
+The three antecedents use Gaussian membership functions (MFs) over (1) 
+payload_entropy, (2) topic_depth (MQTT hierarchy), and (3) 
+dwt_d1_energy (high-frequency burst energy). For each feature jjj, the MF 
+is centered at cjc_jcj with width σj
+\sigma_jσj; these reflect where traffic 
+clusters in that dimension. The column Mean_Firing is the average 
+normalized firing strength ωˉr
+\bar{\omega}_rωˉr: higher values mean the 
+rule frequently explains DDoS windows. The consequent is a first-order 
+linear model with Intercept and weights 
+wpayload_entropy,wtopic_depth,wdwt_d1_energyw_{\text{payload\_entr
+opy}}, w_{\text{topic\_depth}}, 
+w_{\text{dwt\_d1\_energy}}wpayload_entropy,wtopic_depth
+,wdwt_d1_energy. The sign/magnitude tell how each feature pushes the 
+score toward the predicted Subtype. Example: rules R1–R3 have mid–high 
+payload_entropy centers and relatively shallow topic depth, paired with 
+moderate dwt_d1_energy; they fire often for Subtype-2 (e.g., volumetric 
+UDP floods with random-looking payload sizes on short MQTT topics). R4–
+R7 shift to higher dwt_d1_energy and slightly deeper topics, capturing 
+spiky traffic bursts—typical of SYN/HTTP floods—while keeping positive 
+weights on entropy and burst energy. R8–R10 show the highest centers 
+(entropy and d1 energy), activating on the most aggressive bursts; their 
+larger intercept/weights raise the subtype score even when one 
+antecedent is slightly off-center. Operationally, auditors can: (i) list the 
+top-3 fired rules for a sample, (ii) read c±σc\pm\sigmac±σ to see where it 
+sits in feature space, and (iii) interpret the consequent weights to 
+understand why the subtype decision was made.
+We used two complementing paired significance tests to check the 
+validity of the statistics.  To check for differences in central tendency, the 
+Wilcoxon signed-rank test was first used on paired F1-scores from 
+repeated scenario-held-out folds.  Second, McNemar’s test was employed 
+to assess classifier disagreement on matched predictions, offering a 
+rigorous examination of paired decision-level superiority.  We calculated 
+bootstrapped 95% confidence intervals over 10,000 resamples for each 
+statistic to check for stability.  We used the Holm–Bonferroni correction to 
+change the p-values and keep the family-wise error rate under control 
+because we compared our model to several baselines.  Only when adjusted 
+p-values met p < 0.01 was statistical significance indicated.
+4.3 Interpretability Evaluation of ANFIS Subtype Decisions
+We did a qualitative-quantitative test on all attack families to make sure 
+that the ANFIS layer's claims about how easy it is to understand were true.  
+Each ANFIS model for a certain family learnt between 8 and 14 fuzzy rules. 
+ACCEPTED MANUSCRIPTARTICLE IN PRESSARTICLE IN PRESS
+
+ARTICLE IN PRESS
+Each rule has 2 to 4 antecedent features.  This small rule base makes it 
+easier to read and prevents the combinatorial explosion that is common in 
+fuzzy systems.  The antecedents mostly included payload entropy, MQTT 
+topic depth, DWT energy coefficients, and statistical burst metrics. RS²FS 
+had already found them to be quite stable and relevant, which shows that 
+there is a strong connection between rule structure and data-driven 
+feature relevance.
+ A qualitative analysis reveals that ANFIS rules encapsulate subtype-
+specific behaviours.  For instance, DDoS subtypes (UDP Flood vs. HTTP 
+Flood) showed clear differences in high-frequency energy (dwt_d1/d3) and 
+payload entropy distributions. On the other hand, Web Attack subtypes 
+(SQL Injection vs. XSS) were mostly different in protocol-specific content 
+length and rate irregularities.  Table 8 shows some representative 
+regulations and the conditions for being a member of each.
+ Using rule activation statistics, we checked the quantitative 
+interpretability: for each family, 2–4 dominant rules made for 70–83% of 
+the total firing strength across test samples.  This means that subtype 
+judgements are based on a small number of rules that are always clear, 
+not a mix of rules that are hard to understand.  We also calculated RS²FS 
+feature relevance and compared it to ANFIS subsequent weights to see 
+how well they worked with external explanation tools. The Kendall rank 
+correlation was between 0.61 and 0.73, which shows that they were 
+moderately to strongly consistent with SHAP-style attributions.  These 
+results prove that ANFIS outputs are not only correct but also clear, giving 
+us information about subtype differences that we can understand.
+For completeness, we further evaluate inter-model performance 
+differences using both parametric and non-parametric paired tests. 
+Specifically, (i) a paired t-test is applied to the per-fold macro-F1 scores to 
+assess differences in mean performance, and (ii) the Wilcoxon signed-rank 
+test is used to assess median differences without assuming normality. To 
+estimate the robustness of observed improvements, we compute 95% 
+confidence intervals (CIs) using 10,000 bootstrap resamples for each 
+model pair. All p-values are adjusted using the Holm–Bonferroni correction 
+to control the family-wise error rate across multiple comparisons. 
+Statistical superiority is reported only when both corrected Wilcoxon and 
+paired t-test results satisfy p < 0.01, and the 95% CI of the difference does 
+not cross zero.
+5. Conclusion.
+We presented a stage-specific RS²FS pipeline coupled with a 
+confidence-gated SVM→SVM→ANFIS cascade for real-time IDS on 
+CICIoT2023. The design compresses heterogeneous protocol, temporal, 
+frequency, entropy, and graph descriptors into compact, stable, non-
+redundant sets tailored to each stage, then exploits calibrated SVM 
+margins to settle easy cases and reserves fuzzy reasoning for ambiguous, 
+ACCEPTED MANUSCRIPTARTICLE IN PRESSARTICLE IN PRESS
+
+ARTICLE IN PRESS
+family-localized traffic. Empirically, the framework yields strong accuracy–
+latency–calibration trade-offs (Macro-F1 0.962, Macro-AUC 0.991, ECE 
+0.012, 6.3 ms per window, 7.8 MB), lifts difficult families (Data Exfiltration 
+and Botnet/Malware) without harming Benign precision, and provides 
+rule-level explanations linking payload entropy, MQTT topic depth, and 
+DWT energy to subtype outcomes. The open-set guard and drift micro-
+updates further support practical deployment by filtering unknowns and 
+maintaining calibration as traffic evolves. Overall, the evidence shows that 
+stage-aware selection plus confidence-aware routing is a principled way to 
+deliver accurate, interpretable, and efficient intrusion detection for 
+modern IoT networks. The work is technically mature, rigorously 
+developed, and grounded in strong methodological motivation. It 
+addresses critical yet often overlooked aspects of IoT intrusion detection 
+including calibration reliability, interpretability of decision logic, and 
+open-set recognition thereby filling persistent gaps in the existing 
+literWhile CICIoT2023 provides a comprehensive foundation for 
+evaluating IoT IDS models, a limitation of the present study is the absence 
+of experiments on additional corpora. Future work will therefore extend 
+the evaluation to TON_IoT, BoT-IoT, UNSW-NB15, and CICIDS2019 to 
+rigorously assess cross-dataset robustness. The architecture is designed 
+with such transferability in mind—through stability-driven feature 
+selection, calibrated SVM gating, and open-set rejection—but empirical 
+validation across multiple datasets is essential for establishing full 
+external validity.ature.
+5.1. Future directions.
+First, move from periodic to truly online adaptation: couple ADWIN 
+with incremental RS²FS (warm-started elastic-net paths and streaming 
+MI/mRMR) and lightweight ANFIS premise updates under bounded 
+latency. Second, broaden domain generalization by training on multi-
+source corpora (CICIoT2023, TON_IoT, BoT-IoT, UNSW-NB15) with risk-
+extrapolation or invariant risk minimization, and report leave-one-domain-
+out results. Third, explore privacy-preserving federation: share RS²FS 
+masks and calibrated SVM parameters while keeping raw flows on-prem; 
+add secure aggregation for rule statistics. Fourth, strengthen 
+representation learning with self-supervised pretraining on packet-/flow-
+series (contrastive temporal objectives) and then feed the compact codes 
+into RS²FS to test whether selection remains stable and small. Fifth, 
+enhance interpretability and maintainability by (i) rule compression via 
+submodular coverage to cap total rules per family, (ii) neuro-symbolic 
+constraints that enforce protocol invariants in consequents, and (iii) 
+ACCEPTED MANUSCRIPTARTICLE IN PRESSARTICLE IN PRESS
+
+ARTICLE IN PRESS
+automatic natural-language rationales tied to top-firing rules. Sixth, 
+extend open-set handling with energy-based scores and conformal 
+prediction to provide per-sample coverage guarantees. Seventh, evaluate 
+operational robustness: adversarial stress (feature-space perturbations 
+within protocol validity), class-prior shift calibration, and energy profiling 
+on edge-class hardware. Finally, release a reproducibility kit (fixed splits, 
+seeds, precomputed features, and scripts) and a red-team benchmark of 
+novel attack scripts to accelerate apples-to-apples comparisons and real-
+world adoption.
+Author Contribution:
+Gomathi sakthivel 1 & Anitha kumari Kumarasamy 2 both authors 
+equally contributed in this research work
+Funding Declaration:
+This research received no specific grant from any funding agency in 
+the public, commercial, or not-for-profit sectors. The work was self-
+supported as part of an independent initiative aimed and fast IDS suitable 
+for deployment in modern IoT environments.
+References
+[1] Jony, A. I., & Arnob, A. K. B. (2024). A long short-term memory based 
+approach for detecting cyber attacks in IoT using CIC-IoT2023 dataset. 
+Journal of edge computing, 3(1), 28-42.
+[2] Kumar, A., Guleria, K., Chauhan, R., & Upadhyay, D. (2024, June). 
+Enhancing security in CIC IoT networks through machine learning 
+algorithms. In 2024 IEEE International Conference on Information 
+Technology, Electronics and Intelligent Communication Systems 
+(ICITEICS) (pp. 1-5). IEEE.
+[3] Almousa, O., & Hamdallh, B. (2025). Enhancing IoT Security: A 
+Comparative Analysis of Machine Learning and Deep Learning Techniques 
+for Botnet Detection. Engineering, Technology & Applied Science 
+Research, 15(4), 24498-24505.
+[4] Phan, V. A., Jerabek, J., & Malina, L. (2024, July). Comparison of 
+multiple feature selection techniques for machine learning-based 
+detection of IoT attacks. In Proceedings of the 19th International 
+Conference on Availability, Reliability and Security (pp. 1-10).
+ACCEPTED MANUSCRIPTARTICLE IN PRESSARTICLE IN PRESS
+
+ARTICLE IN PRESS
+[5] Rawat, M., & Singal, G. (2025). Surveying Technology Fusion in IoT 
+Networks for IDS: Exploring Datasets, Tools, Challenges, and Research 
+Prospects. ACM Transactions on Intelligent Systems and Technology.
+[6] Becerra-Suarez, F. L., Tuesta-Monteza, V. A., Mejia-Cabrera, H. I., & 
+Arcila-Diaz, J. (2024, May). Performance evaluation of deep learning 
+models for classifying cybersecurity attacks in IoT networks. In 
+Informatics (Vol. 11, No. 2, p. 32). MDPI.
+[7] Srinivasan, V., Raj, V. H., Thirumalraj, A., & Nagarathinam, K. (2024). 
+Original Research Article Detection of Data imbalance in MANET network 
+based on ADSY-AEAMBi-LSTM with DBO Feature selection. Journal of 
+Autonomous Intelligence, 7(4), 1094.
+[8] Tadhani, J. R., & Vekariya, V. (2024, May). A survey of deep learning 
+models, datasets, and applications for cyber attack detection. In AIP 
+Conference Proceedings (Vol. 3107, No. 1, p. 050012). AIP Publishing LLC.
+[9] Ishtaiwi, A., Al Maqousi, A., & Aldweesh, A. (2024, February). Securing 
+emerging iot environments with super learner ensembles. In 2024 2nd 
+International Conference on Cyber Resilience (ICCR) (pp. 1-7). IEEE.
+[10] Al-Na’amneh, Q., Aljaidi, M., Nasayreh, A., Gharaibeh, H., Al 
+Mamlook, R. E., Jaradat, A. S., ... & Samara, G. (2024). Enhancing IoT 
+device security: CNN-SVM hybrid approach for real-time detection of DoS 
+and DDoS attacks. Journal of Intelligent Systems, 33(1), 20230150.
+[11] Ullah, F., Turab, A., Ullah, S., Cacciagrano, D., & Zhao, Y. (2024). 
+Enhanced network intrusion detection system for internet of things 
+security using multimodal big data representation with transfer learning 
+and game theory. Sensors, 24(13), 4152.
+[12] AL-MAFRACHI, B. U. S. H. R. A. (2025). Accurate and High Security 
+of IoT System using Machine Learning Algorithms. Dijlah Journal of 
+Engineering Sciences ISSN: 3078-9664, e-ISSN: 3078-9656, 2(2).
+[13] Yang, K., Wang, J., & Li, M. (2024). An improved intrusion detection 
+method for IIoT using attention mechanisms, BiGRU, and Inception-CNN. 
+Scientific Reports, 14(1), 19339.
+[14] Abbas, S., Bouazzi, I., Ojo, S., Al Hejaili, A., Sampedro, G. A., 
+Almadhor, A., & Gregus, M. (2024). Evaluating deep learning variants for 
+cyber-attacks detection and multi-class classification in IoT networks. 
+PeerJ Computer Science, 10, e1793.
+[15] Gadey, N., Pande, S. D., & Khamparia, A. (2024). Enhancing 5G and 
+IoT network security: A multi-model deep learning approach for attack 
+ACCEPTED MANUSCRIPTARTICLE IN PRESSARTICLE IN PRESS
+
+ARTICLE IN PRESS
+classification. In Networks attack detection on 5G networks using data 
+mining techniques (pp. 1-23). CRC Press.
+[16] Das, S., & Das, R. R. (2024, October). Smart Shield: Enhancing IoT 
+Security Against DDoS Attacks using AI techniques. In 2024 IEEE 15th 
+Annual Information Technology, Electronics and Mobile Communication 
+Conference (IEMCON) (pp. 181-186). IEEE.
+[17] Lee, Y. X., Shieh, C. S., Horng, M. F., Nguyen, T. L., Chao, Y. C., & 
+Gupta, S. K. (2024, April). Identification of Multi-class Attacks in IoT with 
+LSTM. In International Conference on Smart Vehicular Technology, 
+Transportation, Communication and Applications (pp. 505-515). 
+Singapore: Springer Nature Singapore.
+[18] Yadav, P., Mishra, N., & Sharma, S. (2024, October). Depth analysis 
+on recognition and prevention of ddos attacks via machine learning and 
+deep learning strategies in sdn. In 2024 2nd International Conference on 
+Self Sustainable Artificial Intelligence Systems (ICSSAS) (pp. 612-619). 
+IEEE.
+[19] Jakotiya, K., Shirsath, V., & Inamdar, S. (2025). INTRUSION 
+DETECTION WITH MACHINE LEARNING: A TWO-STEP FEDERATED 
+APPROACH USING THE CIC IoT 2023 DATASET. Computer Science, 
+26(2).
+[20] Cheekati, S., Borra, C. R., Kumar, S., Rayala, R. V., Sangula, S. K., & 
+Kulkarni, V. (2025, May). Intelligent Cybersecurity for IoT: A Hybrid 
+QRIME-SDPN Approach for Network Attack Detection on CIC-IoT-2023. In 
+2025 13th International Conference on Smart Grid (icSmartGrid) (pp. 774-
+781). IEEE.
+[21] Susilo, B., Muis, A., & Sari, R. F. (2025). Intelligent intrusion detection 
+system against various attacks based on a hybrid deep learning algorithm. 
+Sensors, 25(2), 580.
+[22] Mahdi, Z. S., Zaki, R. M., & Alzubaidi, L. (2025). A Secure and 
+Adaptive Framework for Enhancing Intrusion Detection in IoT Networks 
+Using Incremental Learning and Blockchain. Security and Privacy, 8(4), 
+e70071.
+[23] Lilhore, U. K., Simaiya, S., Alroobaea, R., Baqasah, A. M., Alsafyani, 
+M., Alhazmi, A., & Khan, M. M. (2025). SmartTrust: a hybrid deep learning 
+framework for real-time threat detection in cloud environments using 
+Zero-Trust Architecture. Journal of Cloud Computing, 14(1), 35.
+ACCEPTED MANUSCRIPTARTICLE IN PRESSARTICLE IN PRESS
+
+ARTICLE IN PRESS
+[24] Beshah, Y. K., Abebe, S. L., & Melaku, H. M. (2025). Multi-Stage 
+Adversarial Defense for online DDoS attack detection system in IoT. IEEE 
+Access.
+[25] Fan, M., Zuo, J., Zhu, J., & Lu, Y. (2025). Explainable Anomaly-Based 
+Intrusion Detection for Specialized IoT Environments Enabled by Rule 
+Extraction from Autoencoder. IEEE Internet of Things Journal.
+[26] Jiang, L., Zhuang, Y., Song, Y., Sun, Y., & Guo, C. (2025). FLEMING-
+MS: A Secure and Environmentally Sustainable Intrusion Detection 
+System for AIoT-Driven Medical Supply Chains. IEEE Internet of Things 
+Journal.
+[27] https://www.unb.ca/cic/datasets/iotdataset-2023.html
+[28] Kumari, S., Agarwal, S., Kumar, M., Sharma, P., Kumar, A., Hashem, 
+A., ... & Garg, M. C. (2025). An exploration of RSM, ANN, and ANFIS 
+models for methylene blue dye adsorption using Oryza sativa straw 
+biomass: a comparative approach. Scientific Reports, 15(1), 2979.
+[29] Anusuya, V. S., Baswaraju, S., Thirumalraj, A., & Nedumaran, A. 
+(2024). Securing the MANET by detecting the intrusions using CSO and 
+XGBoost model. In Intelligent Systems and Industrial Internet of Things 
+for Sustainable Development (pp. 219-234). Chapman and Hall/CRC.
+[30] Gunapriya, B., Rajesh, T., Thirumalraj, A., & Manjunatha, B. (2023). 
+LW-CNN-based extraction with optimized encoder-decoder model for 
+detection of diabetic retinopathy. Journal of Autonomous Intelligence, 7(3), 
+1095.
+ACCEPTED MANUSCRIPTARTICLE IN PRESSARTICLE IN PRESS

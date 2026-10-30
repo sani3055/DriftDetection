@@ -1,0 +1,1644 @@
+International Journal of Information Security          (2026) 25:179 
+https://doi.org/10.1007/s10207-026-01344-9
+REGULAR CONTRIBUTION
+TRINITY-IDS: a tri-view hybrid architecture with adaptive
+drift-evidential learning for robust and continual intrusion detection
+P. Palpandi 1 · B. Sakthivel 2 · R. Nandakumar 2 · M. Ponnrajakumari 3
+Received: 14 August 2026 / Accepted: 2 October 2026
+© The Author(s) 2026
+Abstract
+The rapid evolution of cyber threats in modern network environments demands intelligent intrusion detection systems.
+This system should be capable of handling complex attack patterns and heterogeneous data distributions. Existing intrusion
+detection approaches mainly focus on statistical or temporal ﬂow characteristics. This approach neglects the topological
+relationships among network entities and the uncertainty associated with detection decisions. In this work, a Tri-View Hybrid
+Architecture with Adaptive Drift-Evidential Learning (TRINITY -IDS) is proposed for robust intrusion detection. Initially,
+a Density-Aware Hybrid Resampling strategy based on Cluster-SMOTE and Edited Nearest Neighbor (ENN) cleaning is
+applied to overcome class imbalance and improve minority attack representation. An adversarial feature selection mechanism
+with gradient reversal learning is used to reduce dataset-speciﬁc feature leakage and enhance cross-domain generalization.
+The extracted features are represented through three complementary views: a statistical view using convolutional feature
+extraction with channel attention, a temporal view using speciality-token-augmented BiGRU with self-attention for sequential
+behavior modeling, and a topological view using Graph Attention Networks (GA T) to capture network relationship patterns.
+A dynamic cross-view adaptive fusion mechanism automatically learns the contribution of each representation for individual
+samples. In addition, a Dirichlet evidential learning head is used for uncertainty-aware attack classiﬁcation. It estimates belief
+and uncertainty values rather than only deterministic predictions. To support evolving network conditions, an online Page-
+Hinkley drift detector and experience replay mechanism are incorporated for continual adaptation during streaming intrusion
+detection. Experimental evaluation demonstrates that the proposed TRINITY -IDS achieves an overall accuracy of 98.36%,
+precision of 98.26%, recall of 98.32%, and F1-score of 98.29%.
+Keywords Intrusion detection system (IDS) · Network security · Tri-view learning · Graph Attention Network (GA T) ·
+Bidirectional Gated Recurrent Unit (BiGRU) · Cross-view adaptive fusion · Dirichlet evidential learning
+B P . Palpandi
+palpandi@sethu.ac.in
+B. Sakthivel
+sakthivelece@psyec.edu.in
+R. Nandakumar
+nanthartr@gmail.com
+M. Ponnrajakumari
+ponnrajakumarim.sse@saveetha.com
+1 Department of CSE (IoT), Sethu Institute of Technology,
+Virududhunagar, India
+2 Department of ECE, Pandian Sarswathi Y adav Engineering
+College, Sivagangai, India
+3 Department of Electronics and Communication Engineering,
+V elammal Engineering College, Chennai, India
+1 Introduction
+The rapid growth of digital communication has signiﬁ-
+cantly increased the dependency on cyberspace for critical
+applications [ 1]. Cloud computing and Internet of Things
+(IoT) technologies provide data exchange and intelligent
+services. This creates new opportunities for cybercriminals
+to exploit vulnerabilities in network systems. The mod-
+ern cyber-attacks like denial-of-service (DoS), distributed
+denial-of-service (DDoS), malware intrusion, ransomware,
+botnet activities, probing attacks, and zero-day attacks con-
+tinue to evolve with increasing complexity [ 2, 3]. These
+sophisticated threats can compromise the conﬁdentiality and
+availability of network resources. Therefore, there is a need
+to develop intelligent and adaptive cybersecurity solutions to
+detect malicious activities in real-time.
+0123456789().: V,-vol 123
+
+  179 Page 2 of 21 P. Palpandi et al.
+Intrusion Detection Systems (IDSs) contribute a signiﬁ-
+cant role in cybersecurity [4]. This system continuously mon-
+itors network activities and identiﬁes abnormal behaviors.
+The traditional IDS approaches are mainly based on rule-
+based and signature-based detection mechanisms where pre-
+deﬁned attack patterns are matched against incoming trafﬁc.
+But, they suffer from limited adaptability against unknown
+and rapidly evolving threats. Moreover, the increasing vol-
+ume and complexity of network trafﬁc make conventional
+detection techniques inefﬁcient for modern heterogeneous
+environments. Consequently, intelligent IDS solutions based
+on data-driven approaches have gained signiﬁcant attention
+to increase detection accuracy and adaptability.
+Recently, Machine Learning (ML) techniques [ 5]h a v e
+been adopted for intrusion detection due to their capabil-
+ity to learn discriminative patterns from network trafﬁc
+data. The conventional ML algorithms like Support V ec-
+tor Machine (SVM), Decision Tree, Random Forest, and
+k-Nearest Neighbor have shown promising performance in
+attack classiﬁcation. However, these approaches generally
+depend on handcrafted feature extraction and may fail to
+capture complex nonlinear relationships present in large-
+scale network data. Conversely, Deep Learning (DL) [ 6]
+approaches have emerged as effective solutions for automatic
+feature learning and intelligent threat detection. Deep neural
+like Convolutional Neural Networks (CNN), Recurrent Neu-
+ral Networks (RNN), Long Short-Term Memory (LSTM),
+Gated Recurrent Unit (GRU), and Transformer models have
+proved improved capability in extracting spatial and tempo-
+ral patterns from network trafﬁc. The CNN-based approaches
+are effective in learning local statistical characteristics. The
+Transformer-based models improve long-range dependency
+learning through attention mechanisms. However, existing
+DL-based IDS approaches still face several challenges like
+insufﬁcient handling of class imbalance and dependency on
+dataset-speciﬁc features. Also, they suffer from limited cross-
+domain generalization and lack of uncertainty estimation.
+To address these challenges, A Hybrid Multi-View Intru-
+sion Detection System with Adaptive Drift-Evidential Learn-
+ing called TRINITY -IDS is proposed for intruder detection.
+The major contributions of this work are summarized as fol-
+lows:
+1. A novel TRINITY -IDS hybrid multi-view intrusion
+detection model is proposed. It integrates statistical,
+temporal, and topological feature learning for complete
+cyber-threat analysis.
+2. A Density-Aware Hybrid Resampling and Adversarial-
+V alidated Feature Selection strategy is developed
+to address class imbalance and improve domain-
+independent feature representation.
+3. A multi-view representation learning architecture is
+applied
+4. A Cross-View Adaptive Fusion mechanism is designed
+to dynamically combine heterogeneous feature represen-
+tations based on sample-speciﬁc importance.
+5. A Dirichlet Evidential Learning-based classiﬁcation
+approach is incorporated to provide reliable intrusion pre-
+diction with uncertainty estimation.
+6. An Online Concept Drift Detection and Continual Expe-
+rience Replay mechanism is developed for adaptive
+learning against evolving cyber threats.
+The novelty of TRINITY -IDS does not arise from the indi-
+vidual use of CNN, BiGRU, GA T, or attention mechanisms.
+It is achieved through their uniﬁed integration with adversar-
+ial feature selection, adaptive cross-view fusion, evidential
+uncertainty estimation, and continual drift adaptation. Com-
+pared to conventional hybrid IDS models, TRINITY -IDS
+jointly captures statistical, temporal, and topological trafﬁc
+characteristics. It dynamically weights their contributions,
+quantiﬁes prediction uncertainty, and adapts to evolving traf-
+ﬁc patterns through drift detection and experience replay.
+2 Related work
+V arious researchers have explored feature learning and intel-
+ligent optimization strategies to enhance the robustness of
+IDS models. Zhendong Wang et al. [7] proposed an integrated
+deep IDS based on Stacked Denoising Autoencoder- Extreme
+Learning Machine (SDAE-ELM) for network intrusion
+detection. In their study, Y akubu Imrana et al. [8] proposed a
+Bidirectional Long Short-Term Memory (BiDLSTM)-based
+intrusion detection system for network security applications.
+The approach was validated using the NSL-KDD dataset and
+achieved improved accuracy.
+MD Moizuddin et al. [ 9] suggested a two-stage intrusion
+detection model. The important trafﬁc features are selected
+using Generalized Mean Grey Wolf Optimization approach.
+Also, an ElasticNet Contractive Autoencoder is applied to
+extract effective attack representations from network data.
+Likewise, Muaadh A et al. [ 10] developed a Sparse Autoen-
+coder combined CNN for attack classiﬁcation. Here, the
+Sparse Autoencoder is used for dimensionality reduction.
+A three-stage model is proposed by Fu Y et al. [ 11]f o r
+network intrusion detection. This work combines CNN with
+an attention strategy for spatial learning. Then, Bi-LSTM
+is applied to extract spatial and temporal characteristics of
+network trafﬁc. Similarly, V . Hnamte et al. [ 12] proposed a
+hybrid LSTM-Autoencoder model for network attack detec-
+tion. The work developed an encoder-based feature learning
+mechanism combined with LSTM sequence modeling.
+In their work, Adefemi K.O. et al. [ 13] proposed a CNN-
+GRU-based intrusion detection model for IoT environments.
+The work integrated CNN layers for spatial feature extraction
+123
+
+TRINITY-IDS: a tri-view hybrid architecture with adaptive drift-evidential learning... Page 3 of 21   179 
+and GRU layers for temporal dependency learning. Similarly,
+Afraji D.M.A.A. et al. [ 14] proposed a hybrid CNN-LSTM-
+GRU architecture for intrusion detection. Elnakib O et al.
+[15] recommended an Enhanced Intrusion Detection Deep
+Learning Model (EIDM) for multi-class attack detection.
+An explainable XGRU-IDS model is developed by Jawad
+Ahmad et al. [ 16] for intrusion detection in industrial IoT
+networks. The work integrated Extra Trees Classiﬁer for
+feature selection and GRU for sequential attack analysis.
+Mohammad Mehedi Hassan et al. [ 17] proposed a hybrid
+CNN- Weight-Dropped LSTM (WDLSTM) based intru-
+sion detection model for network security. The work uses
+a weight-dropped LSTM for learning long-term dependen-
+cies.
+Selman Hizal et al. [ 18] proposed a two-level intru-
+sion detection framework for identifying DDoS attacks
+in IoT networks. The work developed binary and multi-
+class classiﬁcation models using fully connected, CNN, and
+LSTM-based deep learning architectures. The study explored
+different deep learning structures for detecting attack cate-
+gories and subcategories.
+V anlalruata Hnamte et al. [ 19] suggested a lightweight
+deep CNN-based intrusion detection model. The work devel-
+oped an optimized DCNN for feature extraction. Likewise,
+Edosa Osa et al. [20] proposed a Deep Neural Network-based
+intrusion detection model for computer networks. This work
+applied data balancing techniques of SMOTE and random
+sampling to improve attack data representation.
+Shaikh JA et al. [21] proposed a DL-based intrusion detec-
+tion model combined with Random Forest and LSM tech-
+niques. This approach detects important network attributes
+for better model learning.
+Fatimah Alhayan et al. [ 22] proposed an Enhanced
+Intrusion Detection in Cybersecurity using Ensemble Learn-
+ing with Improved Beluga Whale Optimization (IDCS-
+ELIBWO). The study explored an improved IBWO to
+enhance intrusion detection capability.
+S . M .H o s s e i n ie ta l .[23] proposed attention-based CNN-
+GRU intrusion detection architectures for cybersecurity
+applications. In their study, Wang H. et al. [ 24] proposed
+a hybrid model based on a Convolutional Autoencoder and
+Temporal Convolutional Network. In addition, this work uses
+incremental learning strategies based on weight alignment
+and task-speciﬁc feature sharing.
+Waqas Ishtiaq et al. [25] suggested a dual attention-based
+deep learning model for IoT intrusion detection. This work
+integrates multi-scale CNN and BiGRU to extract impor-
+tant attack features. Hussein S.A. et al. [ 26] proposed a
+hybrid AE-GMM-XGBoost (Autoencoder–Gaussian Mix-
+ture Model–Extreme Gradient Boosting) model for intrusion
+detection. It involves GMM-based probabilistic feature anal-
+ysis and XGBoost-based supervised classiﬁcation.
+In their study, Dash N et al. [ 27] proposed an optimized
+LSTM-based intrusion detection model using metaheuristic
+optimization algorithms. The hyperparameters of the LSTM
+are tuned using the Salp Swarm Algorithm. Similarly, Farhan
+Me ta l .[ 28] proposed a Sequential DNN-based intrusion
+detection model integrated with Extra Tree feature selection.
+Alabdulatif A et al. [29] proposed an explainable ensemble
+learning system for real-time intrusion detection. It combines
+ANN and SVM classiﬁers with Random Forest-based pre-
+diction fusion. Md. Alamgir Hossain et al. [ 30] suggested
+a Deep Q-Learning-based Intrusion Detection System (DQ-
+IDS) using reinforcement learning. The work developed a
+Deep Q-Network model with experience replay and adap-
+tive exploration strategies.
+3 TRINITY-IDS
+The TRINITY -IDS uses a tri-view hybrid intrusion detec-
+tion architecture for effective cyber threat identiﬁcation, as
+shown in Fig. 1. Initially, a density-aware hybrid resam-
+pling technique based on Cluster-SMOTE and ENN is
+applied. This step is used to balance attack categories and
+to improve minority class learning. Then, an adversarial
+feature selection mechanism is used to remove dataset-
+speciﬁc biases and enhance generalization across different
+network environments. The extracted features are analyzed
+through three complementary modules: a CNN-based statis-
+tical view with channel attention, a BiGRU-based temporal
+view with self-attention and a Graph Attention Network-
+based topological view for capturing network interactions.
+These multi-view features are dynamically combined using
+adaptive fusion. A Dirichlet evidential learning module is
+applied for uncertainty-aware attack prediction. In addition,
+an online drift detection and experience replay mechanism is
+used for continuous adaptation to change network behaviours
+(Fig. 2).
+3.1 density-aware hybrid resampling module
+(DAHR)
+In real-world network trafﬁc, normal connections constitute
+the majority of samples.
+In contrast, several attack categories contain only a limited
+number of instances.
+This imbalance creates challenges for accurate detection
+of minority attack classes.To address this issue, the proposed
+module integrates Cluster-SMOTE with ENN cleaning. The
+Cluster-SMOTE mechanism generates synthetic attack sam-
+ples based on the local distribution of minority classes. The
+ENN technique removes noisy and ambiguous samples near
+123
+
+  179 Page 4 of 21 P. Palpandi et al.
+Fig. 1 TRINITY -IDS
+class boundaries. Let the original intrusion dataset be repre-
+sented as:
+D /equal1{(xi , yi)}N
+i/equal11 (1)
+where xi represents the network trafﬁc feature vector and yi
+denotes the corresponding class label. The minority attack
+samples belonging to class c are extracted as:
+Xc /equal1{ xi|yi /equal1c} (2)
+To preserve the inherent distribution of different attack
+behaviors, the minority samples are divided into multiple
+clusters using K -means clustering. The clustering objective
+is formulated as:
+J /equal1
+K∑
+k/equal11
+∑
+xi ∈Ck
+∥xi − μk∥2 (3)
+where Ck represents the kth cluster andμk denotes the cluster
+centroid. This clustering process generates synthetic samples
+within similar attack behavior regions.
+It avoids random sample generation across the entire fea-
+ture space. For each minority sample xi , its nearest neighbor
+x j within the same cluster is selected. Then, a synthetic sam-
+ple is generated using linear interpolation:
+xnew /equal1xi + λ
+(
+x j − xi
+)
+(4)
+where λ is a random interpolation factor ranging between
+0 and 1 ( λ ∈ [0,1]). The generated samples increase the
+representation of minority attack categories and maintain
+their original characteristics. After synthetic sample genera-
+tion, ENN-based cleaning is applied to remove incorrectly
+generated or overlapping samples. For each sample, the
+neighborhood labels are analyzed, and the majority class
+among its nearest neighbors is determined as:
+y
+maj /equal1Mode(y1, y2, ... , yk) (5)
+If the original class label of the sample differs from the
+dominant neighborhood class, the sample is considered noisy
+and removed:
+x
+i /∈ Dclean,i f yi ̸/equal1ymaj (6)
+The ﬁnal reﬁned training dataset is obtained as:
+D′ /equal1{(xi , yi)}N′
+i/equal11 (7)
+123
+
+TRINITY-IDS: a tri-view hybrid architecture with adaptive drift-evidential learning... Page 5 of 21   179 
+Fig. 2 STV -BiGRU-SA architecture
+where N′ represents the number of samples after balancing
+and noise elimination. The DAHR module reduces class bias
+and achieves a balanced input distribution for subsequent
+feature extraction and classiﬁcation.
+3.2 Adversarial-validated feature selection module
+(AVFS)
+An A VFS module is used to eliminate dataset-speciﬁc feature
+biases and improve the generalization capability of the intru-
+sion detection model. In multi-dataset intrusion detection
+environments, different datasets may contain unique feature
+distributions or hidden signatures related to their collection
+sources. These dataset-speciﬁc characteristics can negatively
+inﬂuence the learning process and reduce the robustness of
+the model when applied to unseen network environments.
+To overcome this limitation, the proposed module utilizes
+an adversarial learning strategy based on a Gradient Rever-
+sal Layer (GRL). Here, a domain discriminator is trained to
+identify dataset-speciﬁc information and the feature extractor
+is optimized to suppress such information. Let the extracted
+feature representation from the resampled dataset be repre-
+sented as:
+X /equal1{x
+1, x2, ... , xN } (8)
+where xi ∈ Rd denotes the ith trafﬁc feature vector with d
+feature dimensions. Each sample is associated with a domain
+123
+
+  179 Page 6 of 21 P. Palpandi et al.
+label:
+di ∈ {1, 2, ... , M} (9)
+where M represents the number of different datasets or
+network environments.The A VFS module uses a domain dis-
+criminator network D( · ) to identify the source domain of
+the input features. The discriminator is formulated as:
+D(X) /equal1Softmax(Wd X + bd) (10)
+where Wd and bd represent the discriminator weight and
+bias parameters, respectively. To prevent the extracted fea-
+tures from retaining domain-speciﬁc information, a GRL is
+added between the feature representation and the discrimi-
+nator. During forward propagation, the GRL maintains the
+original feature representation:
+GRL(x) /equal1x (11)
+However, during backpropagation, the gradient is reversed
+and scaled by a factor α:
+∂GRL(x)
+∂x /equal1−αI (12)
+where α controls the adversarial learning strength and I rep-
+resents the identity matrix. This reversal forces the feature
+extraction process to learn domain-invariant representations
+and confuses the domain discriminator. The discriminator
+optimization objective is deﬁned using cross-entropy loss:
+L
+D /equal1−
+N∑
+i/equal11
+di log(D(xi))) (13)
+where di represents the actual dataset domain label and D
+(xi) denotes the predicted domain probability. The feature
+extractor aims to minimize the intrusion classiﬁcation error
+and maximizing the confusion of the domain discriminator.
+Therefore, the overall adversarial optimization objective is
+expressed as:
+L
+AV F S/equal1LIDS − λL D (14)
+where, L ID S represents the intrusion classiﬁcation loss, L D
+represents the domain discrimination loss and λ represents
+the adversarial balancing coefﬁcient. After adversarial train-
+ing, the importance of each feature is calculated based on the
+discriminator gradient contribution:
+S
+j /equal11
+N
+N∑
+i/equal11
+⏐⏐⏐
+⏐
+∂D(x
+i)
+∂xij
+⏐⏐⏐
+⏐ (15)
+where S
+j represents the importance score of the jth feature.
+Features with higher dataset leakage scores are removed, and
+the remaining features are selected as:
+F
+selected /equal1
+{
+f j
+⏐⏐S j < Sthreshold
+}
+(16)
+The selected feature representation contains reduced
+dataset-speciﬁc information and improved attack-related
+characteristics. Thus, the proposed A VFS module enhances
+cross-dataset adaptability and reduces feature leakage.
+3.3 Schema-aligned cross-dataset feature
+harmonisation module (SCFH)
+A SCFH module is used to achieve effective feature align-
+ment across heterogeneous intrusion detection datasets. In
+practical network security scenarios, the data collected from
+different sources may contain varying feature names and
+feature dimensions. These inconsistencies reduce the effec-
+tiveness of conventional learning models when multiple
+datasets are combined for generalized intrusion detection.
+The SCFH uses a uniﬁed feature representation through
+semantic feature embedding and adaptive projection. The
+module maps heterogeneous feature schemas into a common
+latent representation space and preserves the discriminative
+characteristics required for attack classiﬁcation. Let the input
+network trafﬁc sample be represented as:
+X /equal1{x
+1, x2, ..., xm} (17)
+where m denotes the number of input attributes. Since differ-
+ent datasets contain different feature structures, each feature
+column is assigned a unique feature identity index:
+C /equal1{c1, c2, ... , cm} (18)
+An embedding layer is employed to convert the feature
+identities into dense semantic representations:
+Ec /equal1φ(ci) (19)
+where Ec represents the embedding vector of the ith fea-
+ture and φ( · ) denotes the learnable embedding function.
+The SCFH module uses a column embedding matrix to cap-
+ture the semantic relationship between heterogeneous feature
+attributes:
+Ze /equal1WeC + be (20)
+where, We represents the feature embedding weight matrix,
+be represents the bias term and Ze denotes the embedded
+feature representation. The embedded feature vectors are
+combined with their corresponding feature values to preserve
+123
+
+TRINITY-IDS: a tri-view hybrid architecture with adaptive drift-evidential learning... Page 7 of 21   179 
+both semantic information and numerical characteristics. The
+weighted feature representation is obtained as:
+Hi /equal1Ei × xi (21)
+where Ei represents the embedding vector of the ith feature
+and xi represents its corresponding trafﬁc value. The com-
+bined feature representation is aggregated and projected into
+a common latent space using a nonlinear transformation:
+H
+SCFH /equal1ReLU
+(
+Wp H + bp
+)
+(22)
+where Wp and bp represent the projection parameters. The
+resulting harmonized representation can be expressed as:
+ZSCFH /equal1HSCFH ∈ Rd (23)
+where d denotes the uniﬁed feature dimension.
+3.4 Statistical view with CNN
+and squeeze-and-excitation channel attention
+module (SV-CNN-SE)
+The intrusion trafﬁc contains complex behavioral pat-
+terns.Each attack category has distinct characteristics in
+network behavior.These variations are reﬂected in ﬂow-level
+attributes like packet distribution, connection properties,
+and feature correlations.To effectively capture these char-
+acteristics, the proposed module uses a one-dimensional
+CNN (1D-CNN) integrated with a Squeeze-and-Excitation
+(SE) channel attention mechanism. The CNN component
+learns local feature patterns. The SE mechanism adaptively
+highlights important feature channels and suppresses less
+informative representations. Let the harmonized feature rep-
+resentation obtained from the SCFH module be represented
+as:
+Z
+SCFH /equal1[z1, z2, ... , zd ] (24)
+where d represents the number of aligned features. The input
+feature vector is reshaped into a one-dimensional feature
+sequence:
+Xs ∈ R1×d (25)
+The statistical representation is extracted using multiple
+convolution kernels with different receptive ﬁelds. The con-
+volution operation is formulated as:
+H
+k /equal1σ(Wk ∗ Xs + bk) (26)
+where, Wk represents the convolution kernel, bk denotes the
+bias parameter, ∗represents the convolution operation and σ
+( · ) represents the nonlinear activation function. To capture
+statistical patterns with different local dependencies, multiple
+convolution ﬁlters are applied:
+H /equal1H
+3 + H5 (27)
+where H3 and H5 represent the feature maps generated using
+kernel sizes 3 and 5, respectively. This multi-scale con-
+volution is used for the model to learn both short-range
+and extended feature interactions from network trafﬁc data.
+After convolution-based feature extraction, a Squeeze-and-
+Excitation attention mechanism is applied to recalibrate the
+learned feature channels. The squeeze operation performs
+global average pooling to generate channel-wise statistics:
+s
+c /equal11
+L
+L∑
+i/equal11
+Hc(i) (28)
+where, sc denotes the channel descriptor, L represents the
+feature map length and Hc(i) represents the activation value
+of channelc. The excitation operation learns adaptive channel
+importance weights using two fully connected layers:
+e /equal1σ(W2δ(W1s)) (29)
+where, W1 and W2 are learnable parameters, δ(·) represents
+the ReLU activation andσ(·) represents the sigmoid function.
+The recalibrated statistical representation is obtained by:
+ˆHc /equal1ec × Hc (30)
+where ec represents the learned attention coefﬁcient for the
+cth feature channel. Finally, the statistical feature represen-
+tation is generated through channel-wise aggregation:
+Zs /equal11
+C
+C∑
+c/equal11
+ˆHc (31)
+where C represents the total number of feature channels.
+3.5 Speciality temporal view with token-augmented
+BiGRU and self-attention module
+(STV-BiGRU-SA)
+The Temporal View module is used to capture the sequen-
+tial dependencies and evolving behavioral patterns present
+in network trafﬁc streams. The conventional recurrent mod-
+els focus only on sequential dependencies and may fail
+to identify important attack-related temporal regions. To
+overcome this limitation, the proposed module integrates a
+learnable speciality token, a Bidirectional Gated Recurrent
+Unit (BiGRU), and a Multi-Head Self-Attention mechanism
+123
+
+  179 Page 8 of 21 P. Palpandi et al.
+to enhance temporal representation learning. The speciality
+token acts as an adaptive global representation that aggre-
+gates important attack-related temporal information from
+the entire sequence. Let the sequential feature representa-
+tion obtained from the harmonization module be represented
+as:
+X
+t /equal1{x1, x2, ... , xT } (32)
+where T represents the sequence length and xt denotes
+the trafﬁc feature vector at time step t. Initially, the input
+sequence is transformed into a hidden feature space using a
+linear projection:
+ht /equal1W f xt + b f (33)
+where W f and b f represent the projection weight and bias
+parameters, respectively. To enhance global temporal under-
+standing, a learnable special token T
+s is used and appended
+before the input sequence:
+X′
+t /equal1[Ts , h1, h2, ... , hT ] (34)
+where Ts represents the trainable token embedding to learn
+important temporal characteristics related to intrusion evi-
+dence. This token-based representation is used for the model
+to capture global attack-speciﬁc patterns from sequential traf-
+ﬁc behavior. The token-augmented sequence is processed
+using a Bidirectional GRU network to learn forward and
+backward temporal dependencies. The forward and back-
+wards hidden states are computed as:
+−→h
+t /equal1GRU f
+(
+xt , −−→ht− 1
+)
+(35)
+←−ht /equal1GRUb
+(
+xt , ←−ht+1
+)
+(36)
+The bidirectional temporal representation is obtained by
+combining both directional states:
+Ht /equal1
+[−→ht ; ←−ht
+]
+(37)
+Where; represents the concatenation operation. The BiGRU
+structure is used for the model to learn both previous and
+future contextual relationships in network trafﬁc sequences.
+The BiGRU captures sequential dependencies. But, all tem-
+poral positions may not contribute equally to intrusion iden-
+tiﬁcation. Therefore, a self-attention mechanism is applied
+to assign adaptive importance weights to different sequence
+elements. The query, key, and value matrices are generated
+as:
+Q /equal1HW
+Q , K /equal1HW K , V /equal1HW V (38)
+where WQ , WK , and WV are learnable projection matrices.
+The attention score is calculated as:
+Attention(Q, K , V) /equal1Softmax
+( QK T
+√ dk
+)
+V (39)
+where dk represents the dimensionality of the key vectors.
+The attention mechanism is used to focus on critical tem-
+poral regions associated with attack behaviors. The output
+corresponding to the speciality token is extracted as the ﬁnal
+temporal representation:
+Z
+t /equal1Wo Htoken + bo (40)
+where Htoken represents the hidden state associated with the
+speciality token and Zt denotes the ﬁnal temporal feature
+representation.
+3.6 Topological view using Graph Attention Network
+module (TV-GAT)
+The Topological View module is used to model the non-
+Euclidean relationships among network trafﬁc features using
+a GA T. In conventional intrusion detection approaches, the
+network trafﬁc samples are generally represented as inde-
+pendent feature vectors. This limits the ability to capture
+complex interactions among different network entities and
+communication patterns. To capture these hidden structural
+dependencies, the proposed module transforms network traf-
+ﬁc information into a graph-based representation and applies
+graph attention learning to extract topology-aware features.
+The network trafﬁc graph is represented as:
+G /equal1(V , E) (41)
+where V denotes the set of nodes representing trafﬁc enti-
+ties or feature components, and E represents the connections
+between nodes. Each node contains an initial feature repre-
+sentation:
+X
+v /equal1{x1, x2, ... , xn} (42)
+where xv represents the feature vector of node v.T h er e l a -
+tionship between connected nodes is represented using an
+adjacency matrix:
+A /equal1
+[
+a
+ij
+]
+(43)
+where:
+aij /equal1
+{
+1, if nodes i and j are connected
+0, otherwise
+123
+
+TRINITY-IDS: a tri-view hybrid architecture with adaptive drift-evidential learning... Page 9 of 21   179 
+The proposed module applies Graph Attention Network
+layers to learn the importance of neighboring nodes. Ini-
+tially, node features are transformed using a learnable weight
+matrix:
+h
+i /equal1Wx i (44)
+where W represents the trainable graph transformation
+matrix. For each connected node pair (i, j), the attention
+coefﬁcient is calculated as:
+eij /equal1LeakyReLU
+(
+aT [
+hi
+h j
+])
+(45)
+where, a represents the attention weight vector and ∥ denotes
+feature concatenation. The normalized attention coefﬁcient
+is obtained using the Softmax operation:
+αij /equal1 exp
+(
+eij
+)
+∑
+k∈Ni exp(eik ) (46)
+where Ni represents the neighboring nodes of node i. These
+attention weights are used to assign higher importance
+to nodes that contribute more signiﬁcant information for
+intrusion identiﬁcation. The updated node representation is
+computed by aggregating the weighted neighborhood infor-
+mation:
+h
+′
+i /equal1σ
+⎛
+⎝ ∑
+j∈Ni
+αij Wh j
+⎞
+⎠ (47)
+where σ( · ) represents the nonlinear activation function. To
+enhance feature learning capability, multiple attention heads
+are used. Each attention head independently learns different
+relational patterns:
+h
+′
+i /equal1
+M
+∥
+m/equal11
+σ
+⎛
+⎝ ∑
+j∈Ni
+αm
+ij W m h j
+⎞
+⎠ (48)
+where M represents the number of attention heads. After
+graph-based feature propagation, a graph-level representa-
+tion is obtained through global mean pooling:
+Zg /equal11
+N
+N∑
+i/equal11
+h′
+i (49)
+where Zg represents the ﬁnal topological feature representa-
+tion.
+3.7 Cross-view adaptive fusion module
+with dynamic softmax Gating (CVAF)
+The CV AF module combines complementary information
+obtained from statistical, temporal, and topological repre-
+sentations. This module dynamically assigns importance
+weights to each feature view according to the characteris-
+tics of individual input samples. The CV AF module uses a
+sample-level softmax gating mechanism to learn adaptive
+contributions from the three feature representations. Let the
+extracted representations from the three learning views be
+represented as:
+Z
+s ∈ Rd , Zt ∈ Rd , Zg ∈ Rd (50)
+where Zs , Zt , and Zg denote the statistical, temporal, and
+topological feature representations, respectively. Initially, the
+three representations are concatenated to form a combined
+feature vector:
+Zc /equal1
+[
+Zs∥ Zt∥Zg
+]
+(51)
+where ∥ represents the concatenation operation. The con-
+catenated representation is provided to a gating network to
+estimate the contribution of each feature view. The gating
+function is formulated as:
+G /equal1Softmax
+(
+W
+g Zc + bg
+)
+(52)
+where, Wg represents the learnable gating weight matrix, bg
+represents the bias parameter and G represents the learned
+view importance vector. The gating vector consists of three
+adaptive coefﬁcients:
+G /equal1
+[
+α
+s , αt , αg
+]
+(53)
+where, αs represents the importance weight of the statistical
+view, αt represents the importance weight of the temporal
+view and αg represents the importance weight of the topo-
+logical view. The ﬁnal fused representation is generated by
+weighted aggregation of the three feature views:
+Z f /equal1αs Zs + αt Zt + αg Zg (54)
+where Z f represents the adaptive fused feature representa-
+tion.
+3.8 Dirichlet evidential learning head
+for uncertainty-aware classification (DEL)
+The DEL Head is used to perform uncertainty-aware intru-
+sion classiﬁcation. This module estimates both classiﬁcation
+belief and predictive uncertainty by modelling the output
+123
+
+  179 Page 10 of 21 P. Palpandi et al.
+distribution using a Dirichlet distribution. This supports
+TRINITY -IDS in distinguishing between conﬁdent predic-
+tions and uncertain detection decisions. Let the adaptive
+fused representation obtained from the Cross-View Adaptive
+Fusion module be represented as:
+Z
+f ∈ Rd (55)
+where d represents the dimension of the fused feature space.
+The fused representation is passed through a fully connected
+layer to generate class-wise evidence values:
+ei /equal1We Z f + be (56)
+where, We represents the classiﬁcation weight matrix,be rep-
+resents the bias parameter and ei denotes the evidence value
+corresponding to the ith intrusion class.
+To ensure positive evidence values, the Softplus activation
+function is applied:
+ei /equal1Softplus(ei) (57)
+The obtained evidence values are converted into Dirichlet
+concentration parameters:
+αi /equal1ei + 1 (58)
+where αi represents the Dirichlet parameter for the ith class.
+The total evidence strength is calculated as:
+S /equal1
+K∑
+i/equal11
+αi (59)
+where K denotes the number of intrusion categories. The
+belief mass assigned to each class is computed as:
+bi /equal1αi
+S (60)
+where bi represents the conﬁdence belief associated with
+class i. The uncertainty of the prediction is estimated based
+on the total available evidence:
+u /equal1K
+S (61)
+where, u represents the overall predictive uncertainty, K
+represents the number of classes and S represents the total
+evidence strength. A higher evidence value produces a larger
+S which results in lower uncertainty, whereas insufﬁcient
+evidence increases uncertainty. This strategy is used for the
+model to identify unreliable predictions instead of forcing
+incorrect classiﬁcations. The training process utilizes an Evi-
+dential Deep Learning (EDL) loss function. It combines data
+ﬁtting and uncertainty regularization. The classiﬁcation error
+component is formulated as:
+L
+err /equal1
+K∑
+i/equal11
+yi(ψ(S) − ψ(αi)) (62)
+where, yi represents the one-hot encoded class label andψ(·)
+denotes the digamma function. To prevent overconﬁdent pre-
+dictions, a Kullback–Leibler (KL) divergence regularization
+term is incorporated:
+LKL /equal1DKL(Dir(α) +D i r(1)) (63)
+The ﬁnal evidential loss is expressed as:
+LEDL /equal1Lerr + λLKL (64)
+where λ represents the regularization coefﬁcient controlling
+uncertainty calibration. The DEL Head improves the relia-
+bility of TRINITY -IDS by generating the predicted attack
+category. Also, it provides the conﬁdence level associated
+with each decision to enhance prediction interpretability and
+trustworthiness.
+3.9 Online concept drift detection and continual
+experience replay module (OCD-CER)
+In this work, the OCD-CER module is applied to main-
+tain detection performance under continuously changing
+network environments. The proposed module combines a
+Page-Hinkley drift detection mechanism with an experience
+replay strategy to identify performance degradation and per-
+form incremental model adaptation. The online detection
+process continuously monitors the prediction loss generated
+during streaming inference. Let the loss value obtained from
+the t
+th incoming trafﬁc batch be represented as lt . The mean
+loss value is updated incrementally as:
+μt /equal1μt− 1 + lt − μt− 1
+t (65)
+where, μt represents the estimated mean loss at time t and lt
+represents the current prediction loss. The cumulative devi-
+ation value is calculated as:
+Mt /equal1αMt− 1 + (lt − μt − δ) (66)
+where, Mt represents the accumulated deviation measure, α
+represents the forgetting factor and δrepresents the allowed
+variation margin. A drift condition is detected when Mt >θ ,
+where θ represents the predeﬁned drift threshold. When this
+condition is satisﬁed, the system identiﬁes that the current
+123
+
+TRINITY-IDS: a tri-view hybrid architecture with adaptive drift-evidential learning... Page 11 of 21   179 
+trafﬁc distribution has changed and triggers an adaptive learn-
+ing process.
+After detecting concept drift, the proposed model acti-
+vates an Experience Replay Buffer to preserve previously
+observed trafﬁc knowledge and avoid catastrophic forgetting.
+The replay memory is represented as:
+B /equal1{(x
+i , yi)}Nb
+i/equal11 (67)
+where Nb represents the maximum buffer capacity. Incoming
+samples are continuously stored in the buffer:
+Bt /equal1Bt− 1 ∪ {(xt , yt)} (68)
+The older samples are removed when the buffer reaches
+its maximum capacity. During incremental updating, a mini-
+batch of historical samples is randomly selected from the
+replay memory:
+Br /equal1{(xr , yr )}m
+r/equal11 (69)
+Then, the model is updated using a combined loss func-
+tion containing both new streaming samples and replayed
+historical samples:
+Ltotal /equal1Lnew + βLreplay (70)
+where, Lnew represents the loss from current trafﬁc samples,
+Lreplay represents the loss from replayed historical samples
+and β controls the contribution of previous knowledge. The
+updated model parameters are optimized as:
+/Theta1t+1 /equal1/Theta1t − η∇ Ltotal (71)
+where, /Theta1represents the model parameters and η represents
+the learning rate.
+4 Results and discussion
+To evaluate the performance of the TRINITY -IDS model,
+experiments were conducted on a uniﬁed multi-dataset
+benchmark. This dataset is synthesised from three standard
+network cybersecurity datasets: NSL-KDD, ToN-IoT, and
+UNSW-NB15. The dataset consists of 1,366,299 total net-
+work trafﬁc samples. 80% of the samples are used to train
+the model. The remaining 20% of the data is used for testing.
+The model is implemented using PyTorch 2.2 on an NVIDIA
+RTX 4090 GPU (24GB VRAM). The model parameters are
+given in Table 1.
+The training performance of the proposed TRINITY -IDS
+model is shown in Fig. 3. The training and validation loss
+values gradually decrease with increasing epochs. The close
+Table 1 TRINITY -IDS parameter settings
+Architectural layer / sub-block Operational parameter setting
+KMeans intra-cluster SMOTE Ncluster s /equal13, Kneighbors /equal15
+ENN neighborhood cleaning Kenn /equal15, Majority threshold
+Domain discriminator 2-Layer MLP (64 → 3), ReLU
+GRL Scale factor α /equal11.0
+Column entity embedding Dembed /equal164, Dproj /equal1128
+1D-CNN + SE attention Conv1D ( K /equal13,5), Reduction
+r /equal14
+Specialty token BiGRU + MHA Dhidden /equal1128, Heads /equal12,
+Steps /equal110
+GA T KGA T 1 /equal12heads ,
+KGA T 2 /equal11head
+S o f t m a xg a t i n gn e t w o r k 2 - L a y e rM L P
+(384 → 128 → 3)
+Dirichlet parameterization Linear Layer (128 → 20),
+Softplus
+Page-Hinkley monitor δ/equal10.005, Uthresho ld /equal130.0,
+α /equal10.999
+Experience replay buffer Capacity M /equal12000, Replay
+Batch /equal164
+AdamW + cosine scheduler η0 /equal110− 3, β /equal1(0.9,0.999),
+λ/equal110− 4
+convergence between training and validation curves proves
+stable learning without signiﬁcant overﬁtting. Similarly, the
+classiﬁcation accuracy increases with increasing epochs.
+This shows the capability of TRINITY -IDS to learn discrim-
+inative intrusion patterns and achieve reliable generalization
+for complex network trafﬁc classiﬁcation.
+The original merged intrusion dataset contains highly
+imbalanced attack distributions. The dominant classes con-
+tain signiﬁcantly larger samples when compared with minor-
+ity attack categories. The raw input distribution shows severe
+imbalance among different attack classes (Fig.4). The resam-
+pled distribution gets a more balanced representation across
+attack categories. It prevents the classiﬁer from being biased
+toward majority classes. Also, it enhances detection capabil-
+ity for low-frequency cyber threats.
+The feature validation process analyzes candidate features
+based on dataset identity leakage probability. The proposed
+adversarial validation mechanism identiﬁes highly dataset-
+speciﬁc attributes and removes potentially biased features,
+as shown in Fig. 5. It supports TRINITY -IDS in achieving
+better adaptability across heterogeneous intrusion datasets.
+The cross-dataset feature harmonisation analysis is shown
+in Fig. 6. Before alignment, different intrusion datasets
+occupy separated feature distributions due to variations in
+feature dimensions and extraction strategies. The raw feature
+visualization shows distinct clusters corresponding to indi-
+vidual datasets. After applying learnable column embedding,
+123
+
+  179 Page 12 of 21 P. Palpandi et al.
+Fig. 3 TRINITY -IDS training validation
+Fig. 4 Density-aware hybrid resampling analysis
+Fig. 5 Adversarial-validated feature selection analysis
+123
+
+TRINITY-IDS: a tri-view hybrid architecture with adaptive drift-evidential learning... Page 13 of 21   179 
+Fig. 6 The cross-dataset feature harmonisation analysis
+heterogeneous feature spaces are projected into a uniﬁed
+latent representation space. The aligned embedding distri-
+bution shows increased feature overlap among datasets. This
+conﬁrms that the proposed SCFH module reduces domain
+discrepancy and maintains uniﬁed multi-dataset learning.
+The temporal representation learning performance is ana-
+lyzed using the Speciality Temporal View based on BiGRU
+with self-attention (Fig. 7). The attention allocation visu-
+alization proves that different sequence positions receive
+different importance values. The higher attention weights are
+assigned to critical time steps. It is observed that the model
+successfully identiﬁes signiﬁcant temporal patterns associ-
+ated with intrusion behaviors.
+The confusion matrix obtained for the model is shown
+in Fig. 8. The diagonal dominance in the confusion matrix
+indicates that most samples are correctly classiﬁed into
+their corresponding attack classes. The model achieves high
+recognition capability for both frequent and minority attack
+categories. The low off-diagonal misclassiﬁcation values
+indicate that the proposed model recognizes between similar
+attack categories. The class-wise precision, recall, and F1-
+score performance of the TRINITY -IDS model is given in
+Table 2. The model achieves consistently high performance
+across all classes with F1-scores above 0.9680. It proves the
+effective recognition of both normal and attack trafﬁc pat-
+terns. The highest performance is observed for the analysis,
+benign, DDoS, and generic classes. The balanced preci-
+sion and recall values conﬁrm that TRINITY -IDS effectively
+reduces false detections and maintains reliable detection of
+different cyber-attacks.
+The performance of the TRINITY -IDS is compared
+with existing intrusion detection approaches. The eval-
+uated results are given in Table 3. The SDAE-ELM
+model achieves an accuracy of 93.42%. The BiDLSTM-
+based approach shows an accuracy performance to 94.18%.
+The GMGWO with ElasticNet Autoencoder and Sparse
+Table 2 Detailed per-class classiﬁcation report
+Class Precision Recall F1-Score
+Analysis 0.9840 0.9840 0.9840
+Backdoor 0.9775 0.9822 0.9799
+Benign 0.9958 0.9830 0.9894
+ddos 0.9955 0.9823 0.9888
+dos 0.9763 0.9845 0.9804
+Exploits 0.9849 0.9841 0.9845
+Fuzzers 0.9827 0.9833 0.9830
+Generic 0.9947 0.9836 0.9891
+Injection 0.9795 0.9836 0.9815
+Mitm 0.9795 0.9811 0.9803
+Normal 0.9551 0.9815 0.9681
+Other 0.9817 0.9816 0.9816
+Password 0.9836 0.9844 0.9840
+Probe 0.9819 0.9816 0.9817
+r2l 0.9835 0.9839 0.9837
+Ransomware 0.9825 0.9837 0.9831
+Reconnaissance 0.9829 0.9836 0.9833
+Scanning 0.9689 0.9833 0.9760
+Shellcode 0.9829 0.9830 0.9829
+xss 0.9819 0.9816 0.9817
+Autoencoder-CNN approaches show accuracies of 94.86%
+and 95.12%, respectively. The CNN-Attention-BiLSTM and
+LSTM-Autoencoder models achieve accuracies of 95.64%
+and 95.37%. This shows the advantage of combining spatial
+feature extraction with temporal sequence learning. Sim-
+ilarly, CNN-GRU and CNN-LSTM-GRU models obtain
+95.82% and 96.08% accuracy. The XGRU-IDS model
+reaches an accuracy of 96.32%. The CNN-Transformer
+model reaches an accuracy of 96.50%. The proposed
+123
+
+  179 Page 14 of 21 P. Palpandi et al.
+Fig. 7 Multi-view representation learning analysis
+Fig. 8 Confusion matrix
+Table 3 TRINITY -IDS
+performance comparison Technique Accuracy Precision Recall F1-score
+SDAE-ELM 93.42 92.86 93.10 92.98
+BiDLSTM 94.18 93.75 94.02 93.88
+GMGWO + ElasticNet autoencoder 94.86 94.42 94.61 94.51
+Sparse Autoencoder + CNN 95.12 94.76 94.98 94.87
+CNN + attention + BiLSTM 95.64 95.28 95.41 95.34
+LSTM-autoencoder 95.37 95.02 95.18 95.10
+CNN-GRU 95.82 95.46 95.61 95.53
+CNN-LSTM-GRU 96.08 95.72 95.91 95.81
+XGRU-IDS 96.32 95.96 96.18 96.07
+CNN-modiﬁed transformer 96.50 96.12 96.36 96.24
+TRINITY -IDS 98.36 98.26 98.32 98.29
+123
+
+TRINITY-IDS: a tri-view hybrid architecture with adaptive drift-evidential learning... Page 15 of 21   179 
+Table 4 Dataset combination settings
+Experiment Training dataset combination Testing dataset
+CD-1 CICIDS2017 + UNSW-NB15 NSL-KDD
+CD-2 NSL-KDD + UNSW-NB15 CICIDS2017
+CD-3 CICIDS2017 + CICIDS2018 Edge-IIoTset
+CD-4 UNSW-NB15 + Edge-IIoTset CICIoT2023
+CD-5 CICIDS2017 + UNSW-NB15 +
+Edge-IIoTset
+CICIoT2023
+Table 5 Cross-dataset performance comparison
+Experiment Accuracy
+(%)
+Precision
+(%)
+Recall
+(%)
+F1-score
+(%)
+CD-1 96.84 94.12 94.56 94.34
+CD-2 97.21 94.53 94.89 94.71
+CD-3 97.46 94.81 95.02 94.91
+CD-4 97.72 95.01 95.22 95.11
+CD-5 98.06 95.03 95.13 95.08
+TRINITY -IDS achieves the highest accuracy of 98.36%, with
+precision, recall, and F1-score values of 98.26%, 98.32%,
+and 98.29%, respectively. Compared with the best existing
+CNN-Transformer model, the proposed approach improves
+accuracy by 1.86%, precision by 2.14%, recall by 1.96%,
+and F1-score by 2.05%. This signiﬁcant improvement is
+attributed to the integration of multiple advanced modules.
+The cross-dataset generalization analysis is applied to
+evaluate the robustness of the model under different training
+and testing dataset combinations. The dataset combinations
+are given in Table 4. The model achieves consistent perfor-
+mance when trained on multiple heterogeneous datasets and
+tested on an unseen dataset (Table 5). This proves its ability
+to learn generalized attack patterns. Among all experiments,
+CD-5 achieves the highest performance with 98.06% accu-
+racy, 95.03% precision, 95.13% recall, and 95.08% F1-score.
+A statistical analysis is conducted to verify whether
+the improvement of TRINITY -IDS over baseline meth-
+ods is signiﬁcant. The results are given in Table 6.T h e
+statistical evaluation indicates that TRINITY -IDS achieves
+consistent performance with lower deviation compared with
+existing models. The reduced standard deviation proves
+improved model stability under different training condi-
+tions. The obtained p-values (< 0.05) indicate that the
+performance improvement of TRINITY -IDS is statistically
+signiﬁcant compared with conventional deep learning-based
+IDS approaches.
+To analyze model generalization capability, a 5-fold cross-
+validation experiment was conducted. The obtained results
+are given in Table 7. The model maintains stable detection
+Table 6 Statistical Signiﬁcance Analysis
+Model Accuracy
+(%)
+Mean ± Std.
+Dev
+p-value
+CNN 94.82 94.82 ± 0.31 0.021
+LSTM 95.16 95.16 ± 0.28 0.018
+CNN-LSTM 96.24 96.24 ± 0.24 0.012
+BiGRU-attention 96.85 96.85 ± 0.21 0.009
+Transformer IDS 97.12 97.12 ± 0.19 0.006
+TRINITY -IDS 98.06 98.06 ± 0.12 –
+capability across different training and testing partitions. The
+small variation among folds conﬁrms that the TRINITY -IDS
+does not depend on a speciﬁc data split and provides reliable
+generalization for intrusion detection.
+The ablation study is carried out to anaylze the contribu-
+tion of each proposed module (Table 8). It is observed that
+every component contributes positively to intrusion detection
+performance. The model without DAHR causes the largest
+degradation. This reduction occurs due to the insufﬁcient rep-
+resentation of minority attack samples.The model without
+CV AF decreases performance due to the absence of adap-
+tive feature integration. Similarly, the model without DEL
+and OCD-CER reduces reliability because uncertainty esti-
+mation and continual adaptation are not available.
+The sensitivity of the A VFS module to the adversarial
+balancing coefﬁcient λ was evaluated. The λ is varied from
+0.00001 to 0.005 and all other experimental parameters are
+unchanged. The results are given in Table 9. A very small λ
+value (0.00001) achieves limited adversarial regularization
+and relatively lower cross-domain feature invariance. The
+λ value of 0.00005 improves the performance because the
+domain-speciﬁc feature contribution is more effectively sup-
+pressed. The best performance is obtained at λ/equal10.00010. It
+achieves 98.06% accuracy, 95.03% precision, 95.13% recall,
+and 95.08% F1-score. The higher values ofλbeyond 0.00010
+cause a gradual reduction in performance. This indicates that
+excessive adversarial regularization may suppress not only
+dataset-speciﬁc information but also discriminative features.
+Therefore, λ/equal10.00010 is selected as the operating value for
+the A VFS module.
+To validate the effectiveness of the proposed CV AF
+mechanism, a comparative experiment was conducted using
+alternative multi-view fusion strategies (Table 10). The sta-
+tistical, temporal, and topological representations were kept
+unchanged and only the fusion mechanism was replaced.
+The simple concatenation achieves 96.91% accuracy. Here,
+all feature views are combined without explicitly modelling
+their relative importance. The Learnable weighted summa-
+tion improves the performance to 97.38%. It assigns trainable
+contributions to the three views. The Attention-based fusion
+123
+
+  179 Page 16 of 21 P. Palpandi et al.
+Table 7 Cross-validation
+analysis Fold Accuracy (%) Precision (%) Recall (%) F1-score (%)
+Fold 1 98.12 95.18 95.25 95.21
+Fold 2 97.96 94.92 95.04 94.98
+Fold 3 98.21 95.21 95.35 95.28
+Fold 4 97.88 94.81 94.96 94.88
+Fold 5 98.13 95.02 95.17 95.09
+Average 98.06 95.03 95.15 95.09
+Table 8 Ablation study
+Model V ariant Accuracy (%) Precision (%) Recall (%) F1-score
+(%)
+TRINITY -IDS without DAHR 96.84 93.21 93.64 93.42
+TRINITY -IDS without A VFS 97.18 93.82 94.16 93.99
+TRINITY -IDS without SCFH 97.32 94.01 94.35 94.18
+TRINITY -IDS without
+SV -CNN-SE
+97.46 94.28 94.61 94.44
+TRINITY -IDS without
+STV -BiGRU-SA
+97.51 94.41 94.72 94.56
+TRINITY -IDS without
+TV -GA T
+97.39 94.18 94.54 94.36
+TRINITY -IDS without CV AF 97.62 94.63 94.81 94.72
+TRINITY -IDS without DEL 97.74 94.75 94.92 94.83
+TRINITY -IDS without
+OCD-CER
+97.81 94.82 95.01 94.91
+Complete TRINITY -IDS 98.06 95.03 95.13 95.08
+Table 9 Sensitivity analysis of
+the A VFS adversarial balancing
+coefﬁcient λ
+λ Accuracy (%) Precision (%) Recall (%) F1-score (%)
+0.00001 97.61 94.62 94.80 94.71
+0.00005 97.82 94.79 94.96 94.87
+0.00010 98.06 95.03 95.13 95.08
+0.00050 97.91 94.88 95.01 94.94
+0.00100 97.68 94.70 94.84 94.77
+0.00500 97.24 94.31 94.52 94.41
+Table 10 Comparison of
+different multi-view feature
+fusion strategies
+Fusion Strategy Accuracy (%) Precision (%) Recall (%) F1-score (%)
+Simple concatenation 96.91 93.46 93.72 93.59
+Learnable weighted summation 97.38 94.15 94.39 94.27
+Attention-based fusion 97.67 94.54 94.78 94.66
+Temperature-scaled weighted fusion 97.81 94.71 94.93 94.82
+CV AF—dynamic softmax gating 98.06 95.03 95.13 95.08
+123
+
+TRINITY-IDS: a tri-view hybrid architecture with adaptive drift-evidential learning... Page 17 of 21   179 
+achieves 97.67% accuracy. It dynamically models interac-
+tions among the representations. The Temperature-scaled
+weighted fusion obtains 97.81% accuracy which controls the
+sharpness of the learned view weights. The proposed CV AF
+with dynamic softmax gating achieves the highest perfor-
+mance, with 98.06% accuracy, 95.03% precision, 95.13%
+recall, and 95.08% F1-score.
+The effect of the Page-Hinkley drift threshold was inves-
+tigated for model performance. The threshold θ is varied
+and the remaining parameters are unchanged. The results are
+given in Table 11. A lower threshold increases the sensi-
+tivity of the detector and may trigger drift adaptation more
+frequently. As the threshold increases from 10 to 30, the
+detection mechanism provides a better balance between sen-
+sitivity to distributional changes and stability of the online
+learning process. The proposed setting of θ /equal130 achieves
+the highest performance with 98.06% accuracy, 95.03% pre-
+cision, 95.13% recall, and 95.08% F1-score.
+An ablation study was performed to investigate the inﬂu-
+ence of experience replay buffer capacity on continual
+learning performance (Table 12). The buffer capacity is
+varied from 500 to 5000 samples and all other param-
+eters were kept unchanged. A capacity of 500 provides
+limited historical diversity which leads to reduced reten-
+tion of previously learned information and comparatively
+lower performance. The capacity of 1000 and 2000 samples
+progressively improves the classiﬁcation performance. This
+denotes better mitigation of catastrophic forgetting through
+retention of representative historical samples. The proposed
+capacity of 2000 samples achieves the highest performance
+with 98.06% accuracy, 95.03% precision, 95.13% recall,
+and 95.08% F1-score. The capacity beyond 2000 samples
+provides no further improvement and results in a slight
+performance reduction. Also, it increases memory require-
+ments and replay-related computational overhead. Therefore,
+a buffer capacity of 2000 samples achieves a practical bal-
+ance between historical knowledge retention and memory
+usage.
+To validate the reliability of the uncertainty estimation of
+the DEL head, a calibration analysis was performed. The
+analysis uses Expected Calibration Error (ECE) and Brier
+score as evaluation metrics.The predicted conﬁdence values
+were grouped into equally spaced conﬁdence bins. The differ-
+ence between the average conﬁdence and empirical accuracy
+was evaluated for each bin. The reliability analysis (Table13)
+shows that the proposed DEL head provides better agreement
+between predicted conﬁdence and observed classiﬁcation
+accuracy than the conventional Softmax baseline. The pro-
+posed model obtains an ECE of 0.0179 and a Brier score of
+0.0413. This indicates improved calibration and more reli-
+able conﬁdence estimates.
+To further investigate the reduction in precision observed
+when the model is evaluated on unseen datasets, a per-
+class analysis was conducted.The analysis was performed
+for the cross-dataset evaluation setting.The obtained results
+are given in Table14.The results indicate that the degradation
+is not uniform across attack categories. The structurally con-
+sistent attack patterns like DoS and DDoS maintain relatively
+high precision and recall. This denotes stronger transferabil-
+ity across datasets. In contrast, the classes like Web Attack
+and Inﬁltration exhibit comparatively larger performance
+degradation. These classes are characterized by distribu-
+tional differences between datasets. This produces greater
+difﬁculty in transferring the learned decision boundaries to
+unseen trafﬁc characteristics. The attacks like Botnet, Brute
+Force, Reconnaissance, and Spooﬁng attacks show inter-
+mediate degradation. Overall, the analysis implies that the
+reduction in cross-dataset precision is mainly associated with
+attack categories. This observation suggests that the perfor-
+mance variation is category-speciﬁc rather than a uniform
+degradation across all attack classes.
+To assess its practical feasibility for online intrusion detec-
+tion, the computational requirements of TRINITY -IDS were
+evaluated. The obtained values are given in Table 15.The
+statistical CNN-SE, temporal BiGRU-SA, and topological
+GA T branches account for the majority of the computational
+requirements. The CV AF and DEL modules add compar-
+atively small additional overhead. The complete system
+contains approximately 1.73 million trainable parameters.
+It requires approximately 0.82 ms per inference sample and
+consumes approximately 188 MB of memory under the eval-
+uated conﬁguration. The proposed architecture can process
+individual trafﬁc representations with low inference latency.
+In addition, it maintains a moderate memory footprint.
+To investigate the importance of the three learning views,
+an additional ablation study was conducted by assess-
+ing branches individually and in different combinations
+(Table 16). The model achieves F1-scores of 91.88%,
+92.54%, and 92.15% when the views are used independently.
+It achieves an F1-score of 94.54% when combined with two
+views. The complete three-view conﬁguration achieves the
+highest performance, with 98.06% accuracy and 95.08% F1-
+score.
+To further validate the uncertainty-aware classiﬁcation
+capability of the proposed DEL head, additional calibration
+and conﬁdence analyses were performed. The Expected Cali-
+bration Error (ECE), Brier score, and negative log-likelihood
+(NLL) were used to quantitatively evaluate the reliability of
+the predicted conﬁdence values. The proposed DEL-based
+TRINITY -IDS achieves an ECE of 0.0179, Brier score of
+0.0413, and NLL of 0.0538 (Table 17). This denotes that
+the improved agreement between predicted conﬁdence and
+observed classiﬁcation outcomes. Compared with the Soft-
+max baseline, the lower calibration errors demonstrate that
+123
+
+  179 Page 18 of 21 P. Palpandi et al.
+Table 11 Sensitivity analysis of
+the Page-Hinkley drift threshold Page-Hinkley threshold (θ) Accuracy (%) Precision (%) Recall (%) F1-score (%)
+10 97.42 94.21 94.38 94.29
+20 97.78 94.67 94.82 94.74
+30 98.06 95.03 95.13 95.08
+40 97.91 94.86 95.01 94.93
+50 97.63 94.55 94.76 94.65
+70 97.31 94.18 94.47 94.32
+Table 12 Ablation study of
+experience replay buffer capacity Replay buffer capacity Accuracy (%) Precision (%) Recall (%) F1-score (%)
+500 96.84 94.01 94.18 94.09
+1000 97.42 94.52 94.71 94.61
+2000 98.06 95.03 95.13 95.08
+3000 98.01 94.97 95.09 95.03
+5000 97.93 94.86 95.01 94.93
+Table 13 Calibration
+performance of the DEL head Model / uncertainty method Accuracy (%) ECE ↓ Brier score ↓ Mean uncertainty
+Softmax baseline 97.42 0.0418 0.0684 0.082
+DEL without KL regularization 97.71 0.0286 0.0547 0.071
+TRINITY -IDS DEL Head 98.06 0.0179 0.0413 0.064
+Table 14 Per-class cross-dataset
+generalization analysis Attack class Precision (%) Recall (%) F1-Score (%) Generalization observation
+Normal 97.82 98.16 97.99 Stable
+DoS 96.41 96.88 96.64 Minor degradation
+Probe 95.72 95.36 95.54 Moderate degradation
+Brute force 94.83 94.51 94.67 Moderate degradation
+Web attack 92.64 91.87 92.25 Higher degradation
+Inﬁltration 91.58 90.94 91.26 Higher degradation
+Botnet 93.21 92.76 92.98 Moderate degradation
+DDoS 95.86 96.13 95.99 Minor degradation
+Reconnaissance 94.76 94.32 94.54 Moderate degradation
+Spooﬁng 93.84 93.17 93.50 Moderate degradation
+Table 15 Computational
+complexity and deployment
+analysis of TRINITY -IDS
+Model/component Trainable
+parameters
+Inference time
+(ms/sample)
+Memory consumption
+(MB)
+SV -CNN-SE 0.31 M 0.18 42
+STV -BiGRU-SA 0.86 M 0.31 68
+TV -GA T 0.42 M 0.24 51
+CV AF 0.11 M 0.07 19
+DEL Head 0.03 M 0.02 8
+Complete TRINITY -IDS 1.73 M 0.82 188
+123
+
+TRINITY-IDS: a tri-view hybrid architecture with adaptive drift-evidential learning... Page 19 of 21   179 
+Table 16 Ablation study of statistical, temporal, and topological learning views
+Learning conﬁguration Statistical
+view
+Temporal
+view
+Topological
+view
+Accuracy (%) Precision (%) Recall (%) F1-score
+(%)
+Statistical only ✓ – – 94.72 91.63 92.14 91.88
+Temporal only – ✓ – 95.18 92.27 92.81 92.54
+Topological only – – ✓ 94.86 91.94 92.36 92.15
+Statistical + temporal ✓✓ – 96.91 93.72 94.16 93.94
+Statistical + topological ✓ – ✓ 96.58 93.41 93.87 93.64
+Temporal + topological – ✓✓ 97.24 94.38 94.71 94.54
+Statistical + temporal +
+topological
+✓✓✓ 98.06 95.03 95.13 95.08
+Table 17 Uncertainty calibration and conﬁdence evaluation
+Method Accuracy (%) ECE ↓ Brier score ↓ NLL ↓ Mean conﬁdence (%) Mean uncertainty ↓
+Softmax baseline 97.42 0.0418 0.0684 0.0921 96.84 0.082
+DEL without KL
+regularization
+97.71 0.0286 0.0547 0.0714 96.21 0.071
+TRINITY -IDS with
+DEL
+98.06 0.0179 0.0413 0.0538 95.87 0.064
+Table 18 Continual learning
+performance under concept drift Evaluation stage Accuracy (%) Precision (%) Recall (%) F1-score (%)
+Before drift 98.06 95.03 95.13 95.08
+Immediately after drift 91.84 88.72 89.16 88.94
+After 1 adaptation cycle 94.76 91.42 91.87 91.64
+After 2 adaptation cycles 96.83 93.72 94.18 93.95
+After 3 adaptation cycles 97.71 94.61 94.86 94.73
+After ﬁnal adaptation 98.02 94.91 95.08 95.00
+the evidential formulation produces more reliable conﬁdence
+estimates rather than simply maximizing classiﬁcation accu-
+racy. The mean uncertainty of 0.064 indicates that the model
+assigns relatively low uncertainty to conﬁdently classiﬁed
+samples and retains uncertainty information for ambiguous
+predictions.
+To evaluate the continual-learning capability of TRINITY -
+IDS, an additional experiment with different drift conditions
+analyzed. The results are given in Table 18. Before the
+drift, the model achieves an F1-score of 95.08%. After acti-
+vation of the Page-Hinkley drift detector and subsequent
+replay-based adaptation, the F1-score gradually increases
+to 91.64%, 93.95%, and 94.73% over successive adapta-
+tion cycles. After the ﬁnal adaptation stage, the F1-score
+reaches 95.00%. This recovery shows that the proposed
+online adaptation mechanism can restore predictive perfor-
+mance following a distributional change.
+The contribution of experience replay to catastrophic-
+forgetting prevention was evaluated as given in Table 19.I t
+compares continual learning with and without replay. The
+adaptation to the new trafﬁc distribution causes a larger
+reduction in performance on previously learned trafﬁc with-
+out replay. The combination of Page-Hinkley detection and
+experience replay provides both timely drift identiﬁcation
+and retention of historical knowledge. The proposed OCD-
+CER mechanism can adapt to changing trafﬁc distributions
+without substantially degrading previously learned intrusion-
+detection capability.
+To minimize the possibility of data leakage, the dataset
+partitioning procedure was performed before model train-
+ing. The test samples were not used during model ﬁtting
+or parameter selection. All preprocessing, feature-selection,
+and representation-learning operations were ﬁtted using the
+training partition and applied to the validation/test parti-
+tions. The test set was therefore retained exclusively for
+ﬁnal evaluation. The results are given in Table 20.A s
+expected, performance decreases under these more challeng-
+ing evaluation protocols compared with the random split.
+123
+
+  179 Page 20 of 21 P. Palpandi et al.
+Table 19 Forgetting-prevention
+comparison Continual learning
+conﬁguration
+Accuracy (%) F1-score (%) Retained performance (%) Forgetting
+(%)
+Without replay 94.63 91.74 93.02 4.32
+Replay only 96.91 94.01 96.47 1.59
+Page-Hinkley + replay 98.02 95.00 98.02 0.04
+Table 20 Evaluation under more
+challenging generalization
+scenarios
+Evaluation protocol Accuracy (%) Precision (%) Recall (%) F1-score (%)
+Random 80/20 split 98.36 98.26 98.32 98.29
+Temporal-based split 96.74 94.82 95.16 94.98
+Cross-network validation 96.21 94.37 94.68 94.52
+Unseen-attack evaluation 94.87 92.96 93.41 93.18
+Cross-dataset evaluation 98.06 95.03 95.13 95.08
+Nevertheless, the model maintains comparatively strong per-
+formance under the more difﬁcult evaluation conditions and
+supports its generalization capability.
+5 Conclusion
+In this work, an effective hybrid multi-view intrusion detec-
+tion system is proposed. The proposed multi-view learning
+architecture captures complementary attack characteristics
+through statistical, temporal, and topological representations.
+These heterogeneous representations are dynamically com-
+bined through the Cross-View Adaptive Fusion module. The
+Dirichlet Evidential Learning Head improves detection reli-
+ability by achieving uncertainty-aware predictions. Overall,
+TRINITY -IDS gives a robust and adaptive solution for intelli-
+gent intrusion detection. Future work will focus on reducing
+computational complexity\ and optimizing deployment for
+edge-based environments.
+Author contribution Palpandi P -Methodology Sakthivel B-Writting
+Nandakumar R-resource Ponnrajakumari M-Software.
+Funding This research did not receive any speciﬁc grant from funding
+agencies in the public, commercial, or not-for-proﬁt sectors.
+Data availability No datasets were generated or analysed during the
+current study.
+Declarations
+Conﬂict of interests No potential conﬂict of interest was reported by
+the author(s).
+Open Access This article is licensed under a Creative Commons
+Attribution-NonCommercial-NoDerivatives 4.0 International License,
+which permits any non-commercial use, sharing, distribution and repro-
+duction in any medium or format, as long as you give appropriate credit
+to the original author(s) and the source, provide a link to the Creative
+Commons licence, and indicate if you modiﬁed the licensed material.
+Y ou do not have permission under this licence to share adapted material
+derived from this article or parts of it. The images or other third party
+material in this article are included in the article’s Creative Commons
+licence, unless indicated otherwise in a credit line to the material. If
+material is not included in the article’s Creative Commons licence and
+your intended use is not permitted by statutory regulation or exceeds
+the permitted use, you will need to obtain permission directly from the
+copyright holder. To view a copy of this licence, visit http://creativeco
+mmons.org/licenses/by-nc-nd/4.0/.
+References
+1. Khan, A.Y ., Latif, R., Latif, S., Tahir, S., Batool, G., Saba, T.:
+Malicious insider attack detection in IoTs using data analytics.
+IEEE Access 8, 11743–11753 (2019). https://doi.org/10.1109/AC
+CESS.2019.2959047
+2. Shaikh, J.A., Wang, C., Sima, M.W.U., Arshad, M., Owais, M.,
+Hassan, D.S.M., Alkanhel, R., Muthanna, M.S.A.: A deep rein-
+forcement learning-based robust intrusion detection system for
+securing IoMT healthcare networks. Front. Med. 12, 1524286
+(2025). https://doi.org/10.3389/fmed.2025.1524286
+3. Zhu, Y ., Wang, Y ., Zhou, L., Xia, Y .: FC-Trans: deep learning
+methods for network intrusion detection in big data environ-
+ments. Comput. Secur. 154, 104392 (2025). https://doi.org/10.
+1016/j.cose.2025.104392
+123
+
+TRINITY-IDS: a tri-view hybrid architecture with adaptive drift-evidential learning... Page 21 of 21   179 
+4. Butt, A.U.R., Asif, M., Rasheed, M.A., Shaﬁq, S.: Quantum-secure
+healthcare: a comprehensive review of post-quantum cryptography
+and cyber defense in IoMT. Int. J.Theor. Appl Comput. Int. (2026).
+https://doi.org/10.65278/IJTACI.2026.67
+5. Palpandi, P ., Sakthivel, B., Ponnrajakumari, M., Indirani, M.,
+Govindaraju, S., Deivasigamani, S.: Enhanced anomaly detection
+in IoT networks via feature fusion and learning-based echo state
+networks. Int. J. Inf. Commun. Technol. (IJ-ICT)15(3), 1154–1166
+(2026). https://doi.org/10.11591/ijict.v15i3.pp1154-1166
+6. Shaikh, J. A., Wang, C., Owais, M., Zia, U., Sima M. W. U.and
+Arshad, M.: FOID: A Feature-optimized intrusion detection system
+for securing IoMT healthcare networks, In: 2024 18th International
+Conference on Open Source Systems and Technologies (ICOSST),
+pp. 1–7. Lahore, Pakistan (2024) https://doi.org/10.1109/ICOSST
+64562.2024.10871156.
+7. Wang, Z., Liu, Y ., He, D., Chan, S.: Intrusion detection meth-
+ods based on integrated deep learning model. Comput. Secur. 103,
+102177 (2021). https://doi.org/10.1016/j.cose.2021.102177
+8. Imrana, Y ., Xiang, Y ., Ali, L., Abdul-Rauf, Z.: A bidirectional
+LSTM deep learning approach for intrusion detection. Expert Syst.
+Appl. 185, 115524 (2021). https://doi.org/10.1016/j.eswa.2021.11
+5524
+9. Moizuddin, M.D., Jose, M.V .: A bio-inspired hybrid deep learning
+model for network intrusion detection. Knowl. Based Syst. 238,
+107894 (2022). https://doi.org/10.1016/j.knosys.2021.107894
+10. Alsouﬁ, M.A., Siraj, M.M., Ghaleb, F.A., Al-Razgan, M., Al-Asaly,
+M.S., Alfakih, T., Saeed, F.: Anomaly-based intrusion detection
+model using deep learning for IoT networks. CMES—Comput.
+Model. Eng. Sci. 141(1), 823–845 (2024). https://doi.org/10.32
+604/cmes.2024.052112
+11. Fu, Y ., Du, Y ., Cao, Z., Li, Q., Xiang, W.: A deep learning model
+for network intrusion detection with imbalanced data. Electronics
+11, 898 (2022). https://doi.org/10.3390/electronics11060898
+12. Hnamte, V ., Nhung-Nguyen, H., Hussain, J., Hwa-Kim, Y .: A novel
+two-stage deep learning model for network intrusion detection:
+LSTM-AE. IEEE Access 11, 37131–37148 (2023). https://doi.org/
+10.1109/ACCESS.2023.3266979
+13. Adefemi, K.O., Mutanga, M.B., Alimi, O.A.: A hybrid CNN—
+GRU deep learning model for IoT network intrusion detection. J.
+Sens. Actuator Netw.14, 96 (2025). https://doi.org/10.3390/jsan14
+050096
+14. Afraji, D.M.A.A., Lloret, J., Peñalver, L.: An integrated hybrid
+deep learning framework for intrusion detection in IoT and IIoT
+networks using CNN-LSTM-GRU architecture. Computation 13,
+222 (2025). https://doi.org/10.3390/computation13090222
+15. Elnakib, O., Shaaban, E., Mahmoud, M., et al.: EIDM: deep learn-
+ing model for IoT intrusion detection systems. J. Supercomput.
+79, 13241–13261 (2023). https://doi.org/10.1007/s11227-023-05
+197-0
+16. Ahmad, J., Latif, S., Khan, I.U., Alshehri, M.S., Khan, M.S., Alas-
+bali, N., Jiang, W.: An interpretable deep learning framework for
+intrusion detection in industrial Internet of Things. Internet Things
+33, 101681 (2025). https://doi.org/10.1016/j.iot.2025.101681
+17. Hassan, M.M., Gumaei, A., Alsanad, A., Alrubaian, M., Fortino,
+G.: A hybrid deep learning model for efﬁcient intrusion detection
+in big data environment. Inf. Sci. 513, 386–396 (2020). https://doi.
+org/10.1016/j.ins.2019.10.069
+18. Hizal, S., Cavusoglu, U., Akgun, D.: A novel deep learning-based
+intrusion detection system for IoT DDoS security. Internet Things
+28, 101336 (2024). https://doi.org/10.1016/j.iot.2024.101336
+19. Hnamte, V ., Najar, A.A., Laldinsanga, C., Hussain, J., Hmingliana,
+L.: A lightweight intrusion detection system using deep convolu-
+tional neural network. Comput. Electr. Eng. 127, 110561 (2025).
+https://doi.org/10.1016/j.compeleceng.2025.110561
+20. Osa, E., Orukpe, P .E., Iruansi, U.: Design and implementation of
+a deep neural network approach for intrusion detection systems,
+e-prime—advances in electrical engineering. Electron. Energy 7,
+100434 (2024). https://doi.org/10.1016/j.prime.2024.100434
+21. Shaikh, J.A., Wang, C., Muhammad, W.U.S., Arshad, M.,
+Owais, M., Alnashwan, R.O., Chelloug, S.A., Muthanna, M.S.A.:
+RCLNet: an effective anomaly-based intrusion detection for secur-
+ing the IoMT system. Front. Digit. Health 6, 1467241 (2024).
+https://doi.org/10.3389/fdgth.2024.1467241
+22. Alhayan, F., Alruwais, N., Alamgeer, M., Alashjaee, A.M., Abdul-
+lah, M., Khadidos, A.O., Alallah, F.S., Alshareef, A.: Design of
+advanced intrusion detection in cybersecurity using ensemble of
+deep learning models with an improved beluga whale optimiza-
+tion algorithm. Alex. Eng. J. 121, 90–102 (2025). https://doi.org/
+10.1016/j.aej.2025.02.069
+23. Hosseini, S. M., Ebrahimi, A., Mosavi, M. R., Shahhoseini, H.S.:
+A novel hybrid CNN-CBAM-GRU method for intrusion detection
+in modern networks. Results Eng. 28, 107103 (2025). https://doi.
+org/10.1016/j.rineng.2025.107103
+24. Wang, H., Y ang, Y ., Tan, P .: CTW A: a novel incremental deep
+learning-based intrusion detection method for the Internet of
+Things. Artif. Intell. Rev. 58, 374 (2025). https://doi.org/10.1007/
+s10462-025-11358-9
+25. Ishtiaq, W., Zannat, A., Parvez, A.H.M.S., Hossain, M.A., Kan-
+chan, M.H., Tarek, M.M.: CST-AFNet: a dual attention-based deep
+learning framework for intrusion detection in IoT networks. Array
+27, 100501 (2025). https://doi.org/10.1016/j.array.2025.100501
+26. Hussein, S.A., Répás, S.R.: A hybrid intrusion detection framework
+using deep autoencoder and machine learning models. AI 7,3 9
+(2026). https://doi.org/10.3390/ai7020039
+27. Dash, N., Chakravarty, S., Rath, A.K., et al.: An optimized
+LSTM-based deep learning model for anomaly network intrusion
+detection. Sci. Rep. 15, 1554 (2025). https://doi.org/10.1038/s4
+1598-025-85248-z
+28. Farhan, M., Waheed ud din, H., Ullah, S., et al.: Network-based
+intrusion detection using deep learning technique. Sci. Rep. 15,
+25550 (2025). https://doi.org/10.1038/s41598-025-08770-0
+29. Alabdulatif, A.: A novel ensemble of deep learning approach for
+cybersecurity intrusion detection with explainable artiﬁcial intelli-
+gence. Appl. Sci. 15, 7984 (2025). https://doi.org/10.3390/app151
+47984
+30. Hossain, M.A.: Deep Q-learning intrusion detection system (DQ-
+IDS): a novel reinforcement learning approach for adaptive and
+self-learning cybersecurity. ICT Express 11(5), 875–880 (2025).
+https://doi.org/10.1016/j.icte.2025.05.007
+Publisher’s Note Springer Nature remains neutral with regard to juris-
+dictional claims in published maps and institutional afﬁliations.
+123

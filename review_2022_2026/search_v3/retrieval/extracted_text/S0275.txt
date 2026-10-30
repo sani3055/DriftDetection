@@ -1,0 +1,787 @@
+HEINRIHS KRISTIANS SKRODELIS
+ 
+ 
+, ANDREJS ROMANOVS
+ 
+ 
+Abstract: Industrial Control Systems (ICS) and SCADA networks underpin operational technology, yet intrusion
+detection system (IDS) research keeps reporting strong laboratory numbers while sidestepping deployment
+blockers—strict false-alarm budgets, real-time latency, nonstationary plant behavior. We present an operational
+sensitivity audit of an explainable hybrid IDS pipeline, treating windowing/stride, thresholding, and SHAP-based
+explanation generation as coupled components. On two labeled ICS datasets (CIC Modbus and TU Wien), 10 s to
+30 s stride changes rarely flip attack-window decisions (2.15% and 3.87%), but on a benign-only IEC-104 trace
+the false-alarm rate jumps from 1.50 to 3.55 per hour—FAR is not stride-invariant. Global SHAP explanations
+stay stable under stride perturbation, yet decision-critical flip-window explanations do not (median cosine distance
+0.161 on TU Wien). A KS drift detector flags an injected mean shift with zero pre-drift false alarms. Inference
+and fusion run sub-millisecond; every claim maps to a regenerable artifact.
+Key-Words: industrial control systems, SCADA, intrusion detection system, explainable artificial intelligence,
+SHAP , concept drift, sensitivity analysis, operational technology, cybersecurity.
+Received: May 11, 2025. Revised: June 29, 2025. Accepted: September 2, 2025. Published: May 5, 2026.
+1 Introduction
+ICS/SCADA networks underpin critical
+infrastructure. IT/OT convergence is
+making them
+more exposed by the year. Intrusion detection is a key
+compensating control—but deploying it in practice
+hits the same friction points again and again: low base
+rates that make false positives expensive, stringent
+false-alarm budgets, real-time latency demands, and
+distribution shift. Explainable IDS designs are now
+expected to deliver actionable alerts, not just scores.
+The trouble is that explanation quality turns fragile
+once small engineering perturbations—stride/overlap
+choices, threshold recalibration—push decisions near
+the boundary.
+One concern stands out: windowing is part of
+the model. Sliding windows turn ICS telemetry into
+fixed-length vectors, and the choice of window length
+and stride directly sets alert volume, detection delay,
+and sample dependence. Thresholds calibrated to
+a target FAR can lose that FAR control under even
+modest deployment shift. Explanations may look
+stable on average yet become unreliable for the rare,
+decision-critical alerts that operators actually inspect.
+This work builds on a broader research agenda
+and systematic review, [1] that shaped the research
+questions and evaluation design. Here we report
+the completed sensitivity experiments and the
+artifact-backed evidence behind them.
+We contribute a deployment-oriented sensitivity
+evaluation of an explainable hybrid IDS pipeline:
+1. Stride/overlap sensitivity: decision flip coverage
+and paired alert-level deltas in FAR/EDR/delay
+under matched operating points, including an
+external benign-only FAR transfer check.
+2. Explanation stability: global vs flip-window
+attribution stability summaries (cosine-distance
+distributions + boundary-case interpretation).
+3. Drift monitoring sanity check: controlled abrupt
+mean-shift and gradual ramp drift tests reporting
+pre-drift false alarms and detection delay.
+4. Reproducibility bundle: claim→evidence
+mapping with rerunnable scripts, configs, and
+deterministic seeds.
+Section 2 reviews prior work and motivates the
+operational metrics. Section 3 formalizes the pipeline
+and sensitivity tests. Datasets and configuration
+follow in Section 4. Section 5 reports results.
+Section 6 discusses implications and threats to
+validity; Section 7 concludes.
+2 Related Work and Motivation
+2.1 Windowing and Evaluation Bias
+How a window is chosen matters more than most
+papers acknowledge. Prior work on dynamic
+and context-based windows, along with sequence
+length limits in behavioral modeling, [2], [3], [4]
+Beyond Accuracy: Deployment-Facing Sensitivity Audits for 
+Explainable Intrusion Detection in Industrial Control Systems (ICS) 
+ 
+Institute of Information Technology, Riga Technical University 
+Riga,  
+LATVIA 
+WSEAS TRANSACTIONS on SYSTEMS and CONTROL 
+DOI: 10.37394/23203.2026.21.
+Heinrihs Kristians Skrodelis, Andrejs Romanovs
+E-ISSN: 2224-2856
+43
+Volume 21, 2026
+
+shows that longer or multi-window views
+capture
+extended attack dynamics more reliably, [5]. The
+trade-off is well documented: shorter strides cut
+delay but raise false alarms, [5], [6], [7], [8].
+Windowing is only one knob. Operating-point
+selection and preprocessing sensitivity have been
+framed as threshold optimization under uncertainty
+and nonstationarity, [9], [10], [11], [12], [13].
+2.2 Explainability and Stability
+SHAP/LIME attributions and local surrogate rules
+dominate explainable IDS work, [14], [15], [16], [17],
+[18]. Interpretability has limits, though—conceptual
+ones, [19]—and alternative explanation mechanisms
+keep evolving, [20], [21], [22], [23]. In high-stakes
+environments, usefulness hinges on robustness and
+stability, [24]. There is also a less obvious risk:
+interpretability can open attack surfaces, enabling
+model extraction, [25].
+2.3 Drift and Reproducibility
+Industrial telemetry drifts. That is the baseline
+assumption, and drift taxonomies now span surveys,
+continuous monitoring, and multi-stage testing,
+[26], [27], [28], [29]. Streaming settings have
+produced a range of detectors: EWMA-like
+tests, adaptive windowed methods, unlabeled
+drift approaches, class-distribution monitors, and
+drift-aware ensembles, [30], [31], [32], [33], [34],
+[35]. A single abrupt step is no longer enough
+for evaluation; recent reviews call for gradual and
+trend scenarios too, [36], [37], [38]. Drift can
+also be adversarial, [39]. On the reproducibility
+side, persistent failures in systems and software
+research motivate stronger artifact capture and rerun
+validation, [40], [41].
+3 Problem Formulation and Methods
+3.1 Pipeline: From Telemetry to
+Deduplicated Alerts
+Let L be window length and s the stride. For each
+window start t, the pipeline builds a feature vector
+xt from observations in [t, t + L). Overlap (s < L )
+induces dependence between consecutive xt.
+A detector scores each window as F (xt) ∈ [0, 1]
+and raises an alarm when F (xt) > τ . Operators,
+however, do not consume raw windows—they
+consume events. We therefore also report a
+deduplicated alert stream: alarms within a 60 s
+tolerance on the same asset/session key are merged
+into a single event. This separation matters.
+Changing s changes the number of windows per hour
+even when the decision boundary stays fixed.
+3.2 Hybrid Score and Explanation Interface
+The hybrid IDS runs three channels: (i) a
+deterministic signature/specification channel, (ii)
+an anomaly channel trained on benign behavior,
+and (iii) a supervised semantic channel (when labels
+exist). Fusion is a weighted combination
+F (xt) = αA(xt) + (1 − α)S(xt), (1)
+with extensions for additional channels and learned
+fusion.
+Each selected alarm carries an explanation vector
+E(xt). Here, we compute deterministic additive
+SHAP attributions over fusion-channel score inputs
+(score_sem, score_sig, score_anom)—not over
+the full raw feature set. The reason is practical:
+attributions at the fusion level stay stable, cheap, and
+audit-friendly.
+3.3 Operational Sensitivity Tests
+Three stress tests target operational concerns directly.
+(T1) Stride/overlap sensitivity. Fix L and
+compare stride values s ∈ { s1, s2, . . .} at matched
+operating points. Two outputs: (i) attack-window
+flip rate—what fraction of attack windows change
+decision between strides—and (ii) paired deltas in
+alert-level FAR, EDR, and delay.
+The primary comparison here is s ∈ { 10s, 30s}
+under a time-equivalent persistence policy:
+persistence is fixed as a duration, not a window count.
+Without this, shorter strides gain an unfair advantage
+simply by emitting more adjacent windows.
+(T2) Explanation stability under stride
+perturbation. Attribution vectors are computed
+at each stride and compared via cosine distance.
+Two regimes matter: (i) global stability across
+all evaluation windows, and (ii) decision-critical
+stability on flip-windows where the stride change
+flips the decision. Flip-windows sit exactly on the
+boundary—the regime operators are most likely to
+inspect.
+(T3) Drift robustness. Drift detection is tested
+on controlled injections. We report (i) pre-drift false
+alarms—spurious triggers before the change—and
+(ii) detection delay after injection. Both an abrupt
+mean shift and a gradual ramp scenario are monitored
+with a Kolmogorov–Smirnov (KS) test over sliding
+windows.
+3.4 Metrics
+All metrics are workload-relevant and time-aware.
+False alarms per hour (FAR). Let NFP be the
+count of false-positive alert events on benign periods
+and T the evaluated benign duration in hours:
+FAR = NFP
+T (false alarms/hour). (2)
+WSEAS TRANSACTIONS on SYSTEMS and CONTROL 
+DOI: 10.37394/23203.2026.21.
+Heinrihs Kristians Skrodelis, Andrejs Romanovs
+E-ISSN: 2224-2856
+44
+Volume 21, 2026
+
+FAR is reported on labeled
+test sets (benign identified
+by labels) and on an external benign-only IEC-104
+trace—the latter probes whether FAR transfers to
+unseen traffic.
+Episode detection rate (EDR). Let E be the set of
+labeled attack episodes and ˆE ⊆ E the subset with at
+least one alert overlapping the episode window:
+EDR = | ˆE|
+|E| . (3)
+Episode-aware reporting is essential. W
+indow-level
+accuracy misleads when overlap and class imbalance
+are present.
+Detection delay. For each detected episode e ∈ ˆE
+with start time t(e)
+start and first alert time t(e)
+alert:
+de = t(e)
+alert − t(e)
+start. (4)
+Median and tail percentiles (p95) summarize delay.
+Tail behavior is what matters operationally.
+4 Experimental Setup
+4.1 Datasets
+Three data sources are used. All results in Section 5
+trace back to artifact tables and reports from the
+experiment suite.
+CIC Modbus. Zeek flow records over
+Modbus/TCP with labeled attack annotations.
+Scope: 123.3 h, 93,229 windows (12,232 attack,
+80,997 benign), 238 episodes. Attack types span
+reconnaissance, brute_force, query_flooding,
+payload_injection, false_data_injection,
+delay_response, replay, frame_stacking, and
+length_manipulation. This is the main benchmark for
+stride sensitivity, SHAP stability, and model-family
+comparisons.
+TU Wien. Pre-labeled ICS sessions with
+multi-state labeling. Scope: 636.15 h, 318,103
+windows (262,303 attack, 55,800 benign), 4 episodes.
+A useful stress test for stride sensitivity and SHAP
+stability—but the small episode count limits EDR
+granularity.
+IEC-104 baseline. A benign-only IEC-104 trace,
+[42]. Scope: 14.6 h, no attack labels. Its sole purpose
+is external FAR transfer testing.
+4.2 Windowing, Stride, and Alert
+Post-Processing
+Window length is fixed at L = 30 s. Strides of 10 s
+and 30 s are compared. Results are paired: the same
+detector configuration runs under each stride. FAR is
+reported on deduplicated alert events—alarms within
+a 60 s tolerance on the same asset/session key are
+merged.
+4.3 Models and Configurations
+Three channels make up the hybrid IDS: (i)
+signature/specification, (ii) anomaly (Isolation Forest
+on benign baselines), and (iii) supervised semantic
+(Random Forest, XGBoost, or LightGBM, depending
+on configuration). Fusion options include weighted,
+max, and learned approaches (e.g., logistic regression
+over channel scores). Thresholds target a FAR of
+1.0/hr on validation data for the stride and SHAP
+experiments.
+4.4 Explainability Configuration
+Deterministic additive SHAP attributions are
+computed at the fusion stage over channel scores
+(semantic, signature, anomaly). Stability is assessed
+via cosine distance across strides. The background
+set contains 100 matched benign windows; 500
+evaluation windows per variant are sampled and
+aggregated over 5 seeds.
+4.5 Drift Detection Configuration
+A KS-test detector runs over a 500-sample sliding
+window on synthetic score timeseries with controlled
+injections. The abrupt scenario injects a mean shift
+of 0.3 at the midpoint (sample 2,500 of 5,000). The
+gradual scenario uses a ramp. Sampling interval:
+30.0 s per sample. Evaluation frequency: every 50
+samples (step = 500/10 ). Detection delay equals
+the first flagged evaluation index minus the injection
+index. Because the rolling window mixes pre- and
+post-drift samples, a 0-delay detection can occur
+without accumulating a full post-drift window.
+5 Results
+5.1 Key Findings
+Five findings stand out. (i) Stride changes (10 s vs
+30 s) rarely flip attack-window decisions—flip rates
+are 2.15% on CIC Modbus and 3.87% on TU Wien.
+(ii) FAR is another story: on external benign IEC-104
+traffic it jumps from 1.50/hr to 3.55/hr with the same
+stride change. (iii) Global SHAP explanations stay
+stable (median cosine distance 0.000054 on Modbus,
+0.003330 on TU Wien), but flip-window explanations
+can be far less so—median 0.161 on TU Wien. (iv)
+A KS drift detector catches an injected mean shift
+(magnitude 0.3) with 0 pre-drift alarms and 0-sample
+delay; gradual drift takes longer but still produces
+0 pre-drift alarms. (v) Inference and fusion are
+sub-millisecond (p95 < 0.1 ms). Data loading and
+windowing dominate stream-simulation runtime.
+5.2 Stride/Overlap Sensitivity
+Window length is fixed atL = 30 s; strides of 10 s and
+30 s are compared under a time-equivalent persistence
+policy. Table 1 summarizes.
+WSEAS TRANSACTIONS on SYSTEMS and CONTROL 
+DOI: 10.37394/23203.2026.21.
+Heinrihs Kristians Skrodelis, Andrejs Romanovs
+E-ISSN: 2224-2856
+45
+Volume 21, 2026
+
+Table 1: Stride sensitivity summary for
+10 s vs 30 s.
+Source: created by the authors.
+Dataset Flip rate ∆EDR FAR evidence
+CIC Modbus 2.15% −0.09 ∆ = −0.12/hr
+TU
+Wien 3.87% 0.0 ∆ = +0 .01/hr
+IEC-104 N/A N/A 1.50 vs 3.55/hr
+Fig. 1: Distribution of global SHAP stability
+under stride perturbation, shown as a CDF
+of
+cosine distance. Lower values indicate more stable
+attributions.
+Source: created by the authors.
+The headline finding is a divergence: decision
+stability and false-alarm stability do not track each
+other. Attack-window flip rates are low—2–4%.
+FAR is not. On IEC-104 benign traffic, FAR climbs
+by 2.37 × when stride moves from 10 s to 30 s
+(1.50/hr → 3.55/hr). That gap has direct operational
+consequences.
+5.3 Explanation Stability
+Attribution stability is summarized via
+cosine-distance distributions, split into global
+stability and flip-window stability. Table 2 shows the
+numbers.
+Table 2: SHAP stability under stride perturbation
+(cosine distance).
+Source: created by the authors.
+Dataset Global (median) Flip-window (median)
+CIC Modbus 0.000054 0.000571
+TU Wien 0.003330 0.161066
+Figure 1 shows what Table 2 implies. T
+wo things
+matter for deployment. First, global attribution
+stability can be high even under a 3 × stride change.
+Second—and less reassuring—decision-critical
+stability can diverge sharply from the global picture.
+On TU Wien, flip-window explanations carry
+markedly larger cosine distances than on CIC
+Modbus. Attributions shift most where the decision
+boundary is already unstable.
+5.4 Drift Robustness
+Figure 2 (Appendix) shows drift monitoring under
+two scenarios: abrupt mean shift and gradual ramp.
+Pre-drift false alarms: zero in both cases. Under
+the mean shift, detection is immediate—delay 0 by
+our evaluation-index definition. Gradual drift takes
+longer: 200 samples.
+5.5 Runtime Considerations
+Real-time constraints are non-negotiable for hybrid
+IDS. Table 3 shows the microbenchmarks.
+Table 3: Runtime microbenchmark summary (stream
+simulation).
+Source: created by the authors.
+Dataset Inference (p95) Fusion (p95)
+CIC Modbus 0.07 ms 0.09 ms
+IEC-104 0.09
+ms 0.13 ms
+Both inference and fusion stay well under
+1 ms at
+p95. Model execution is not the bottleneck here.
+6 Discussion and Threats to Validity
+6.1 Why Sensitivity Audits Matter
+Operational stability is not one thing—it is layered.
+Decision stability, FAR stability, and explanation
+stability can all diverge under the exact same
+perturbation. That is what the stride experiments
+show. Few attack-window decisions flip. FAR on
+external benign traffic shifts substantially. Global
+explanation metrics look fine while flip-window
+attributions tell a different story.
+6.2 Interpreting FAR Transfer
+Why does the IEC-104 benign-only baseline matter?
+Because labeled datasets can underrepresent benign
+diversity. Testing on labeled benign windows alone is
+not sufficient evidence for deployability. The 2.37 ×
+FAR increase on IEC-104 under stride perturbation
+makes the case: deployment evaluation should
+include at least one benign-only trace from the target
+environment.
+6.3 Limitations
+Several limitations apply. Threshold stability under
+shift is a known failure mode—FAR-calibrated
+cutoffs can drift as score distributions change. TU
+WSEAS TRANSACTIONS on SYSTEMS and CONTROL 
+DOI: 10.37394/23203.2026.21.
+Heinrihs Kristians Skrodelis, Andrejs Romanovs
+E-ISSN: 2224-2856
+46
+Volume 21, 2026
+
+Wien has only 4 labeled
+episodes in our setup, so
+EDR granularity is coarse. Explanation stability
+is not the same as interpretability or faithfulness.
+Local methods can be affected by perturbations and
+feature correlations in ways cosine distance does not
+capture. Industrial drift takes many forms—gradual,
+abrupt, equipment-driven, process-driven. In a
+preliminary closed-loop test on real data splits,
+the drift detector did not trigger at all. Realistic
+drift may be subtler than synthetic injections and
+may demand feature-level monitoring or different
+detectors entirely.
+6.4 Reproducibility Threats
+The experiment suite is configuration-driven and
+deterministic. Still, runtime and FAR transfer are
+sensitive to environment and background traffic
+composition. Independent replication requires
+complete configs, seeds, and representative benign
+traces—all of which we release.
+7 Conclusion
+Explainable hybrid IDS for SCADA/ICS will
+not become deployable without sensitivity
+evidence—stability of alerts and explanations
+under realistic windowing/stride perturbations
+and under distribution shift. This paper
+contributes an operational sensitivity audit: stride
+sensitivity, decision-critical explanation stability on
+flip-windows, drift monitoring sanity checks, and
+runtime feasibility. The central lesson is that decision
+stability does not imply FAR stability on realistic
+benign traffic, and that global explainability metrics
+can mask boundary-case instability. Every claim
+maps to a regenerable artifact in the accompanying
+reproducibility bundle.
+References:
+[1] H. K. Skrodelis and A. Romanovs, Explainable
+hybrid intrusion detection for SCADA/ICS:
+a review and research agenda, Frontiers in
+Computer Science, vol. 8, 2026. https://do
+i.org/10.3389/fcomp.2026.1724245
+[2] E. Eskin, W. Lee and S. J. Stolfo, Modeling
+system calls for intrusion detection with
+dynamic window sizes, in Proceedings DARP A
+Information Survivability Conference and
+Exposition II (DISCEX’01) , vol. 1, Anaheim,
+CA, USA, 2001, pp. 165–175. h t t p s :
+//doi.org/10.1109/DISCEX.2001.932213
+[3] K. M. C. Tan and R. A. Maxion, “Why
+6?” Defining the operational limits of
+stide, an anomaly-based intrusion detector,
+in Proceedings 2002 IEEE Symposium
+on Security and Privacy , Berkeley,
+CA, USA, 2002, pp. 188–201. h t t p s :
+//doi.org/10.1109/SECPRI.2002.1004371
+[4] K. M. C. Tan and R. A. Maxion, Determining the
+operational limits of an anomaly-based intrusion
+detector, IEEE Journal on Selected Areas in
+Communications, vol. 21, no. 1, 2003, pp.
+96–110. https://doi.org/10.1109/JSAC
+.2002.806130
+[5] C. Wilson, X. Mountrouidou and A. Little,
+Worth the Wait? Time Window Feature
+Optimization for Attack Classification, in 2019
+IEEE International Conference on Big Data
+(Big Data), Los Angeles, CA, USA, 2019, pp.
+3232–3241. https://doi.org/10.1109/Bi
+gData47090.2019.9006304
+[6] F. Akowuah, K. Fletcher and F. Kong, V ariable
+Window and Deadline-Aware Sensor Attack
+Detector for Automotive CPS, in 2023 IEEE
+26th International Symposium on Real-Time
+Distributed Computing (ISORC), Nashville,
+TN, USA, 2023, pp. 54–63. https://doi.or
+g/10.1109/ISORC58943.2023.00018
+[7] M. Bateni and A. Baraani, Time Window
+Management for Alert Correlation using
+Context Information and Classification,
+International Journal of Computer Network
+and Information Security (IJCNIS),
+vol. 5, no. 11, 2013, pp. 9–16. h t t p s :
+//doi.org/10.5815/ijcnis.2013.11.02
+[8] I. P . E. S. Putra and R. V esilo,
+Window-size impact on detection rate of
+wearable-sensor-based fall detection using
+supervised machine learning, in 2017
+IEEE Life Sciences Conference (LSC) ,
+Sydney, Australia, 2017, pp. 21–26. https:
+//doi.org/10.1109/LSC.2017.8268134
+[9] A. M. Al Tobi and I. Duncan, Improving
+Intrusion Detection Model Prediction
+by Threshold Adaptation, Information,
+vol. 10, no. 5, 2019, p. 159. h t t p s :
+//doi.org/10.3390/info10050159
+[10] A. Ghafouri, W. Abbas, A. Laszka, Y .
+V orobeychik and X. Koutsoukos, Optimal
+Thresholds for Anomaly-Based Intrusion
+Detection in Dynamical Environments, in
+Decision and Game Theory for Security
+(GameSec 2016), Lecture Notes in Computer
+Science, vol. 9996, Springer International
+Publishing, 2016, pp. 415–434. https://doi.
+org/10.1007/978-3-319-47413-7_24
+WSEAS TRANSACTIONS on SYSTEMS and CONTROL 
+DOI: 10.37394/23203.2026.21.
+Heinrihs Kristians Skrodelis, Andrejs Romanovs
+E-ISSN: 2224-2856
+47
+Volume 21, 2026
+
+[11] M. Q. Ali, H.
+Khan, A. Sajjad and S. A. Khayam,
+On achieving good operating points on an ROC
+plane using stochastic anomaly score prediction,
+in Proceedings of the 16th ACM Conference on
+Computer and Communications Security (CCS
+’09), Chicago, IL, USA, 2009, pp. 314–323. ht
+tps://doi.org/10.1145/1653662.1653700
+[12] C. M. de Nascimento and J. Hou,
+Uncertainty-Aware Adaptive Intrusion
+Detection Using Hybrid CNN-LSTM
+with cWGAN-GP Augmentation and
+Human-in-the-Loop Feedback, Safety,
+vol. 11, no. 4, 2025, p. 120. h t t p s :
+//doi.org/10.3390/safety11040120
+[13] H. Skrodelis, R. Kelle and A. Romanovs,
+Cybersecurity in SCADA Systems with
+Advanced AI and ML Techniques, in 2024
+IEEE 65th International Scientific Conference
+on Information Technology and Management
+Science of Riga Technical University (ITMS) ,
+Riga, Latvia, 2024, pp. 1–5. https://doi.or
+g/10.1109/ITMS64072.2024.10741936
+[14] B. Aldughayfiq, F. Ashfaq, N. Z. Jhanjhi and M.
+Humayun, Explainable AI for Retinoblastoma
+Diagnosis: Interpreting Deep Learning Models
+With LIME and SHAP , Diagnostics, vol. 13,
+no. 11, 2023, p. 1932. https://doi.org/10
+.3390/diagnostics13111932
+[15] S. Lundberg, G. Erion, H. Chen, A. J. DeGrave,
+J. M. Prutkin, B. G. Nair, R. Katz, J.
+Himmelfarb, N. Bansal and S.-I. Lee, From
+Local Explanations to Global Understanding
+With Explainable AI for Trees, Nature Machine
+Intelligence, vol. 2, 2020, pp. 56–67. https:
+//doi.org/10.1038/s42256-019-0138-9
+[16] N. Burkart, M. Franz and M. F. Huber,
+Explanation Framework for Intrusion
+Detection, in Machine Learning for Cyber
+Physical Systems, Technologien für die
+intelligente Automation, vol. 13 , Springer
+Berlin Heidelberg, 2020, pp. 83–91. https://
+doi.org/10.1007/978-3-662-62746-4_9
+[17] R. Guidotti, A. Monreale, S. Ruggieri, D.
+Pedreschi, F. Turini and F. Giannotti,
+Local Rule-Based Explanations of Black
+Box Decision Systems, arXiv preprint
+arXiv:1805.10820, 2018. h t t p s :
+//arxiv.org/abs/1805.10820 (Accessed:
+April 19, 2026).
+[18] H. K. Skrodelis, A. Romanovs and A. Lieknins,
+Explainable SCADA Hybrid IDS: Gaps and
+Hypothesis, in 2025 66th International
+Scientific Conference on Information
+Technology and Management Science of
+Riga Technical University (ITMS), Riga, Latvia,
+2025, pp. 1–5. https://doi.org/10.1109/
+ITMS67030.2025.11236701
+[19] D. Watson, Conceptual Challenges for
+Interpretable Machine Learning, Synthese,
+vol. 200, no. 2, 2022, p. 65. h t t p s :
+//doi.org/10.1007/s11229-022-03485-5
+[20] J. Qian, X. Du, R. Pan, M. Ling and
+H. Ding, ELIME: Exact Local Interpretable
+Model-Agnostic Explanation, The European
+Journal on Artificial Intelligence , 2025, art.
+30504554251325141. https://doi.org/10
+.1177/30504554251325141
+[21] A. Bueff, M. Cytryński, R. Calabrese, M.
+Jones, J. Roberts, J. Moore and I. Brown,
+Machine Learning Interpretability for a
+Stress Scenario Generation in Credit Scoring
+Based on Counterfactuals, Expert Systems with
+Applications, vol. 202, 2022, p. 117271. https:
+//doi.org/10.1016/j.eswa.2022.117271
+[22] C. Moreira, Y .-L. Chou, C. Hsieh, C. Ouyang,
+J. Jorge and J. Pereira, Benchmark Evaluation
+of Counterfactual Algorithms for XAI: From
+a White Box to a Black Box, arXiv preprint
+arXiv:2203.02399, 2022. https://arxiv.
+org/abs/2203.02399 (Accessed: April 19,
+2026).
+[23] T. V ermeire, D. Brughmans, S. Goethals, R.
+Oliveira and D. Martens, Explainable Image
+Classification With Evidence Counterfactual,
+Pattern Analysis and Applications , vol. 25,
+2022, pp. 315–335. https://doi.org/10.1
+007/s10044-021-01055-y
+[24] A. A. Noor, A. Manzoor, M. D. Mazhar Qureshi,
+M. A. Qureshi and W. Rashwan, Unveiling
+Explainable AI in Healthcare: Current Trends,
+Challenges, and Future Directions, WIREs Data
+Mining and Knowledge Discovery , vol. 15,
+no. 2, 2025, art. e70018. https://doi.org/
+10.1002/widm.70018
+[25] A. C. Öksüz, A. Halimi and E. Ayday,
+AUTOL YCUS: Exploiting Explainable
+Artificial Intelligence (XAI) for Model
+Extraction Attacks Against Interpretable
+Models, Proceedings on Privacy Enhancing
+Technologies, vol. 2024, no. 4, 2024, pp.
+684–699. https://doi.org/10.56553/pop
+ets-2024-0137
+WSEAS TRANSACTIONS on SYSTEMS and CONTROL 
+DOI: 10.37394/23203.2026.21.
+Heinrihs Kristians Skrodelis, Andrejs Romanovs
+E-ISSN: 2224-2856
+48
+Volume 21, 2026
+
+[26] J. Gama, I. Žliobaité, A. Bifet, M.
+Pechenizkiy
+and A. Bouchachia, A Survey on Concept Drift
+Adaptation, ACM Computing Surveys, vol. 46,
+no. 4, 2014, pp. 44:1–44:37. https://doi.or
+g/10.1145/2523813
+[27] D. Jayaratne, D. De Silva, D. Alahakoon and
+X. Y u, Continuous Detection of Concept Drift
+in Industrial Cyber-Physical Systems Using
+Closed Loop Incremental Machine Learning,
+Discover Artificial Intelligence , vol. 1, 2021,
+p. 7. https://doi.org/10.1007/s44163
+-021-00007-z
+[28] L. Y ang and A. Shami, A Multi-Stage
+Automated Online Network Data Stream
+Analytics Framework for IIoT Systems,
+IEEE Transactions on Industrial Informatics,
+vol. 19, no. 2, 2023, pp. 2107–2116. https:
+//doi.org/10.1109/TII.2022.3212003
+[29] S. Y u, Z. Abraham, H. Wang, M. Shah, Y .
+Wei and J. C. Príncipe, Concept Drift Detection
+and Adaptation With Hierarchical Hypothesis
+Testing, Journal of the Franklin Institute ,
+vol. 356, no. 5, 2019, pp. 3187–3215. https:
+//doi.org/10.1016/j.jfranklin.2019.0
+1.043
+[30] G. J. Ross, N. M. Adams, D. K. Tasoulis and
+D. J. Hand, Exponentially Weighted Moving
+Average Charts for Detecting Concept Drift,
+Pattern Recognition Letters , vol. 33, no. 2,
+2012, pp. 191–198. https://doi.org/10.1
+016/j.patrec.2011.08.019
+[31] R. B. Sebopelo, Adaptive-Delta ADWIN for
+Balancing Sensitivity and Stability in Streaming
+IDS, Journal of Information Systems and
+Informatics, vol. 7, no. 3, 2025, pp. 2876–2897.
+https://doi.org/10.51519/journalisi.
+v7i3.1260
+[32] T. S. Sethi and M. Kantardzic, On the
+Reliable Detection of Concept Drift from
+Streaming Unlabeled Data, Expert Systems with
+Applications, vol. 82, 2017, pp. 77–99. https:
+//doi.org/10.1016/j.eswa.2017.04.008
+[33] D. Stucchi, L. Frittoli and G. Boracchi,
+Class Distribution Monitoring for Concept
+Drift Detection, in 2022 International Joint
+Conference on Neural Networks (IJCNN),
+Padua, Italy, 2022, pp. 1–8. https://doi.or
+g/10.1109/IJCNN55064.2022.9892772
+[34] R. Gupta, B. Tian, Y . Wang and K. Nahrstedt,
+TWIN-ADAPT: Continuous Learning for
+Digital Twin-Enabled Online Anomaly
+Classification in IoT-Driven Smart Labs,
+Future Internet , vol. 16, no. 7, 2024, p. 239.
+https://doi.org/10.3390/fi16070239
+[35] D. Li, N.-K. C. Nair and K. I-K. Wang,
+ADDAEIL: Anomaly Detection with
+Drift-Aware Ensemble-Based Incremental
+Learning, Algorithms, vol. 18, no. 6, 2025,
+p. 359. https://doi.org/10.3390/a18060
+359
+[36] G. Li, J. Liang and C. Y ue, Research on
+the Fastest Detection Method for Weak Trends
+Under Noise Interference, Entropy, vol. 23,
+no. 8, 2021, p. 1093. https://doi.org/10
+.3390/e23081093
+[37] S. Wares, J. Isaacs and E. Elyan, Data Stream
+Mining: Methods and Challenges for Handling
+Concept Drift, SN Applied Sciences , vol. 1,
+no. 11, 2019, p. 1412. https://doi.org/10
+.1007/s42452-019-1433-0
+[38] D. Zhang, Z. Idrus and R. Hamzah, Concept
+Drift Early Fault Detection in Wind Turbine
+Based on Distance Metric: A Systematic
+Literature Review, Pertanika Journal of Science
+and Technology, vol. 33, no. 1, 2025. https:
+//doi.org/10.47836/pjst.33.1.07
+[39] M. Kravchik, B. Biggio and A. Shabtai,
+Poisoning Attacks on Cyber Attack Detectors
+for Industrial Control Systems, in Proceedings
+of the 36th Annual ACM Symposium on Applied
+Computing (SAC ’21), Virtual Event, Republic
+of Korea, 2021, pp. 116–125. https://doi.or
+g/10.1145/3412841.3441892
+[40] M. M. Rahman, F. Khomh and M. Castelluccio,
+Why Are Some Bugs Non-Reproducible? An
+Empirical Investigation Using Data Fusion,
+in 2020 IEEE International Conference on
+Software Maintenance and Evolution (ICSME) ,
+Adelaide, Australia, 2020, pp. 605–616. https:
+//doi.org/10.1109/ICSME46990.2020.00
+063
+[41] Z. Ren, H. Jiang, J. Xuan and Z. Y ang,
+Automated Localization for Unreproducible
+Builds, in Proceedings of the 40th International
+Conference on Software Engineering (ICSE
+’18), Gothenburg, Sweden, 2018, pp. 71–81. ht
+tps://doi.org/10.1145/3180155.3180224
+[42] H. K. Skrodelis, B. Blumbergs and A.
+Romanovs, Threat Scenario Generation for
+IEC104 Cyber Defense, in 2024 IEEE 11th
+Workshop on Advances in Information,
+Electronic and Electrical Engineering
+(AIEEE), Vilnius, Lithuania, 2024, pp. 1–7.
+https://doi.org/10.1109/AIEEE62837.2
+024.10586596
+WSEAS TRANSACTIONS on SYSTEMS and CONTROL 
+DOI: 10.37394/23203.2026.21.
+Heinrihs Kristians Skrodelis, Andrejs Romanovs
+E-ISSN: 2224-2856
+49
+Volume 21, 2026
+
+APPENDIX
+Fig. 2: KS-test drift monitoring on synthetic score streams under (top) abrupt mean shift and (bottom) gradual
+ramp drift. The dashed line marks the drift injection
+index. Triangles denote drift alerts and the star denotes the
+first detected alert. Window size is 500 samples; evaluation step is 50 samples; sampling interval is 30 s. Delay
+is defined at evaluation granularity as first_detection_idx − drift_injection_idx; thus “0” delay means the first
+evaluation immediately after injection was significant (the rolling window mixes pre- and post-drift samples and
+does not require a full post-drift window).
+Source: created by the authors.
+WSEAS TRANSACTIONS on SYSTEMS and CONTROL 
+DOI: 10.37394/23203.2026.21.
+Heinrihs Kristians Skrodelis, Andrejs Romanovs
+E-ISSN: 2224-2856
+50
+Volume 21, 2026
+
+Contribution of Individual Authors to the
+Creation of
+a Scientific Article (Ghostwriting
+Policy)
+H.K. Skrodelis designed and implemented the
+experimental framework, conducted all experiments,
+and wrote the manuscript.
+A. Romanovs supervised the research and provided
+critical review of the methodology.
+Please visit Contributor Roles Taxonomy (CRediT):
+www.wseas.org/multimedia/contributor-roleinstruction.pdf
+Sources of Funding for Research Presented in a
+Scientific Article or Scientific Article Itself
+This research was supported by Riga Technical
+University. The work was developed within
+the framework of the EU ERDF-funded
+project “RTU Doctoral Grants for Supporting
+Scientific Excellence in Smart Specialization
+Areas” (No. 1.1.1.8/1/24/I/007) within the
+framework of a doctoral grant (ID 8020).
+Conflicts of Interest
+The authors have no conflicts of interest to declare
+that are relevant to the content of this article.
+Creative Commons Attribution License 4.0
+(Attribution 4.0 International, CC BY 4.0)
+This article is published under the terms of the
+Creative Commons Attribution License 4.0
+https://creativecommons.org/licenses/by/4.0/deed.en
+_US
+WSEAS TRANSACTIONS on SYSTEMS and CONTROL 
+DOI: 10.37394/23203.2026.21.
+Heinrihs Kristians Skrodelis, Andrejs Romanovs
+E-ISSN: 2224-2856
+51
+Volume 21, 2026

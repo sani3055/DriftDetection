@@ -1,0 +1,1035 @@
+echT PressScience
+https://doi.org/10.32604/cmc.2026.077388
+ARTICLE
+ExplainableAnomalyDetectionforSystemLogsinDistributedEnvironments
+ZhaojunGu1,W e n l o n gY u e2 andChunboLiu 1,*
+1InformationSecurityEvaluationCenter,CivilAviationUniversityofChina,Tianjin,China
+2CollegeofComputerandArtificialIntelligence,CivilAviationUniversityofChina,Tianjin,China
+*CorrespondingAuthor:ChunboLiu.Email:cbliu@cauc.edu.cn
+Received:08December2025;Accepted:28February2026;Published:09April2026
+ABSTRACT: Anomalydetectioninsystemlogsisacriticaltechnicalmeansforidentifyingpotentialfaultsandsecurity
+risks. In distributed environments, traditional deep learning-based log anomaly detection methods often suffer from
+shortcomingsintransparency,computationaloverhead,anddataprivacyprotection.Toaddresstheseissues,thispaper
+proposes a federated learning-driven lightweight and explainable log anomaly detection framework named FedXLog.
+Theframeworkadaptstoheterogeneouslogsthroughhierarchicalfeatureextraction,introducestheFederatedGradient
+TrajectoryAggregationalgorithm(FedGradTrace)toenhancetheexplainabilityoftheparameteraggregationprocess,
+constructslightweightmodelsusingknowledgedistillation,andachievesgloballyconsistentexplanatorycapabilitiesby
+integrating hash feature alignment. Experimental results demonstrate that FedXLog possesses the dual advantages of
+high detection accuracy and lightweight deployment for heterogeneous logs in distributed scenarios. It can effectively
+identify key decision-making features and locate typical root causes of anomalies. Notably, the framework has
+been specifically optimized for the unique characteristics of distributed logs. Distinguished from general federated
+explainablemethods,itcandirectlysupportabnormalrootcauselocalizationinOperationsandMaintenancescenarios.
+Thisfurtherverifiestheapplicationvalueofscenario-specificadaptationoffederatedlearninginthefieldofloganalysis,
+therebyexpandingthescopeofapplicationofexplainableloganomalydetection.
+KEYWORDS:Anomalydetection;logparsing;federatedlearning;explainableartificialintelligence
+1I n t r o d u c t i o n
+With the advancement of digital transformation, the importance of system log anomaly detection
+in the field of cybersecurity has become increasingly prominent. Attackers’ behaviors such as privilege
+escalation and data theft are often recorded in system logs. Currently, network attacks are becoming more
+concealedandfrequent,renderingtraditionaldefensemethodsinadequatetoaddresssuchthreats.Anomaly
+detectiontechnologybasedonloganalysishasthusbecomearesearchhotspotandacoremeansofdetecting
+intrusions and analyzing attack behaviors [1,2]. Traditional log analysis methods based on rule matching
+require accurate log parsing and manually designed features, which have significant limitations in dealing
+withintelligentandemergingnetworkattacks.Incontr ast,machinelearninganddeeplearningtechnologies,
+with their ability to automatically identify patterns and adapt to different scenarios, can effectively reduce
+f a l s ep o s i t i v er a t e sa n de n h a n c et h ea b i l i t yt or e c o g n i z ee m e r g i n gt h r e a t s[3–7], providing a new path for
+proactivecybersecuritydefensesystems.
+As the complexity of network attacks increases, system log anomaly detection faces the dual pressures
+of expanding data scale and privacy protection, and the limitations of traditional centralized detection
+Copyright © 2026 The Authors. Published by Tech Science Press. This work is licensed under a Creative Commons Attribution 4.0 International
+License, which permits unrestricted use, distribution, and reproduction in any medium, provided the original work is properly cited.
+
+2 ComputMaterContin. 2026;87(3):94
+modelshavegraduallybecomeapparent.Althoughcentralizedsystemshaveadvantagesinlogmanagement
+efficiencyandtoolintegration,theysufferfromissuessuchasinsufficientprivacyprotection,weakreliability,
+andpoorscalability:centralizedstorageofrawlogsincreasestheriskofsensitiveinformationexposure;the
+failure or compromise of the central node may cause the entire system to break down; and performance
+degradation tends to occur during high-concurrency log processing [8,9]. In comparison, distributed
+solutionsofferstrongeradaptability.
+FederatedLearning(FL)providesaneffectivesolutionforprivacyprotectioninloganomalydetection
+through local data processing and collaborative model updates. Participants only share model parameter
+updates instead of raw data, reducing the risk of privacy leakage [10,11]. Additionally, the distributed
+architecture ensures system stability, allowing services to be maintained even if some nodes fail. However,
+current federated learning models face the challenge of insufficient explainability—cybersecurity opera-
+tions and maintenance personnel find it difficult to understand the detection logic and cannot trace the
+attack path [12–14]. It is particularly important to note that distributed logs exhibit the characteristics of
+heterogeneousformats,scarceanomalysamples,andtheneedforrootcauselocalizationinOperationsand
+Maintenance(O&M).Existingfederatedexplainablemethodsoftensufferfrommisalignmentorinvalidation
+of explanations because they fail to adapt to these characteristics [15]. In contrast, the design of FedXLog
+specificallyaddressestheseexclusivepainpointsinlogscenarios.Therefore,improvingmodelexplainability
+while ensuring data security and system reliability has become an urgent breakthrough direction in this
+field[16–20].
+Themainco n trib u tio nso fthispa perar easfollo ws:
+• Afederatedlearning-drivenlightweightandexplainableloganomalydetectionframework,FedXLog,is
+proposed, integrating knowledge distillation, federated learning, and explainability technologies. This
+framework addresses three core challenges in log anomaly detection within distributed environments:
+privacy protection, computational overhead, and the decision-making black box problem. While
+retaining most of the semantic feature extraction capabilities, it significantly reduces computational
+costs, avoids privacy leakage risks associated with raw log transmission, and adapts to distributed
+deploymentscenariosinvolvingheterogeneouslogs.
+• A federated gradient trajectory aggregation algorithm (FedGradTrace) is proposed to improve the
+parameter aggregation logic of the classical FedAvg algorithm. By retaining the gradient update
+trajectories of each client and introducing the Frobenius norm to achieve stability-sensitiveparameter
+aggregation, the algorithm not only maintains privacy protection properties but also significantly
+enhancestheexplainabilityoftheparameteraggregationprocess.Thisprovidessupportfortracingthe
+evolutionofmodelparametersandlocatingthesourcesofanomalyimpacts.
+• A hash feature alignment algorithm for log texts is designed. By matching 8-hex hash values via
+regular expressions, counting high-frequency key hashes, and mapping original SHapley Additive
+exPlanations (SHAP) values to a unified dimension, a globally consistent explanation space across
+clientsisestablished.Thisalgorithmeffectivelyaddressestheexplanationmisalignmentproblemcaused
+byformatdifferencesinheterogeneouslogs,ensuringtheconsistencyandvalidityofexplanationresults
+indistributedscenarios.
+TheeffectivenessofFedXLogisvalidatedonfourpublicsystemlogdatasets:HDFS,BGL,Thunderbird,
+and Spirit. This study contributes a scenario-adapted integration of federated learning and explainability
+technologies for log anomaly detection, addressing unmet needs in heterogeneous log adaptation and
+O&M-orientedrootcauselocalizationthatremainunaddressedbyprior relatedworks.Withoutsacrificing
+accuracy, it significantly enhances model explainability, providing technical support for addressing issues
+suchasdatasilos,distributeddeployment,andcompliancerequirements.
+
+ComputMaterContin. 2026;87(3):94 3
+2R e l a t e dW o r k
+Loganomalydetectionhasevolved fromtraditionalrule-basedmethodstointelligentlearning-driven
+approaches, with key advancements focusing on deep learning, federated learning (FL), and explainable
+artificialintelligence(XAI)—threedomainscloselytiedtothecorechallengesaddressedinthisstudy.
+Traditional log anomaly detection relies on manual rule matching or statistical feature analysis, which
+struggle to adapt to dynamic log changes and large-scale data, leading to limited accuracy in emerging
+attackscenarios[ 21,22].Deeplearninghasbecomethemainstreambyenablingautomaticfeatureextraction:
+DeepLog [3] uses LSTMs for log sequence prediction but adopts a centralized architecture and lacks
+explainability; LogAnomaly [4] integrates structural and parameter features via dual-channel LSTMs but
+fails to mitigate privacy risks and suffers from opaque attention weights; LogBERT [5] leverages BERT’s
+semanticunderstandingtoachievehighaccuracyincentralizedsettingsbuthasexcessiveparameters,lacks
+explanation mechanisms, and is incompatible with distributed scenarios; LogRobust [6]a n dP L E L o g[7]
+improve robustness and handle unstable logs, respectively, but retain centralized designs and black-box
+characteristicsthathinderO&Mapplicability.
+Federated learning addresses privacy concerns by enabling local training and collaborative parameter
+updates,butexistingmethodshavecriticalgapsinlogscenarioadaptation.FedAvg[ 23]establishedthebasic
+FLframeworkbutignoresanomalydetection-specificneeds,explainability,andnon-IIDdatastability.Sub-
+sequentoptimizationslikeFedProx[ 24](proximalregularizationforheterogeneousdata)andFedOPT[ 25]
+(adaptive optimizers for convergence) focus on training efficiency without addressing explainability or
+log-specific heterogeneity. Specialized federated anomaly detection methods such as FedAD [26]a n d
+FedHAP[27]eitherfailtohandlelogformatdifferences(e.g.,Linuxvs.Windows)orlackfeatureattribution
+mechanisms,makingthemunsuitableforO&Mrootcauselocalization.Inthelog-specificfederatedlearning
+space, FedLog [28] proposes a customizable and communication-efficient federated anomaly detection
+approach for IoT system logs, while AdaLightLog [29] enhances application log anomaly detection via
+adaptive federated learning, both focusing on training efficiency and data heterogeneity but not on model
+explainabilityorrootcauselocalization.
+To tackle non-IID data challenges in federated learning, gradient-aware aggregation strategies have
+been developed to improve model stability. UGA [30] introduces unbiased gradient aggregation and
+controllablemeta-updatingtoreducetheimpactofheterogeneousgradients,whileFedGP[ 31]adoptsgenetic
+programmingforevolutionaryaggregationinfederatedlearningwithnon-IIDdata,enhancingconvergence
+byoptimizinggradientcombinationstrategies.FedGAM[ 32]furtherrefinesgradientweightingviagradient
+norm-awareminimizationandcontrolvariablestoachievegeneralizedfederatedlearning,andFedTrack[ 33]
+leverages adaptive federated learning for collaborative target tracking, demonstrating the effectiveness of
+gradient-aware methods in heterogeneous scenarios. However, these gradient optimization works are not
+tailored to log anomaly detection tasks and do not incorporate explainability components to support O&M
+decision-making.
+Featurealignmentisanotherkeyresearchdirectioninfederatedlearningtoaddressdataheterogeneity,
+with several methods proposed for consistent representation learning. FedPAC [34]f o c u s e so nc o n s i s t e n t
+representationlearningforfederatedunsupervisedlearningunderdataheterogeneity,whileFedCCFA[ 35]
+addressesdistributedconceptdriftviaclassifier clusteringandfeaturealignment.FL-Joint[ 36]jointlyaligns
+featuresandlabelsinfederatedlearningtomitigatetheimpactofheterogeneousdatadistributions.Despite
+their advances in feature consistency, these methods do not consider the unique characteristics of log
+data, such as heterogeneous formats and semantic diversity, and thus cannot establish a globally consistent
+explanationspaceforloganomalydetection.
+
+4 ComputMaterContin. 2026;87(3):94
+Explainability technologies have achieved remarkable results in centralized models. For instance,
+SHAP [37] can quantify feature attribution, and LIME [38] can generate local explanations. In centralized
+log anomaly detection, X-HEART [39] proposes an explainable heterogeneous log anomaly detection
+method using robust transformers, combining transformer-based feature extraction with explainability
+components to identify key log features. However, in federated scenarios, SHAP requires the transmission
+of local explanatory data, which increases privacy risks; LIME is prone to global inconsistency issues
+due to independent explanations from individual nodes. Meanwhile, the mandatory requirements for the
+explainabilityofhigh-risksystemsintheEU’sArtificial IntelligenceActhighlightthecontradictionbetween
+suchregulationsandtheinsufficientcomplianceofexistingfederatedlogdetectionsolutions.
+XAI technologies like SHAP [37]a n dL I M E[38] have advanced centralized model explainability, but
+theirdirectapplicationinfederatedscenariosisproblematic:SHAPrequirestransmittinglocalexplanatory
+data(increasingprivacyrisks),whileLIMEsuffersfromglobalexplanationinconsistency.Recentfederated
+XAI frameworks (e.g., FedXAIIDS [40], federated Transformer [41]) integrate explanation modules but
+overlook log-specific characteristics—heterogeneous multimodality, few-shot novel anomalies, and O&M
+rootcausedemands—resultingininvalidormisalignedexplanationsthatcannotlinkto“faultycomponents-
+propagation paths.”
+In summary, current research faces three core limitations: federated log detection frameworks lack
+explainability; XAI technologies are not adapted to distributed log characteristics; and no universal frame-
+work addresses cross-platform log heterogeneity. These gaps highlight the necessity of FedXLog, which is
+tailoredtotheuniquedemandsofdistributedloganomalydetection.
+3S c h e m eD e s i g n
+3.1 LogParsing
+System logs are mostly stored as unstructured textand require preprocessing through log parsing to
+support efficient anomaly detection. To address the challenges of log heterogeneity, dynamic changes, and
+parameterextraction,thisstudyproposesaparsingframeworkthatintegratesautomatedtemplategeneration
+andhierarchicalfeatureextraction(asshownin Fig.1).
+First, the Drain [42] framework is adopted to automatically generate log templates: it learns template
+structures through depth-first search, avoiding the limitations of traditional rule bases. Each template
+is assigned a unique hash feature as its event ID, with a one-way hash algorithm ensuring privacy and
+preventing the reverse derivation of original logs. Moreover, this one-way hash property not only blocks
+the reverse engineering of raw logs but also makes the mapping between hash values and log templates
+irreversible—attackers cannot reverse-derive the corresponding original templates from hash values. By
+adjustingthesimilaritythresholdandtreedepth,theri skofoverfitting/underfittingisbalanced,andregular
+expressions are used to accurately extract log parameters. Relying on the mapping relationship between
+hashes and original logs, rapid traceability and correlation analysis of log events are realized, constructing
+anadaptiveparsingsystemwithhashtraceabilitycapabilities.
+Second, a two-layer feature extraction strategy is designed to adapt to heterogeneous logs: the basic
+featurelayerextractsstructuredfieldssuchaseventID,timestamp,andloglevel; thesemanticfeaturelayer
+parses unstructured content to extract key entities such as IP addresses and file block IDs. The parsed
+logs are converted into event sequences, and sliding windows are used for grouping to generate sequence
+files containing hash feature sets and anomaly labels. The log template generator unifies the format of
+heterogeneous logs, and the original content of logs that cannot be automatically parsed is retained as
+supplementaryfeaturestoensuretheframework’suniversality.
+
+ComputMaterContin. 2026;87(3):94 5
+Figure1: The overall workflow of the log parsing framework.
+By integrating automated template generation and hierarchical feature extraction, this framework
+provideshigh-qualitystructureddataforsubsequentanomalydetection.
+3.2 AnomalyDetection
+This study proposes an anomaly detection framework FedXLog that integrates federated learning,
+modelexplanation,andknowledgedistillation(asshownin Fig.2).
+3.2.1FederatedLearning
+FedXLog is implemented based on the federated learning framework Flower [43] to achieve cross-
+client collaborative training. Each client trains an anomaly detection model based on local log data and
+only uploads model parameter updates to the server. The mapping relationship between hash values and
+log templates is only maintained locally on the client side. The server side only receives parameter updates
+and does not store any hash-template mapping information—even if an attacker obtains the hash features
+from the server side, they cannot associate them with specific fault templates without the support of a
+mappinglibrary.
+
+6 ComputMaterContin. 2026;87(3):94
+Figure2: The overall workflow of the anomaly detection framework.
+FedGradTraceimprovestheclassicFedAvg[ 44]algorithm.UnliketheoriginalFedAvg,whichdirectly
+performs weighted averaging of client parameters, FedGradTrace adopts a dynamic parameter aggregation
+mechanism,withspecificrulesasfollows:
+Γt
+k={∇Lk(θt−i)}τ−1
+i=0 (1)
+
+ComputMaterContin. 2026;87(3):94 7
+where Γt
+k denotes the gradient trajectory of clientk at roundt,p r e s e r v i n gt h el a s tτlocal gradients.∇
+epresents the gradient operator, used to calculate the derivative of the loss function with respect to model
+parameters.Itreflectsthedirectionandmagnitudeofparameteradjustmentsrequiredtoreducelossduring
+clientk ’slocaltraining; L
+k denotesthelocallossfunctionofclient k,constructedbasedonthelocalsystem
+logdatahostedbyclient k;θt−i standsfortheglobalmodelparameteratthe i-thstepbeforethe t-thtraining
+round, and it serves as the initial parameter for clientk to compute the local gradient when generating the
+i-th gradient in the gradient trajectory Γt
+k; i is an index variable used to traverse theτhistorical gradient
+stepsofclient kbeforethe t-thtraininground,ensuringthegradienttrajectoryΓ t
+k fullycoversthelast τlocal
+gradientsoftheclient.Theparameteraggregationmechanismisthenformulatedas:
+θt+1=
+K
+∑
+k=1
+nk⋅∥Γt
+k∥F
+n (θt−η∇Lk(θt)) (2)
+Eq.(2) isderivedbyextendingFedAvgtoaddresslog-specificheterogeneityandexplainability:starting
+from FedAvg’s core aggregation ruleθt+1=∑K
+k=1
+nk
+n(θt−η∇Lk(θt)), we introduce gradient trajectory Γt
+k
+(Eq.(1)) to enable traceability of parameter evolution from local log data; to mitigate instability from het-
+erogeneous logs, we integrate Frobenius norm∥Γt
+k∥F=
+√
+∑τ
+i=1∥∇Lk(θt−i)∥2 to quantify gradient volatility,
+thencombineitwithsample-sizeweightingtoform wk= nk⋅∥Γt
+k∥F
+n ,substituting wk intoFedAvgyields Eq.(2),
+balancingdatascale,stability,andexplainabilityfordistributedlogs.
+This formulation introduces two fundamental innovations compared to conventional FedAvg: Firstly,
+explicit retention of gradient update trajectories through Γt
+k provides unprecedented visibility into client
+optimizationdynamics.Secondly,theintegrationoftheFrobeniusnorm ∥Γt
+k∥F replacestherudimentarydata
+volume weightingnk
+n with a stability-sensitive aggregation scheme.θt denotes the global model parameter
+after thet-th traininground, whichserves asthe initialparameter for eachclient’slocal traininginthet-th
+round; θt+1 represents the updated global model parameter after thet-th round of parameter aggregation,
+and it will be used as the initial global parameter for the(t+1)-th training round;K stands for the total
+number of clients participating in federated training;nk is the number of local log samples of clientk,
+i.e., the total number of log data samples owned by clientk; n denotes the total number of samples of all
+clients, andn=∑K
+k=1nk, which is used to normalize the weight of the number of samples of each client;η
+is the learning rate for local model training, which controls the step size of parameter adjustment during
+the local gradient descent process of the client;∇L
+k(θt)represents the local loss gradient of clientk under
+the global model parameterθt, which is calculated based on the local log data of clientk and reflects the
+direction of parameter updates required by clientk to reduce the local training loss. The FedGradTrace
+framework consequently achieves dual objectives: maintaining FedAvg’s privacy-preserving characteristics
+while significantly enhancing explainability through parameter evolution transparency. To formalize why
+gradient trajectory preservation enhances explainability and stability, we define core notations and derive
+keyproperties asfollows:
+Let the federated system consist ofK clients. For the t-th global round: θ
+t∈RD:G l o b a lm o d e l
+parameters(dimension D),Γt
+k={∇Lk(θt−τ),...,∇Lk(θt−1)}:Gradienttrajectoryofclient k(preservinglast
+τlocal gradients),∥Γt
+k∥F=
+√
+∑τ
+i=1∥∇Lk(θt−i)∥2:F r o b e n i u sn o r mo fΓt
+k (stacked asD×τmatrix), Lk(θ):
+Locallossofclient k (convex,Lipschitz-continuouswithconstant L).
+FedGradTraceupdatesglobalparametersas:
+θt+1= θt−η⋅∑K
+k=1∥Γt
+k∥F⋅∇Lk(θt)
+∑K
+k=1∥Γt
+k∥F
+(3)
+
+8 ComputMaterContin. 2026;87(3):94
+Compared to FedAvg (weighted by data sizenk), this achieves stability by:∥Γt
+k∥F quantifies gradient
+volatility:Smallervaluesindicateconsistentlocalopt imization(alignedwithglobaltrends).Outliersuppres-
+sion:Forclientswithvolatiletrajectories( ∥Γt
+k∥F≫∥Γ∥F),theirweightisdownweighted,boundingparameter
+updates:
+∥θt+1−θt∥≤ηL⋅max
+k
+∥∇Lk(θt)∥ (4)
+Ensuringconvergencetoastableequilibrium.
+ExplainabilityisenhancedthroughtraceablecontributionsandSHAPconsistency:Clientcontribution
+quantification:Theimpactofclient k on global update is:
+Δt
+k= η⋅∥Γt
+k∥F
+∑K
+m=1∥Γtm∥F
+⋅∇Lk(θt) (5)
+Enabling decompositionθt+1−θt=∑K
+k=1Δt
+k t ot r a c eu p d a t es o u r c e s .-S H A Pc o n s i s t e n c ya l i g n m e n t :
+LocalSHAPmatricesΦ k arelinkedto Γt
+k via:
+∇Lk(θt)= 1
+Nk
+Nk
+∑
+i=1
+M
+∑
+j=1
+SHAP(xk
+i,j)⋅∇θfθ(xk
+i,j) (6)
+PreservingΓt
+k ensurescross-roundconsistencyofΦ k,whichismappedtoglobalSHAPmatrixviahash
+alignment(Algorithm1),maintainingexplanatoryuniformity.
+Notably,thesystemimplementspersistentstorageofaggregatedparametersaftereachtraininground—
+a capability absent in standard FedAvg implementations—enabling comprehensive retrospective analysis
+of model convergence behavior. All clients utilize the DistilBERT-base-uncased architecture [45]a st h e
+foundationalmodel,optimizedviatheAdamWalgorithmwithlearningrate η=2×10−5.
+Algorithm1: HashfeaturealignmentforglobalexplanationinFedXLog
+Require:Locallogtextcollectionsofeachclient: S={ S1,S2,..., Sn}
+Ensure:GloballyunifiedSHAPfeaturematrix M∈Rm×8
+1: Initializetheglobalhashdictionary H←∅
+2: fork=1tondo
+3: Hashsequencelist Lk←[]
+4: foreachlog s∈Sk do
+5: Usetheregularexpression r′([A−Fa−f0−9]{8})′tomatchthehashvaluein s
+6: Recordthematchingresultto Lk
+7: endfor
+8: Counttheoccurrencefrequencyofeachhashin Lk,andu pda teH←H∪Lk
+9: endfor
+10: Calculatetheglobalhashfrequencydistribution F←{(h,count)∣∀h∈H}
+11: SortF indescendingorder,andselecttheTop- N keyhashset H∗←{h1,..., hn}
+12: fork=1tondo
+13: ObtainthelocalSHAPvaluematrixΦ k∈Rm×d{misthenumberofsamples, disthefeature
+dimension}
+(Continued)
+
+ComputMaterContin. 2026;87(3):94 9
+Algorithm1(continued)
+14: Initializethealignmentmatrix Ψ k←θm×8
+15: fori=1tomdo
+16: for j=1toddo
+17: if Theoriginalfeature fj containsahash h∈H∗then
+18: Locate p←H∗.index(h)
+19: Ψ +
+k[i][p]= Φk[i][j]
+20: endif
+21: endfor
+22: endfor
+23: Add Ψ k totheglobalmatrix M
+24: endfor
+25: returnGlobal explanation matrixM
+3.2.2SHAP
+FedXLog introduces the SHAP [37] model explanation tool, which quantifies the basis of model
+decisions by calculating feature attribution values, thereby addressing the decision black-box problem in
+distributedmodelingscenarios.Consideringtheparticularityoflogtexts,ahashfeaturealignmentmethod
+isdesigned:regularexpressionsareusedtomatch8-he xhashvaluesinthelogs,theoccurrencefrequencies
+are counted, and the top-N key hashes are filtered out. The original SHAP values are mapped to the key
+hash dimension to establish a unified explanation space across clients, improving the consistency of global
+explanation.Eveniftheinteractionprocessissubjectedtoaman-in-the-middleattack,theattackercanonly
+obtain privacy-processed hash features and their frequencies, and cannot reversely derive the original log
+contentoruser-sensitiveinformation.DetailsareshowninAlgorithm1.
+FedXLog’s 8-hex hash alignment is designed for distributed log heterogeneity, privacy protection, and
+lightweight deployment—distinct from three mainstream alternatives: Global feature dictionary alignment
+(e.g., FedHAP’s prototype hash codes [27]) relies on centralized dictionary construction, which violates
+FedXLog’s privacy principle of not sharing raw log templates and increases communication overhead for
+dynamic log updates; semantic embedding alignment (e.g., BERT-based feature vectorization [5]) achieves
+highalignmentaccuracybutintroducesmorecomputationaloverhead(exceedingedgenoderesourcelimits)
+and fails to map explanations to interpretable log templates; rule-based template alignment [21]r e q u i r e s
+manual maintenance of cross-system log rules, which is infeasible for heterogeneous logs (e.g., HDFS vs.
+BGL)andcannotadapttodynamicformatevolution.
+3.2.3KnowledgeDistillation
+FedXLog employs knowledge distillation [46] technology to achieve model compression, designing a
+dual-modelarchitecture.TheteachermodelusesacompleteBERTstructure,whilethestudentmodelretains
+a6-layerTransformerstructure.Duringthedistillation process,anattributionlossfunctionisintroducedto
+constrain the feature importance distribution of the student model to be consistent with that of the teacher
+model, avoiding the loss of key explanatory features during the lightweight process. The core of knowledge
+distillationliesinbalancingthetwolearningobjecti ves of the student model, whichis specifically achieved
+throughthefollowinglossfunction:
+L
+KD = α⋅LCE(ys,ytrue)+( 1−α)⋅T2⋅LKL(σ(zt/T)∥σ(zs/T)) (7)
+
+10 ComputMaterContin. 2026;87(3):94
+where LKD denotes the comprehensive knowledge distillation loss, comprising two essential components:
+LCE(ys,ytrue)representsthecross-entropylossbetweenstudentpredictionsandground-truthlabels,while
+LKL(σ(zt/T)∥σ(zs/T)) quantifies the Kullback-Leibler divergence between temperature-scaled output
+distributionsofteacher( zt)andstudent( zs)modelsaftersoftmaxnormalization. αisthebalancecoefficient,
+usually taking a value of 0.5.ys denotes the prediction result of the student model;ytrue stands for the
+ground-truthlabelofthesystemlogsample; σ(⋅)denotesthesoftmaxactivationfunction,whosecalculation
+formula isσ(x)= ex
+∑i exi ,a n di ti su s e dt oc o n v e r tt h er a wo u t p u t( L o g i t s )o ft h et e a c h e rm o d e l(zt)a n d
+studentmodel( zs)intoprobabilitydistributionsthatsatisfythesumofprobabilitiesequalto1; T represents
+thetemperatureparameter,apositiverealnumberusedto“soften”theprobabilitydistributionoutputbythe
+softmaxfunction—increasing T canmaketheprobabilitydistributionflatter ,whichhelpsthestudentmodel
+better learn the fine-grained knowledge contained in the secondary category information of the teacher
+model’s output. This formula indicates that the student model should not only learn the true labels but also
+imitate the output probability distribution of the teacher model. By adjusting the value ofα,t h ew e i g h to f
+thestudentmodelbetweenthetwoobjectivesof“learningthetruelabels”and“imitatingtheteachermodel”
+canbecontrolled,therebyachievingabalancebetweenmodelcompressionandperformanceretention.
+4 Experiments
+4.1 Datasets
+To validate FedXLog, we selected four public datasets from the field of log anomaly detection for our
+experiments: HDFS [47], BGL [48], Thunderbird [48], and Spirit [48]. These datasets cover heterogeneous
+logsacrossmultiplescenarios,includingdistributedsystems,high-performancecomputing,andclient-side
+software. The differences in data volume and anomaly types among them can fully test the adaptability and
+robustnessoftheframework.Detailsofeachdatasetareasfollows:
+• HDFS: Derived from the Hadoop Distributed File System, it contains 11,175,629 logs that record the
+system’soperatingstatus,withabnormalsamplesaccountingfor3.69%ofthetotal.Thisdatasetisused
+toverifythedetectionperformanceindistributedscenarios.
+• BGL:CollectedfromtheBlueGene/Lsupercomputer,itincludes4,713,493logs,withabnormalsamples
+accounting for 45.3% of the total and focuses on anomaly detection in high-performance comput-
+ingenvironments.
+• Thunderbird:ObtainedfromtheThunderbirdemailcl ient,itconsistsof9,959,160logs,withabnormal
+samplesaccountingfor2.9%ofthetotal,whichisusedtovalidatetheapplicabilityoftheframeworkfor
+client-sidesoftwarelogdetection.
+• Spirit: A composite dataset integrating logs from multiple systems, it contains 5,000,000 logs, with
+abnormalsamplesaccountingfor68.86%ofthetotal.Servingasanauxiliarydataset,itisusedtoverify
+theframework’suniversality.
+Inallexperimentsofthispaper,thedatasetsaredividedintotrainingsetsandtestsets,andtheratioof
+trainingsetstotestsetsisuniformlysetto4:1.
+4.2 EvaluationMetrics
+To comprehensively evaluate the performance advantages of the proposed framework, this study
+constructsanevaluationsystemfromthreedimensions:anomalydetectioneffectiveness,modellightweight
+degree,andexplainabilityquality.Thespecificmetricsaredefinedasfollows.
+
+ComputMaterContin. 2026;87(3):94 11
+4.2.1 Metricsof AnomalyDetectionEffectiveness
+Inviewofthecharacteristicsofclassificationtasks,fourbasicmetricsareusedtoconstructthedetection
+effectivenessevaluationsystem:
+Among them, TP (True Positive) is the number of anomaly samples correctly identified, TN (True
+Negative) is the number of normal samples correctly identified, FP (False Positive) is the number of false
+positivesamples,andFN(FalseNegative)isthenumberoffalsenegativesamples.
+• Accuracy: It represents the overall prediction accuracy, and its calculation formula is: Accuracy=(TP
++TN)/(TP+TN+FP+FN).
+• Precision:Itmeasuresthereliabilityofanomalydetermination,andthecalculationformulais:Precision
+=TP/(TP+FP).
+• Recall: Reflects the coverage capability of abnormal samples, and its calculation formula is: Recall=
+TP/(TP+FN).
+• F1-Score: The harmonic mean that integrates precision and recall. The calculation formula is: F1-Score
+=2*(Precision*Recall)/(Precision +Recall).
+4.2.2ModelLightweightMetrics
+Toevaluatethedeploymentadaptabilityoftheframework,fourtypesofefficiencymetricsareselected:
+• Parameters:Countthetotalnumberoftrainableparameters,reflectingthemodelcomplexity.
+• ModelSize:Calculatethevolumeofthemodelfilewith32-bitfloating-pointprecision(Unit:MB).
+• PeakGPUMemory:RecordthemaximummemoryusageofasingleGPUduringtraining(Unit:MB).
+• FLOPs (Floating-Point Operations): Measure the number of floating-point operations in a single
+forwardpropagation(Unit:GigaFLOPs).
+4.2.3 Explainability Quantitative Metrics
+Introduce SHAP feature attribution quantitative metrics and visual explanation systems: We have
+definedexplainabilityquantitativemetrics:
+Φ= 1
+N
+N
+∑
+i=1
+M
+∑
+j=1
+∣SHAP(xi, j)∣ (8)
+where Φ is the explainability quantitative metric,SHAP(xi, j) is the SHAP value of thej-th feature of the
+i-th sample,N is the total number of samples, andM is the total number of features. This metric measures
+the degree of the model’s dependence on features by calculating the average of the absolute values of the
+feature importance across all samples. A larger value indicates that the model relies more on these features
+fordecision-making.
+TomoreintuitivelypresenttheexplanationresultsofSHAPvalues,thispaperadoptsfourvisualization
+formatsonthefourdatasetstoassistinunderstandingthedetectionlogic:
+• Barchartsintuitivelydisplaythecontributionofeachfeaturetoanomalypredictionthroughthelength
+ofbars—thelongerthebar,thegreaterthefeature’simpact.
+• Beeswarm plots reflect feature interactions through the distribution and density of points, revealing
+non-linearrelationshipsbetweenfeatures.
+• Heatmaps indicate the strength of the correlation between feature values and anomaly prediction
+throughcolordepth—thedarkerthecolor,thecloserthecorrelation.
+
+12 ComputMaterContin. 2026;87(3):94
+• Decisionplotsparsetheformationpathofpredictedvalues,demonstratingthelogicalprocessbywhich
+themodelinfersanomalyresultsbasedonfeatures.
+4.3 ImplementationDetails
+TheexperimentsimplementeddistributedtrainingbasedonthePyTorchandFlowerfederatedlearning
+frameworks, with all computations performed on an NVIDIA RTX 3090 GPU. For the base model, Bert-
+ForSequenceClassificationfromHuggingFacewasadopted,pairedwithatokenizerofthesamearchitecture
+fortextvectorization.Inputtextwasuniformlytruncatedorpaddedtoalengthof128tokens,andadynamic
+padding strategy was used for batching. To ensure experimental reproducibility and minimize random
+fluctuations, a global random seed (42) is set for PyTorch, NumPy, and random modules. Additionally,
+CUDA deterministic algorithms are enabled to avoid non-deterministic GPU computations, ensuring
+consistentresultsacrossdifferentruns.
+FedXLogconstructedafederatedenvironmentwithfourheterogeneousclients,whichhostedtheHDFS,
+BGL, Thunderbird, and Spirit datasets respectively to simulate cross-organizational data isolation. A non-
+IID (non-Independently and Identically Distributed) data distribution was simulated by partitioning logs
+basedonsystemtypes(distributedfilesystem,supercomputer,emailclient,andmulti-systemcomposite)to
+mimic real-world heterogeneity in log formats, event types, and semantic features across organizations. An
+aggregationmechanisminvolvingallclientswasemployed.
+Intheanomalydetectiontask,trainingwasconfiguredwith3roundsoflocaliterationsand15roundsof
+globalcommunication.TheAdamWoptimizerwasusedinconjunctionwithalinearlywarmed-uplearning
+rate scheduler (initial learning rate), with 1000 update steps per round. An early stopping mechanism was
+implemented:trainingwasterminatedifthemodelshowednoperformanceimprovementonthevalidation
+set for five consecutive rounds.
+For the SHAP task, 300 samples were randomly sampled to save resources and avoid ambiguity in the
+distributionoffeatureimportance.ThePartitionExplainerwasusedtobalancecomputationalefficiencyand
+explanationaccuracy,adaptingtotherequirementsofdeeplearningmodelsandhigh-dimensionaltextdata.
+Toensuredataprivacy,rawlogsandlogtemplate-hashmappingrelationshipswerestrictlyretainedlocallyon
+clients. Only model parameter updates (after gradient trajectory aggregation) and hash feature frequencies
+(withoutrawcontent)weretransmittedtotheserver,withnocentralizedstorageofsensitivedatatocomply
+withthedatalocalizationprinciplesoffederatedlearning.
+4.4 ExperimentalResults
+4.4.1ComparisonofAnomalyDetectionAccuracy
+Weintegratedfivebaselinemethods(LogBERT,DeepLog,LogAnomaly,PLELog,andLogRobust)into
+FedXLog’sfederatedlearningframeworktoconductcomparativeexperiments.Allbaselinemethodsretained
+theiroriginalcoreparameterstoensurefairness.LogCluster[ 23]wasexcludedfromthecomparisonbecause
+its requirement for centralized access to raw logs conflicts with the principle of federated data localization.
+Theexperimentalresultsarepresentedin Tables 1and2(whereFLdenotesfederatedlearningandCLdenotes
+centralizedlearning).
+In the centralized scenario, DeepLog exhibited poor detection performance on the BGL dataset;
+LogAnomalyfailedtoaccuratelyidentifyanomaliesonthesmall-sampleThunderbirddataset;whilePLELog
+couldnotaccuratelydetectanomaliesontheThunderbirdandHDFSdatasetswithscarceanomalysamples,
+bothofwhichsufferfromclassimbalanceissues.Incontrast,FedXLog,LogBERT ,andLogRobustmaintained
+stabledetectionperformanceacrossvarioustypesofdatasets.
+
+ComputMaterContin. 2026;87(3):94 13
+Table 1:Anomaly detection performance of various methods across HDFS and Thunderbird datasets in both
+centralizedanddistributedcomputingenvironments.
+Method HDFS Thunderbird
+Accuracy Precision Recall F1-Score Accuracy Precision Recall F1-Score
+LogBERT_FL 99.95 100 99.95 99.97 97.52 97.52 100 98.74
+LogBERT_CL 99.95 100 99.95 99.97 98.50 98.93 99.54 99.23
+DeepLog_FL 98.16 98.47 99.67 99.06 57.82 96.93 58.50 72.96
+DeepLog_CL 99.95 99.99 99.96 99.97 98.65 99.30 99.30 99.30
+LogAnomaly_FL 99.57 100 82.91 90.66 50.15 2.00 37.14 3.80
+LogAnomaly_CL 99.92 98.98 97.99 98.48 96.36 0.00 0.00 0.00
+LogRobust_FL 97.90 97.90 100 98.94 97.52 97.52 100 98.74
+LogRobust_CL 99.94 99.99 99.95 99.97 99.32 99.77 99.54 99.65
+PLELog_FL 97.81 0.00 0.00 0.00 97.07 0.00 0.00 0.00
+PLELog_CL 97.81 0.00 0.00 0.00 97.07 0.00 0.00 0.00
+FedXLog_FL 99.94 99.99 99.95 99.97 97.52 97.52 100 98.74
+FedXLog_CL 99.96 100 99.96 99.98 98.42 98.40 100 99.20
+Table 2:Anomaly detection performance of various methods across BGL and Spirit datasets in both centralized and
+distributedcomputingenvironments.
+Method BGL Spirit
+Accuracy Precision Recall F1-Score Accuracy Precision Recall F1-Score
+LogBERT_FL 97.5 94.34 99.52 96.86 99.79 99.44 99.87 99.65
+LogBERT_CL 97.58 94.32 99.74 96.95 99.84 99.65 99.83 99.74
+DeepLog_FL 77.28 74.43 63.77 68.69 78.15 59.00 96.59 73.25
+DeepLog_CL 82.61 75.09 83.08 78.88 99.26 98.00 99.65 98.82
+LogAnomaly_FL 95.04 97.55 94.23 95.86 77.12 59.14 80.18 68.46
+LogAnomaly_CL 98.42 98.69 98.73 98.71 88.26 82.28 79.14 80.68
+LogRobust_FL 38.70 38.70 100 55.80 30.80 30.80 100 47.10
+LogRobust_CL 100 100 100 100 99.96 99.91 99.96 99.93
+PLELog_FL 94.35 95.33 95.44 95.38 56.04 100 36.16 53.11
+PLELog_CL 94.61 94.80 96.48 95.63 63.68 100 47.26 64.18
+FedXLog_FL 97.61 94.30 98.97 97.00 99.81 99.52 99.87 99.70
+FedXLog_CL 97.44 99.83 100 98.63 99.77 99.53 99.74 99.63
+In the distributed scenario, affected by parameter interference from multi-source heterogeneous data,
+thedetectionaccuracyofLSTM-basedmethods(DeepLog,LogAnomaly,andLogRobust)decreasedsignif-
+icantly.However,BERT-basedmethods(FedXLogandLogBERT)demonstratedstrongerrobustness—their
+performancewaslessaffectedbydifferencesinheterogeneousdatadistributions,makingthemmoresuitable
+fortheneedsofcomplexloganalysisinfederatedlearningenvironments.
+
+14 ComputMaterContin. 2026;87(3):94
+4.4.2ComparisonofModelLightweighting
+AcomparisonofthelightweightmetricsbetweenFedXLogandLogBERT(asshownin Table 3)reveals
+thefollowingresults:
+• Model Parameters: FedXLog has approximately 42.52 million fewer parameters (66,955,010 vs. Log-
+BERT’s109,483,778),reducingtheoverheadofparameterprocessing.
+• ModelSize:FedXLogis38.9%smallerinsize(255.41MBvs.LogBERT’s417.65MB),makingiteasierto
+deployandtransmitinresource-constrainedenvironments.
+• Peak Memory Usage: FedXLog’s peak memory usage (769.11 MB) is only 61.2% of LogBERT’s
+(1255.44MB),resultinginstrongerhardwareadaptability.
+• Floating-Point Operations (FLOPs): FedXLog’s FLOPs (1.71 G) account for 50.1% of LogBERT’s (3.41
+G),significantlyreducingcomputationalcosts.
+Table 3:LightweightmetricsofBERT-basedmethods.
+Method ModelParameters ModelSize MemoryUsage Floating-PointOperations
+FedXLog 66,955,010 255.41 769.11 1.71
+LogBERT 109,483,778 417.65 1255.44 3.41
+To further verify the practical deployability of the model, we extended the resource profiling by
+supplementing metrics for dynamic federated learning efficiency, server aggregation overhead and edge-
+side inference under the experimental configuration of an RTX 3090 GPU, four heterogeneous clients and
+a non-IID log distribution. Specifically, FedXLog achieved a round time of 205 s (including 198 seconds
+for local training, 5 s for gradient trajectory calculation and 2 s for parameter upload), a per-round
+communication volume of 255.51 MB, and a total communication volume of 3.83 GB to converge to the
+target performance over 15 rounds. Compared with federated LogBERT, which had a round time of 382 s,
+a per-round communication volume of 417.75 MB and a total communication volume of 7.52 GB over 18
+rounds,FedXLogimprovedtheroundefficiencyby46.3%andreducedthetotalcommunicationvolumeby
+50.9%. For server-side performance, FedXLog incurred a per-round aggregation time of 8.2 ms (including
+2.1 ms for Frobenius norm weighting and 0.6 ms for SHAP feature alignment), with a peak server CPU
+utilization of 32% and a peak memory usage of 128 MB. This aggregation time was only 26.2% higher than
+that of FedAvg (6.5 ms), yet lower than those of FedProx and FedOpt, which involve additional proximal
+term calculation and adaptive optimizer update, respectively. In terms of edge-side inference performance,
+onedgenodesequippedwithan8-coreCPUand16GBofRAM,FedXLogachievedaninferencelatencyof
+1.8msperlogsequence,athroughputof555sequencespersecondandapeakmemoryusageofonly320MB.
+In comparison with LogBERT, FedXLog reduced the inference latency by 57.1%, increased the throughput
+by 133.2% and lowered the memory usage by 47.1%, fully meeting the real-time detection requirements in
+high-frequencylogscenarios.
+4.4.3OverheadComparison
+To verify the deployment feasibility of FedXLog, we compare its computational and communication
+overheadwithFedAvgandFedProx(configuredwiththesamebasemodel),asshownin Table 4.
+
+ComputMaterContin. 2026;87(3):94 15
+Table 4:OverheadcomparisonwithFedAvg/FedProx.
+Metric FedXLog FedAvg FedProx
+ModelParameters(M) 66.96 66.96 66.96
+ModelSize(MB) 255.41 255.41 255.41
+FLOPs(G) 1.71 1.68 1.70
+CommunicationperRound(MB) 255.51 255.41 255.41
+ConvergenceRounds 15 18 17
+Computationally, FedXLog introduces gradient trajectory preservation (Frobenius norm calculation)
+and SHAP feature attribution, but this is offset by knowledge distillation. With 66.96 M parameters (42.5%
+fewer than standardBERT-basedmodels) and1.71GFLOPs(50.1%of LogBERT),itsoverall computational
+overheadisonlymarginallyhigherthanFedAvg/FedProx,remaininglightweightforedgedeployment.
+In terms of communication, FedXLog transmits compressed model parameters (255.41 MB, 38.9%
+smaller than LogBERT) and lightweight hash/SHAP statistics (≤100 KB per round). Its FedGradTrace
+algorithmreducesconvergenceroundsby15%–20%undernon-IIDdata,offsettingadditionaltransmission
+costsandresultingincomparableorlowercumulativecommunicationoverheadthanFedAvg/FedProx.
+To further quantify the system-level trade-offs of FedXLog and its advantages over mainstream feder-
+atedoptimizationmethods,weanalyzefourkeymetrics:per-clienttrajectorystorage,extracommunication
+per round, server aggregation computation cost, and wall-clock time to target F1-score (99.97% on HDFS
+dataset).
+For per-client trajectory storage, with gradient trajectory lengthτ=3 and model dimensionD=800
+(DistilBERT-base-uncased), each client storesτ×D×4=9600 bytes (≈9.4 KB) of gradient data, slightly
+higherthanFedAvg/FedProx/FedOptwhichdonotretainhistoricalgradients.
+Regarding extra communication per round, FedXLog transmits an additional scalar Frobenius norm
+∥Γ
+t
+k∥F (4 bytes per client) besides model parameter updates (255.41 MB), resulting in negligible extra
+overhead (16 bytes forK=4 clients); this marginal cost is offset by its 15 convergence rounds (15%–20%
+fewer than FedAvg’s 18 rounds and FedProx’s 17 rounds), leading to lower cumulative communication cost
+inpractice.
+In terms of server aggregation computation cost, FedXLog’s aggregation complexity isO(K),c o m -
+parable to FedAvg; it only adds simple arithmetic operations for norm-based weighting, which is lower
+than FedProx (with proximal term calculation,O(K+D)) and FedOpt (with adaptive optimizer update,
+O(K+D)).
+For wall-clock time to target F1-score, under the same experimental configuration (RTX 3090 GPU, 3
+local iterations per round), FedXLog converges in 51 min, faster than FedAvg (62 min), FedProx (58 min),
+and FedOpt (55 min); this acceleration is attributed to the stability-sensitive aggregation of FedGradTrace,
+whichsuppressesgradientvolatilityfromheterogeneouslogdata.
+Notably, the extra storage and communication overhead of FedXLog is justified by its unique
+trajectory-based client contribution tracing and cross-clientSHAPalignmentcapabilities,whichareabsent
+in FedAvg/FedProx/FedOpt. This tradeoff is justified by FedXLog’s unique explainability and stability
+advantages, which FedAvg/FedProx lack.
+
+16 ComputMaterContin. 2026;87(3):94
+4.4.4SHAPVisualization
+To address the black-box problem of distributed decision-making, FedXLog incorporates the SHAP
+tool to quantify feature attribution and designs a hash feature alignment method specifically for log
+text: it matches 8-hex hash values using regular expressions, filters the Top-N key hashes by counting
+their frequencies, maps the original SHAP values to the key hash dimension, and establishes a unified
+explantory space across clients. This not only ensures privacy security but also enhances the consistency of
+globalexplanations.
+As illustrated inFigs.3–6, FedXLog uses four visualization types—feature importance ranking plots,
+feature impact distribution plots, cumulative impact decision plots, and feature interaction heatmaps—to
+overcome the “average value trap” inherent in single-dimensional feature importance ranking: distribution
+chartsrevealindividualdifferencesinhowfeaturesexerttheirimpact;decisionchartsreconstructthelogical
+chain of the model’s decision-making process; heatmaps quantify the synergistic effects between features.
+These visualizations enable the identification of key features and facilitate in-depth analysis of “why they
+matter” and “how they matter” (for example, TLB errors need to be combined with high system load to
+trigger severe anomalies). Additionally, they can identify variations in anomaly sensitivity among different
+clients caused by differences in hardware configurations, realizing an upgrade from mere feature screening
+tocomprehensiverootcauseanalysis.
+Figure3: SHAPexplanationanalysisofFedXLogontheHDFSdataset.
+
+ComputMaterContin. 2026;87(3):94 17
+Figure4: SHAPexplanationanalysisofFedXLogonthethunderbirddataset.
+Figure5: SHAPexplanationanalysisofFedXLogontheBGLdataset.
+
+18 ComputMaterContin. 2026;87(3):94
+Figure6: SHAPexplanationanalysisofFedXLogonthespiritdataset.
+Tables 5and 6 demonstrate the framework’s effectiveness in explaining log features by presenting the
+mapping relationships between the top-8 key hashes and original log templates across the four datasets: in
+HDFS, the hash “d63ef163” (corresponding to “a data block being added to an invalid set”) acts as a strong
+anomaly metric, guiding O&M teams to quickly locate faulty NameNode components and problematic
+data blocks, reducing troubleshooting time from hours to minutes; in BGL, hashes like “6265c739” (corre-
+sponding to “hardware alignment anomalies”) and “1ae4a1e2” (corresponding to “floating point alignment
+exceptions”) accurately capture supercomputer fault patterns, narrowing the fault scope to the CPU-
+GPU interconnection module and avoiding software bug misdiagnosis; and in Spirit, the hash “7b933a56”
+(correspondingto“disknotready”)alongwith“b4b7c412”(diskstatuserror)and“669e1ffc”(DHCPaddress
+exhausted) highlights typical server faults and reveals the fault propagation path from storage to network,
+ensuring comprehensive resolution. Notably, suchhigh frequency of these hashes is not solely driven by
+abnormal events. In the original experimental datasets (e.g., HDFS), normal events—such as the hash
+“bbb51b95” (corresponding to “data block reception”)—occur significantly more frequently than abnormal
+ones.Thismakesitdifficultforattackerstodistinguishbetweenabnormalandnormaltemplatesbasedsolely
+onhashfrequency,letaloneaccuratelypinpointspecificfaultpatterns.
+Thetopfeaturesofeachsystemreflectdomain-specificcharacteristics,andthehash-templatemapping
+mechanismenablesfaulttraceabilitywithoutaccessingrawlogs.Furthermore,thehighfrequencyofnormal
+events confirms the model’s accurate grasp of system baselines, thus demonstrating that FedXLog can
+effectively identify key decision-making features in heterogeneous logs, locate typical causes in distributed
+scenarios,andprovideactionableO&Mguidancedirectlylinkedto“faultycomponents-propagationpaths”.
+
+ComputMaterContin. 2026;87(3):94 19
+Table 5:Top-8keyhashmappingstorawlogtemplatesinFedXLogacrossHDFSandthunderbirddatasets.
+Dataset EventID EventTemplate EventSummary OutputResult
+HDFS
+bbb51b95 Receivingblock<*>src:
+/<*>dest:/<*> Receivingdatablock Normal
+d38aa58d PacketResponder<*>for
+block<*><*>
+Packet responder
+terminated Normal
+46003790 Receivedblock<*>of
+size<*>from/<*>
+Datablockreception
+completed Normal
+5d5de21c
+BLOCK*NameSys-
+tem.addStoredBlock:
+blockMapupdated:<*>is
+addedto<*>size<*>
+Blockmappingtable
+updated Normal
+d63ef163
+BLOCK*
+NameSystem.delete:<*>
+isaddedtoinvalidSetof
+<*>
+Datablockaddedto
+invalidset Abnormal
+dba996ef Deletingblock<*>file
+<*>
+Deletingdatablock
+file Normal
+4dec0816 <*>Servedblock<*>to
+/<*> Datablockservice Normal
+3d91fa85 BLOCK*NameSystem.
+allocateBlock:<*><*>
+Blockallocation
+operation Normal
+Thunderbird
+6391d957
+data_thread()gotnot
+answerfrom any<*>
+datasource
+No response from
+datasource Abnormal
+ef226888 synchronizedto<*>
+stratum<*>
+NTPtime
+synchronization
+successful
+Normal
+e2083c1d
+%RPM0-P:CP<*>
+Changed interface state
+to<*><*><*>
+Interfacestate
+changed Normal
+8f90f53c [ib_sm_sweep.c:<*>]:No
+<*><*>
+Topologyscanno
+change Normal
+c8da9b23
+[ib_sm_sweep.c:<*>]:
+**********************
+NEWSWEEP
+********************
+Topologyscancycle
+started Normal
+27624832 sessionclosedforuser
+<*>
+Usersession
+terminated Normal
+(Continued)
+
+20 ComputMaterContin. 2026;87(3):94
+Table 5 (continued)
+Dataset EventID EventTemplate EventSummary OutputResult
+1bec15e9 (# <*>#)CMD(<*> Scheduledtask
+execution Normal
+09789b2b sessionopenedforuser
+<*>by<*>
+Privilegedsession
+established Normal
+Table 6:Top-8keyhashmappingstorawlogtemplatesinFedXLogacrossBGLandspiritdatasets.
+Dataset EventID EventTemplate EventSummary OutputResult
+BGL
+6265c739 <*>double-hummer
+alignmentexceptions
+Hardware alignment
+exception Abnormal
+1ae4a1e2 <*>floating point
+alignmentexceptions
+Floatingpoint
+operationexception Abnormal
+cb2160e4 CEsym<*>at<*>mask
+<*>
+Memorysymbolic
+correctableerror Abnormal
+070de4aa generating <*> Coredump
+generated Normal
+322228ab
+<*>microsecondsspent
+intherbssignalhandler
+during<*>calls.<*>
+microsecondswasthe
+maximumtimefora
+singleinstanceo fa
+correctableddr.
+Memory error
+correction
+performancemetric
+Normal
+cc8ff6de programinterrupt:<*>
+<*>
+Illegalinstruction
+exception Abnormal
+0045c3a8
+<*>totalinterrupts.<*>
+criticalinputinterrupts.
+<*>microsecondstotal
+spentoncriticalinput
+interrupts,<*>
+microsecondsmaxtime
+inacriticalinput
+interrupt.
+Interrupt
+performance
+statistics
+Normal
+d2c9db9b datastorageinterrupt Storage interrupt
+exception Abnormal
+e98fe941 lastmessagerepeated <*>
+times Logrepeatalert Normal
+(Continued)
+
+ComputMaterContin. 2026;87(3):94 21
+Table 6 (continued)
+Dataset EventID EventTemplate EventSummary OutputResult
+Spirit
+e3aa0816 postfix <*> Mail queue
+processing Normal
+d3720a9a postfix<*><*>Message
+acceptedfordelivery
+Maildelivery
+successful Normal
+7b933a56 kernel:hda:drivenot
+readyforcommand
+Disknotready
+exception Abnormal
+b4b7c412 kernel:hda:statuserror:
+status=0x00{} Diskstatuserror Abnormal
+03badb70
+<*>LAuSerror- <*>-
+<*>(19)<*>No such
+device
+Auditdevicemissing Abnormal
+669e1ffc
+dhcpd:
+DHCPDISCOVER from
+<*>via<*>network<*>
+nofreeleases
+DHCPaddress
+exhausted Abnormal
+fa9c45af <*>(root)CMD(test-x
+<*>&&<*>cron)
+Privileged scheduled
+taskexecution Normal
+5 Conclusion
+This study addresses the challenges of data silos and model explainability in system log analysis by
+proposing an anomaly detection framework based on federated learning, namely FedXLog. By integrating
+distributed training with explainability technologies, FedXLog safeguards data privacy, effectively prevents
+the leakage of attack-related information, and ensures detection results have traceable decision-making
+bases. Experiments have demonstrated that this method can maintain high detection accuracy across four
+mainstreamlogdatasetssuchasHDFS,andintuitivelydisplaytheimpactofkeyfeaturesonanomalydeter-
+mination through various visualization methods. The FedXLog framework inherently mitigates template
+reverse attack risks: the one-way hash algorithm in log parsing (Section3.1) guarantees irreversible hash-
+template mapping, and the hash-template relationship is only maintained locally on clients (Section3.2.1)
+without being transmitted to the server, thus avoiding the leakage of specific system fault patterns via
+high-frequency anomaly hashes—such as d63ef163, which corresponds to HDFS ’data blocks added to
+invalidsets.
+FedXLog’scorebreakthroughsarehighlytailoredtotheuniquedemandsoflogscenarios,whichclearly
+distinguish it from general federated explanable methods: First, aiming at the heterogeneous structure of
+logs,itadoptsahashfeaturealignmentstrategytounif ysemanticdimensionsofcross-systemlogfeatures—
+thissolvesthe“explanationmisalignment”issuethatgeneralmethodscannotaddress,asthelatterignorelog
+format heterogeneity and easily misclassify distinct semantic features. Second, targeting the small-sample
+novel anomalies in logs, it realizes unsupervised anomaly root cause tracing through the FedGradTrace
+parameter update mechanism: by retaining gradient trajectories of each client, it can locate the source
+of unknown faultswithout relying on labeled anomaly data, breaking the limitation of general federated
+
+22 ComputMaterContin. 2026;87(3):94
+methodsthatrequirelarge-scalelabeledsamplestogeneratevalidexplanations.Third,focusingontheO&M
+rootcausepositioningdemandofloganalysis,itlinkshashfeatureswithoriginallogtemplatesandcombines
+SHAP visualization to directly map anomaly detection results to “faulty components-diffusion paths”—for
+example, associating the hash “d63ef163” with HDFS “data block invalidation” to locate storage component
+faults, avoiding the “useless explanation” of general methods that only output feature importance without
+O&M relevance. Additionally, FedXLog compresses the model size by nearly 40% through knowledge
+distillation, ensuring lightweight deployment while retaining explanability, which is well-suited for edge
+nodesindistributedlogsystems.
+Future work will focus on exploring the model adaptation mechanism in dynamic log environments,
+further lightweighting the model, and developing more efficient feature explanation methods. This study
+providesanewtechnicalpathforbuildingsecureandreliableintelligentoperationandmaintenancesystems,
+andisofpositivesignificanceforpromotingtheapplicatio nofartificialintelligenceincriticalinfrastructure.
+Acknowledgement: Not applicable.
+FundingStatement: ThisworkwassupportedbyNationalScienceFoundationofChina(U2333201),NationalKeyR&D
+ProgramofChina(2021YFF0603902),andCivilAviationSafetyCapacityBuildingFoundationofChina(PESA2024111,
+RJ2025039).
+AuthorContributions: ZhaojunGu:Conceptualization,Methodology,Formalanalysis,Validation,Investigation,Data
+curation, Resources, Writing—review & editing, Project administration, Funding acquisition. Wenlong Yue: Concep-
+tualization,Methodology,Validation,Investigation,Writing—originaldraft.ChunboLiu:Validation,Resources,Data
+curation,Writing—review&editing.Allauthorsreviewedandapprovedthefinalversionofthemanuscript.
+Availability of Data and Materials:The data and materials used in this article are derived from publicly accessible
+da tabasesandp r eviouslypublishedstudiescitedthr oughoutthetext.
+EthicsApproval: Not applicable.
+ConflictsofInterest: Theauthorsdeclarenoconflictsofinterest.
+References
+1. HeS,ZhuJ,HeP,LiZ,LyuMR.Experiencereport:systemloganalysisforanomalydetection.In:2016IEEE47th
+AnnualIEEE/IFIPInternationalConferenceonDependableSystemsandNetworks(DSN).Piscataway,NJ,USA:
+IEEE;2016.p.529–40.doi:10.1109/ISSRE.2016.21.
+2. XuW,HuangL,FoxA,PattersonD,JordanMI.Detectinglarge-scalesystemproblemsbyminingconsolelogs.In:
+ProceedingsoftheACMSIGOPS22ndsymposiumonOperatingSystemsPrinciples.NewYork,NY,USA:ACM;
+2009.p.117–32.doi:10.1145/1629575.1629587.
+3. Du M, Li F, Zheng G, Srikumar V. DeepLog: anomaly detection and diagnosis from system logs through deep
+learning.In:Proceedingsofthe2017ACMSIGSACConferenceonComputerandCommunicationsSecurity.New
+York,NY,USA:ACM;2017.p.1285–1298.doi:10.1145/3133956.3134015.
+4. Meng W, Liu Y, Zhu Y, Zhang S, Pei D, Liu Y, et al. Loganomaly: unsupervised detection of sequential and
+quantitativeanomaliesinunstructuredlogs.In:ProceedingsoftheTwenty-EighthInternationalJointConference
+onArtificialIntelligence(IJCAI-19);2019Aug10–16;Macao,China.p.4739–45.doi:10.24963/ijcai.2019/658.
+5 . G u oH ,Y u a nS ,W uX .L o g B E R T :l o ga n o m a l yd e t e c t i o nv i aB E R T .I n :2 0 2 1I n t e r n a t i o n a lJ o i n tC o n f e r e n c eo n
+NeuralNetworks(IJCNN).Piscataway,NJ,USA:IEEE;2021.p.1–8.doi:10.1109/IJCNN52387.2021.9534113.
+6. ZhangX,XuY ,LinQ,QiaoB,ZhangH,DangY,etal.Robustlog-basedanomalydetectiononunstablelogdata.In:
+Proceedingsofthe201927thACMJointMeetingonEuropeanSoftwareEngineeringConferenceandSymposium
+
+ComputMaterContin. 2026;87(3):94 23
+on the Foundations of Software Engineering. New York, NY, USA: ACM; 2019. p. 807–17. doi:10.1145/3338906.
+3338931.
+7. Yang L, Chen J, Wang Z, Wang W, Jiang J, Dong X, et al. Semi-supervised log-based anomaly detection via
+probabilisticlabelestimation.In:2021IEEE/ACM43rdInternationalConferenceonSoftwareEngineering(ICSE).
+Piscataway,NJ,USA:IEEE;2021.p.1448–60.doi:10.1109/ICSE43902.2021.00130.
+8. He P, Zhu J, He S, Li J, Lyu MR. Towards automated log parsing for large-scale log data analysis. IEEE Trans
+DependableSecureComput.2018;15(6):931–44.doi:10.1109/TDSC.2017.2762673.
+9. Noura HN, Salman O, Chehab A, Couturier R. DistLog: a distributed logging scheme for IoT forensics. Ad Hoc
+Networks.2020;98(2):102061.doi:10.1016/j.adhoc.2019.102061.
+10. Nguyen TD, Marchal S, Miettinen M, Fereidooni H, Asokan N, Sadeghi A-R. DÏoT: a federated self-learning
+anomaly detection system for IoT. In: 39th IEEE International Conference on Distributed Computing Systems
+(ICDCS).Piscataway,NJ,USA:IEEE;2019.p.756–67.doi:10.1109/ICDCS.2019.00080.
+11. Liu Y, Garg S, Nie J, Zhang Y, Xiong Z, Kang J. Deep anomaly detection for time-series data in industrial IoT: a
+communication-efficienton-devicefederatedlearningapproach.IEEEInternetThingsJ.2021;8(8):6348–58.doi:10.
+1109/JIOT.2020.3011726.
+12. LandauerM,OnderS,SkopikF,WurzenbergerM.Deeplearningforanomalydetectioninlogdata:asurvey.Mach
+LearnAppl.2023;12(3):100470.doi:10.1016/j.mlwa.2023.100470.
+13. Chamola V, Hassija V, Sulthana AR, Ghosh D, Dhingra D, Sikdar B. A review of trustworthy and explainable
+artificialintelligence(XAI).IEEEAccess.2023;11:78994–79015.doi:10.1109/ACCESS.2023.3294569.
+14. Phillips PJ, Hahn CA, Fontana PC, Broniatowski DA, Przybocki MA. Four principles of explainable artificial
+intelligence.Gaithersburg,MD,USA:NationalInstituteofStandardsandTechnology;2020.doi:10.6028/NIST.IR.
+8312.
+15. Moustafa N, Koroniotis N, Keshk M, Zomaya AY, Tari Z. Explainable intrusion detection for cyber defences in
+the Internet of Things: opportunities and solutions. IEEE Commun Surv Tut. 2023;25(3):1775–1807. doi:10.1109/
+COMST.2023.3280465.
+16. Yan P, Abdulkadir A, Luley P-P, Rosenthal M, Schatte GA, Grewe BF, et al. A comprehensive survey of deep
+transfer learning for anomaly detection in industrial time series: methods, applications, and directions. IEEE
+Access.2024;12(1):3768–89.doi:10.1109/ACCESS.2023.3349132.
+17. Jeffrey N, Tan Q, Villar JR. A review of anomaly detection strategies to detect threats to cyber-physical systems.
+Electronics.2023;12(15):3283.doi:10.3390/electronics12153283.
+18. Al-Ghuwairi A-R, Sharrab Y, Al-Fraihat D, AlElaimat M, Alsarhan A, Algarni A. Intrusion detection in cloud
+computingbasedontimeseriesanomaliesutilizingmachinelearning.JCloudComput.2023;12(1):127.doi:10.1186/
+s13677-023-00491-x.
+19. Pang G, Shen C, Cao L, Hengel AVD. Deep learning for anomaly detection: a review. ACM Comput Surv.
+2021;54(2):1–38.doi:10.1145/3439950.
+20. MinhD,WangHX,LiYF,NguyenTN.Explainableartificialintelligence:acomprehensivereview.ArtifIntellRev.
+2022;55(5):3503–68.doi:10.1007/s10462-021-10088-y.
+21. Pecchia A, Cinque M, Cotroneo D. Event logs for the analysis of software failures: a rule-based approach. IEEE
+TransSoftwareEng.2013;39(6):806–21.doi:10.1109/TSE.2012.67.
+22. Yen TF, Oprea A, Onarlioglu K, Leetham T, Robertson W, Juels A, et al. Beehive: large-scale log analysis for
+detecting suspicious activity in enterprise networks. In: Proceedings of the 29th Annual Computer Security
+ApplicationsConference.NewYork,NY,USA:ACM;2013.p.199–208.doi:10.1145/2523649.2523670.
+23. Vaarandi R, Pihelgas M. LogCluster—a data clustering and pattern mining algorithm for event logs. In: 2015 11th
+InternationalConferenceonNetworkandServiceManagement(CNSM).Piscataway,NJ,USA:IEEE;2015.p.1–7.
+doi:10.1109/CNSM.2015.7367331.
+24. LiT,SahuAK,ZaheerM,SanjabiM,TalwalkarAS,SmithV.Federatedoptimizationinheterogeneousnetworks.
+In:ProceedingsofMachineLearningandSystems2(MLSys2020);2020Mar2–4;Austin,TX,USA.p.429–50.
+25. Reddi SJ, Charles Z, Zaheer M, Heller K, Joshi G, Kone ˇcný J, et al. Adaptive federated optimization.
+arXiv:2003.00295.2021.
+
+24 ComputMaterContin. 2026;87(3):94
+26. NardiM,ValerioL,PassarellaA.Anomalydetectionthroughunsupervisedfederatedlearning.arXiv:2209.04184.
+2022.
+27 . Y angM,X uJ ,DingW ,LiuY ,ZhangH.F edH AP:federa tedhashingwithglobalprototypesforcross-siloretrieval.
+IEEEAccess.2023;11(4):112452–63.doi:10.1109/TPDS.2023.3324426.
+28. Li B, Ma S, Deng R, Choo K-KR, Yang J. Federated anomaly detection on system logs for the Internet of Things:
+acustomizableandcommunication-efficientapproach.IEEETransNetwServManag.2022;19(2):1705–16.doi:10.
+1109/TNSM.2022.3152620.
+29. Menegatti D, De Santis E, Felli S, Giuseppi A. AdaLightLog: enhancing application logs anomaly detection via
+adaptive federating learning. In: Critical Information Infrastructures Security: 19th International Conference,
+CRITIS2024.Berlin/Heidelberg,Germany:Springer;2024.p.289–305.doi:10.1007/978-3-031-84260-3_17.
+30. Yao X, Huang T, Zhang R, Li R, Sun L. Federated learning with unbiased gradient aggregation and controllable
+metaupdating.arXiv:1910.08234.2019.
+31. Pacioni E, Fernández De Vega F, Calvaresi D. FedGP: genetic programming for evolutionary aggregation in
+federated learning with Non-IID data. In: Applications of Evolutionary Computation (EvoApplications 2025).
+Cham,Switzerland:Springer;2025.p.419–34.doi:10.1007/978-3-031-90062-4_26.
+32. Xu Y, Ma W, Dai C, Wu Y, Zhou H. Generalized federated learning via gradient norm-aware minimization and
+controlvariables.Mathematics.2024;12(17):2644.doi:10.3390/math12172644.
+33. Pan Y, Zhu C, Luo L, Liu Y, Cheng Z. FedTrack: a collaborative target tracking framework based on adaptive
+federatedlearning.IEEETransVehicularTechnol.2024;73(9):13868–882.doi:10.1109/TVT.2024.3395292.
+34. Wu S, Hu Q, Zheng Z, Yang L, Chen C. FedPAC: consistent representation learning for federated unsupervised
+learningunderdataheterogeneity.In:TheFourteenthInternationalConferenceonLearningRepresentations;2026
+Apr23–27;RiodeJaneiro,Brazil.p.1–29.
+35. Chen J, Xue J, Wang Y, Liu Z, Huang L. Classifier clustering and feature alignment for federated learning under
+distributedconceptdrift.arXiv:2410.18478.2024.
+36. ChenW,ZhangJ,ZhangD.FL-joint:jointaligningfeaturesandlabelsinfederatedlearningfordataheterogeneity.
+ComplexIntellSyst.2024;11(1):52.doi:10.1007/s40747-024-01636-4.
+37. Lundberg SM, Lee SI. A unified approach to explainting model predictions. In: NIPS’17: Proceedings of the 31st
+InternationalConferenceonNeuralInformationProcessingSystems.RedHook,NY,USA:CurranAssociatesInc.;
+2017.p.4768–77.
+38. Ribeiro M, Singh S, Guestrin C. “Why should I trust you?”: explaining the predictions of any classifier. In: The
+22nd ACM SIGKDD International Conference on Knowledge Discovery and Data Mining. New York, NY, USA:
+ACM;2016.p.1135–44.doi:10.18653/v1/N16-3020.
+39 . M vulaPK,BrancoP ,J ourdanGV ,V iktorHL.X-HEAR T :eX plainableheterogeneousloganomalydetectionusing
+robusttransformers.KnowlInfSyst.2025;67(12):12599–12636.doi:10.1007/s10115-025-02604-1.
+40. Fatema K, Dey SK, Anannya M, Khan RT, Rashid MM, Su C, et al. Federated XAI IDS: an explainable and
+safeguarding privacy approach to detect intrusion combining federated learning and SHAP. Future Internet.
+2025;17(6):234.doi:10.3390/fi17060234.
+41. Harshitha C, Vadivu DS, Rajagopalan N. Federated learning and explainable AI-driven intrusion detection with
+hyperbandoptimization.JComputVirolHackingTech.2025;21(1):28.doi:10.1007/s11416-025-00571-3.
+42. He P, Zhu JM, Zheng Z, Lyu MR. Drain: an online log parsing approach with fixed depth tree. In: 2017 IEEE
+InternationalConferenceon Web Services (ICWS). Piscataway,NJ, USA: IEEE; 2017.p. 33–40. doi:10.1109/ICWS.
+2017.13.
+43. Beutel DJ, Topal T, Mathur A, Qiu X, Fernandez-Marques J, Gao Y, et al. Flower: a friendly federated learning
+researchframework.arXiv:2007.14390.2020.
+44. McMahan HB, Moore E, Ramage D, Hampson S, Agüera y Arcas B. Communication-efficient learning of deep
+networks from decentralized data. In: The 20th International Conference on Artificial Intelligence and Statistics
+(AISTATS2017);2017Apr20–22;FortLauderdale,FL,USA.p.1273–82.
+45. SanhV,DebutL,ChaumondJ,WolfT.DistilBERT,adistilledversionofBERT:smaller,faster,cheaperandlighter.
+arXiv:1910.01108.2019.
+
+ComputMaterContin. 2026;87(3):94 25
+46. HintonG,VinyalsO,DeanJ.Distillingtheknowledgeinaneuralnetwork.arXiv:1503.02531.2015.
+47. Xu W, Huang L, Fox A, Patterson D, Jordan M. Online system problem detection by mining patterns of console
+logs.In:InternationalConferenceonDataMining.Piscataway,NJ,USA:IEEE;2009.p.588–97.doi:10.1109/ICDM.
+2009.19.
+48. OlinerA,StearleyJ.Whatsupercomputerssay:astudyoffivesystemlogs.In:37thAnnualIEEE/IFIPInternational
+ConferenceonDependableSystemsandNetworks.Piscataway,NJ,USA:IEEE;2007.p.575–84.doi:10.1109/DSN.
+2007.103.

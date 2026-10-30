@@ -1,0 +1,689 @@
+ 
+Journal of Intelligent Decision Making and Information Science Volume 3(6s), (2026) 1773-1788 
+1773 
+ 
+Journal of Intelligent Decision Making 
+and Information Science 
+ 
+www.jidmis.org 
+eISSN: 3079-0875 
+ 
+An Ensemble Machine Learning Framework with Zero Trust 
+Architecture and Blockchain-Anchored Audit Logging for Multi-Cloud 
+Intrusion Detection 
+ 
+Dr. Vinay K1, Mithun D Souza2, Suman Antony Lasrado3, Sreenivasa BL4, Roshan D Suvaris5, Prasad 
+C N6 
+1,2Assistant Professor, Department of Computer Science, CHRIST University, Bangalore, India 
+3 Assistant Professor, School of CS and IT, Jain (Deemed-to-be-University), Bangalore, India 
+4Associate Professor, Department of MSc (Software Technology), St Aloysius (Deemed to be University) AIMIT centre, Mangaluru, India 
+5Nitte(Deemed to be University), NMAM Institute of Technology (NMAMIT), Department of MCA, Nitte, India 
+6Assistant Professor, Department of Computer Science, St Joseph's University, Bengaluru, India 
+vinaycbs@gmail.com1 ,  mitundsouza@gmail.com2, sumanmccs@gmail.com3, srinivasbl.vas@gmail.com4, roshansuaris@gmail.com5, 
+prasad_achar@sju.edu.in6 
+  
+ARTICLE INFO ABSTRACT 
+Article history: 
+Received 04 April 2026 
+Received in revised form 13 May 2026 
+Accepted 18 June 2026 
+Multi-cloud adoption has widened the enterprise attack surface to a degree 
+that perimeter-based defence can no longer address. Traffic is now flowing 
+continuously across AWS, Azure, and GCP, and the majority of deployed Zero 
+Trust Architecture (ZTA) system s are still using static rule tables, with no 
+ability to provide an audit trail of the reasoning behind decisions, and with 
+logs stored in datastores that can be modified by an insider without detection. 
+This paper proposes ZT-ChainGuard, a framework that overcomes these three 
+limitations in one architecture that integrates an ensemble machine learning 
+trust-scoring engine, ZTA policy enforcement and a blockchain -based audit 
+trail. The trust-scoring engine is a two-layer stacking ensemble, with XGBoost 
+and Random Forest as base learners, and Logistic Regression as a meta -
+learner, and it returns a continuous trust score, P(Attack | flow), for each 
+network flow, which is then used to trigger the ZT policy decision at a 
+threshold of 0.5. The explanation of each decision is provided by SHAP values 
+at both the global and per -flow level, and each decision is stored as an 
+immutable, SHA-256 hash-chained block. On CICIDS2017 (2.83 million flows, 
+14 attack classes) the framework achieves 99.90% accuracy, 99.71% F1 -
+score, and 99.99% ROC -AUC; on ToN-IoT (2.23 million IoT records, 9 attack 
+types) it achieves 99.81% accuracy, 99.88% F1 -score, and 100% ROC -AUC. 
+The latency of inferences is 0.006ms per sample, and the overhead of auditing 
+the blockchain is 0.019ms per block. This performance is not just a quirk of a 
+particular split, as it is shown to be stable across the three folds of three -fold 
+cross validation. 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+Keywords: Zero Trust Architecture; 
+Intrusion Detection; Ensemble Learning; 
+XGBoost; SHAP Explainability; Blockchain 
+Audit; Multi -Cloud Security; CICIDS2017; 
+ToN-IoT; Trust Scoring. 
+ 
+1. Introduction 
+The tenets of enterprise network security that have been in place for decades are no longer true. 
+Security teams used to think that traffic within a specific network perimeter was more reliable than 
+
+
+Journal of Intelligent Decision Making and Information Science 
+Volume 3(6s), (2026) 1773-1788 
+1774 
+traffic coming from outside the network, which is the basis of firewall architectures. The boundary 
+has been broken down by multi-cloud adoption. 
+The percentage of companies that now run workloads on two or more cloud providers at once is well 
+over three-quarters, according to a recent industry survey, and it's not just about scale. Resources 
+are spun up, moved, and turned off in timescales that sta tic firewall rules can't keep up with, and 
+lateral-movement paths that used to exist within a single-tenant data centre show up again, albeit in 
+a different form, within a shared multi-cloud fabric. 
+Zero Trust Architecture, codified in NIST SP 800-207 [1] and further institutionalized by the 2022 U.S. 
+Executive Order on Cybersecurity, is the right answer to this change: don't trust the network, verify 
+everything, including requests from anywhere. The idea is good, but the actual implementations are 
+often not so good. The majority of deployed ZTA systems still rely on rule tables or static identity 
+attributes for access decisions. They don't learn new attack patterns, they provide no justification for 
+a compliance officer to review, and if they do have audit logs, they reside in mutable datastores that 
+can be easily modified by an insider threat. This paper tackles all three deficiencies in one 
+architecture. 
+ZT-ChainGuard redefines the ZTA trust score as a machine learning output, namely the posterior 
+probability P(Attack | flow) generated by a stacking ensemble on the feature vector of a network 
+flow. The reframing is conceptually simple but practically significant: a probability is interpretable, it 
+can be adjusted to suit an organisation's risk appetite, and it can be cleanly decomposed into the 
+contributions of the features by using SHAP. None of these can be said of a rule -table lookup. Each 
+policy decision is then recorded as a cryptographically chained block in a blockchain ledger, either as 
+an ALLOW or DENY. If a decision is modified after logging, the hash chain is broken after that point 
+and the audit trail is much more difficult to alter than a standard log file. 
+The selection of evaluation datasets is based on the multi -cloud scenario that the framework is 
+designed for. CICIDS2017 [2] is the traffic observed at cloud provider egress points, TCP/IP dominated 
+enterprise flows covering a taxonomy of 14 attack categories, and ToN-IoT [3] is the IoT and IIoT layer 
+that is growing at the edge of cloud deployments, with Zeek -extracted connection records across 
+MQTT, HTTP, and DNS for 9 attack types. Testing the same architecture on both, without any cross -
+dataset feature engineering, will determine if the framework generalises to truly heterogeneous 
+environments. 
+The contributions of this work are as follows. 
+● A redefinition of the ZTA trust score as a continuous machine learning probability, P(Attack | 
+flow), derived from a stacking ensemble and used directly to drive ZT policy enforcement in place of 
+static rule tables. 
+● Two-layer stacking architecture of XGBoost and Random Forest base learners and a Logistic 
+Regression meta-learner, trained separately for binary and 14-class multi-class detection, with 
+explicit consideration of the SMOTE application order to avoid a mismatch between the number of 
+labels in the binary oversampled arrays and the number of classes in the multi-class labels. 
+
+Journal of Intelligent Decision Making and Information Science 
+Volume 3(6s), (2026) 1773-1788 
+1775 
+● Global feature importance across the entire test set (SHAP) and per-decision waterfall plots 
+(SHAP) to break down individual DENY decisions into their feature contributions for analyst audit. 
+● An audit layer on the blockchain that stores each ZT decision as a SHA-256 hash-chained block 
+that includes the flow identifier, trust score, decision, cloud-zone attribution, and top SHAP features, 
+with tamper detection verified end-to-end. 
+● Empirical evaluation across two large-scale heterogeneous benchmarks with three-fold 
+stratified cross-validation, sub-millisecond inference latency (0.006 ms), and blockchain overhead 
+below 0.02 ms per block. 
+The remainder of the paper is organised as follows. Section 2 reviews the literature and compares 
+ZT-ChainGuard with it. The datasets, their statistics and the preprocessing pipeline are described in 
+Section 3. In Section 4, the ZT-ChainGuard architecture is presented. Section 5 reports experimental 
+results and addresses directly why the reported metrics are as high as they are. The implications and 
+limitations are discussed in Section 6. Section 7 concludes. 
+2. Related Work 
+2.1 Zero Trust Architecture 
+The original Zero Trust concept by Kindervag was not a technical specification but a design 
+philosophy. Rose et al. [1] put it into practice in NIST SP 800 -207, which outlines the need for 
+continuous verification, least-privilege access, and micro-segmentation that most contemporary ZTA 
+systems try to achieve. Later, ZT ideas have been expanded to more specialized fields: ZTA is 
+extended to 6G network architectures by Chen et al. [4] and a more critical perspective is given by 
+Fernandez and Brazhuk [5] who point out that there is a gap between the principles of ZTA and the 
+systems that organisations deploy. The most prevalent failure they report is replacing static identity-
+based policy with the behaviour-driven trust scoring that the Zero Trust model requires. 
+This gap is starkly demonstrated by Khan's survey [6] which found that 72% of government 
+organisations had active ZT programmes in 2023, but the vast majority of these programmes were 
+based on identity verification only, rather than behavioural analytics. This is important because 
+identity can be spoofed; what ZTA is designed to provide is ongoing behavioural verification that is 
+always skeptical even of an authenticated session. Weinberg et al. [7] place this gap in the context of 
+the evolution of emerging technologies, and say that anomaly detection and Extended Detection and 
+Response (XDR) are the logical next steps for ZTA. The first step towards this is taken by Wu et al. [8] 
+who propose a privacy-domain-theoretic dynamic security framework, but their threat model is more 
+limited than the multi-cloud intrusion detection scenario considered here. 
+2.2 Machine Learning for Intrusion Detection 
+The literature on ML-based intrusion detection is large enough that a comprehensive review would 
+constitute a paper of its own. The thread most relevant here concerns stacking ensembles applied to 
+standard benchmarks. Shtayat et al. [9] combined Random For est, XGBoost, and Extra -Trees with a 
+Logistic Regression meta -model and achieved near -perfect accuracy on both CICIDS2017 and NSL -
+KDD, a result that independently supports the choice of base learners adopted in this paper, although 
+their framework includes  neither ZTA integration nor audit logging. El Gemayel et al. [10] report 
+
+Journal of Intelligent Decision Making and Information Science 
+Volume 3(6s), (2026) 1773-1788 
+1776 
+99.32% accuracy on CICIDS2017 using ensemble deep learning, and Karatas et al. [11] show that 
+dimensionality reduction combined with multi -stacking consistently outperforms single -model 
+approaches on large, imbalanced datasets. 
+The SmartTrust system [12] is perhaps the closest prior work in spirit to ZT -ChainGuard, targeting 
+cloud threat detection under ZTA principles via a hybrid CNN -LSTM-Transformer architecture. Its 
+detection rates are competitive, but it incorporates no ensemble stacking, no SHAP-level explanation, 
+and no per-decision audit trail. Pelletier and Abualkibash [13] establish that standard ML classifiers 
+achieve 96 –98% accuracy on CICIDS2017, a useful lower bound against which any serious system 
+should be measured.  Pawlicki et al. [14] are notably more cautious, demonstrating through 
+adversarial perturbation experiments that XGBoost trained within an ensemble maintains detection 
+reliability better than several alternatives under attack, a finding that partly motivat ed its selection 
+as a base learner in the present work. 
+2.3 Explainable AI for Cybersecurity 
+The literature on intrusion detection using ML is too vast to be reviewed in this paper. The most 
+relevant thread here is the stacking ensembles on standard benchmarks. Shtayat et al. [9] achieved 
+near-perfect accuracy on both CICIDS2017 and NSL-KDD datasets using a combination of three base 
+learners (Random Forest, XGBoost and Extra -Trees) with a Logistic Regression meta -model, further 
+supporting the selection of base learners used in this paper, but without the addition of ZTA or audit 
+logging. Ensemble d eep learning has been used to achieve 99.32% accuracy on CICIDS2017 by El 
+Gemayel et al. [10] and dimensionality reduction and multi-stacking has been shown to consistently 
+outperform single-model approaches on large, imbalanced datasets by Karatas et al. [11]. 
+Inspired by ZTA, the closest work in spirit to ZT-ChainGuard is the SmartTrust system [12] which aims 
+to detect threats in the cloud in a hybrid CNN -LSTM-Transformer system. It has detection rates that 
+are competitive, but it does not include any ensemble stacking, any SHAP-level explanation, and any 
+audit trail per decision. The standard ML classifiers are found to be 96–98% accurate for any serious 
+system as a lower bound in the CICIDS2017 [13] dataset. Pawlicki et al. [14] are more reserved, 
+showing that XGBoost trained as a base learner in an ensemble is more reliable at detecting attacks 
+than several other alternatives in their adversarial perturbation experiments, which partly inspired 
+their choice of XGBoost as a base learner in the present work. 
+2.4 Blockchain for Security Audit 
+Blockchain-based audit logging for security systems has drawn sustained attention since 2019. In the 
+IEEE Access survey, Khan et al. [19] provide a comprehensive overview of the space, and conclude 
+that immutability and decentralisation are the properties that make blockchain -based logging 
+different from signed log files. The BCE -IoT framework [20] integrates blockchain with intrusion 
+detection based on SHAP for IoT networks, and provides tamper -resistance results that are directly 
+comparable to those provi ded here, where the use of lightweight cryptographic primitives (XXTEA, 
+ECC) is appropriate for constrained devices. Sharma et al. [21] adopt a more holistic approach by 
+integrating blockchain into a Zero Trust network for Industry 5.0 with Federated Trans fer Learning, 
+
+Journal of Intelligent Decision Making and Information Science 
+Volume 3(6s), (2026) 1773-1788 
+1777 
+which yields competitive accuracy results, but does not provide per -decision auditing as blockchain 
+does in this work. 
+The most ambitious prior combination of these components is the Digital Twin ZTA framework [22] 
+which combines NSL -KDD, CICIDS2017, IoT -23, hash -chained ledgers and differential privacy, and 
+results in 89–91% accuracy with MLP and CNN -BiLSTM models. For po sitioning purposes, there are 
+two limitations: (1) its blockchain part records model updates instead of access decisions, and (2) 
+there are no per -block latency measurements reported. In comparison, ZT -ChainGuard offers per -
+flow logging at 0.015 -0.019ms/block, which is significant for anyone considering the framework for 
+in-line deployment. 
+2.5 Positioning ZT-ChainGuard 
+Table 1 compares the most important features of some of the most recent systems with those of ZT-
+ChainGuard. It's not as if one system is simply better than the other, there are a number of previous 
+systems that are more accurate at a single benchmark or have a lower latency at a single benchmark. 
+None of them, as far as this review can determine, provides ensemble ML trust scoring, ZTA policy 
+enforcement, per -decision SHAP explainability tied to access -control decisions, and per -flow 
+blockchain audit loggi ng with measured sub -millisecond overhead, across two large and diverse 
+datasets. ZT-ChainGuard is provided as a collaborative effort to fill these gaps, not as separate efforts. 
+Table 1. Comparison of ZT-ChainGuard against representative related systems. 
+Work Dataset Ensemble ZTA XAI / SHAP Blockchain Acc. (%) 
+SmartTrust 
+[12] CICIoT2023 CNN+LSTM Yes No No 97.2 
+BCE-IoT [20] ToN-IoT No Partial SHAP Yes 96.8 
+Sharma et 
+al. [21] Bot-IoT No Yes No Yes 95.3 
+Digital Twin 
+[22] CICIDS2017+ No Yes No Partial 89–91 
+Shtayat et 
+al. [9] CICIDS2017 RF+XGB No No No 99.9 
+XAI-IDS [18] CICDDoS XGBoost No SHAP+LIME No 99.0 
+ZT-
+ChainGuard 
+(Ours) 
+CICIDS+ToN XGB+RF+LR Yes SHAP Yes 99.90 
+ 
+3. Datasets, Statistics, and Preprocessing 
+3.1 Why These Two Datasets 
+The choice of CICIDS2017 and ToN -IoT is not a conventional selection. Most intrusion detection 
+papers are based on one dataset, typically NSL -KDD (1999) or CICIDS2017. The two here are used 
+because the multi-cloud scenario studied includes at least two qualitatively different types of traffic: 
+
+Journal of Intelligent Decision Making and Information Science 
+Volume 3(6s), (2026) 1773-1788 
+1778 
+enterprise IT workloads, which are typically deployed on compute instances and load balancers, and 
+IoT edge deployments, which are typically sensors, gateways, and lightweight devices that connect 
+to cloud backends via MQTT and other similar protocols. CIC IDS2017 and ToN -IoT are these two 
+environments, having different feature spaces, different protocol mixes, and different class -
+imbalance ratios. The same framework is run on both, with no cross-dataset feature engineering, and 
+this is a meaningful test of generalisability. 
+3.2 CICIDS2017 
+The Canadian Institute for Cybersecurity Intrusion Detection Evaluation Dataset 2017 [2] was created 
+during five working days in July 2017 at the University of New Brunswick. It was generated using the 
+B-Profile system, which simulated 25 abstract user -behaviour profiles using HTTP, HTTPS, FTP, SSH 
+and email. The traffic was captured by a mirror -port tap and processed with CICFlowMeter to 
+produce 78–80 numerical features per flow: packet counts, byte totals, inter -arrival times, TCP flag 
+counts, and various statistical aggregates over the flow duration. 
+The raw CSV files contain a pre-processing trap that is easy to fall into. Label names and label values 
+include quote characters and whitespace, and the literal string ‘BENIGN’ is not equal to BENIGN, 
+leading to label -encoding failures in naive pipelines t hat are not detected: no label matches the 
+stripped target string. This was not recorded in several related works that were reviewed for this 
+paper and was the cause of sub -50% ROC-AUC in our preliminary experiments prior to the fix. It is 
+reported here because it is directly related to reproducibility. 
+Table 2. CICIDS2017 class distribution. 
+Attack Class Count Proportion Description 
+BENIGN 2,273,097 80.3% Normal traffic 
+DoS Hulk 231,073 8.2% HTTP flood 
+PortScan 158,930 5.6% Network 
+reconnaissance 
+DDoS 128,027 4.5% Distributed denial of 
+service 
+FTP-Patator 7,938 0.28% Brute-force FTP 
+SSH-Patator 5,897 0.21% Brute-force SSH 
+Web Attacks 
+(XSS/SQL/BF) 2,180 0.08% Web application 
+attacks 
+Infiltration, Bot, 
+Heartbleed ~900 <0.04% Rare sophisticated 
+attacks 
+TOTAL 2,830,540 100% 78 features, 8 CSV 
+files 
+ 
+3.3 ToN-IoT 
+ToN-IoT [3] was gathered at UNSW Canberra's Cyber Range, which emulates a three -layered IIoT 
+system, from Cloud to Edge/Fog to IoT. This paper focuses on the network-traffic subset of the data, 
+
+Journal of Intelligent Decision Making and Information Science 
+Volume 3(6s), (2026) 1773-1788 
+1779 
+which consists of connection records extracted from the Zeek/Bro logs for nine attack categories and 
+for normal traffic, across a variety of protocols such as MQTT, HTTP, and DNS. It is composed of 43 
+features, which is much lower dimensional than CICIDS20 17, and much more balanced, with 
+approximately 78% of the records being labelled as attack, compared with the skew of CICIDS2017. 
+It is important to note that the imbalance is the opposite direction from a preprocessing perspective 
+because SMOTE is less important here, but is used uniformly for methodological uniformity. 
+Table 3. ToN-IoT network dataset class distribution. 
+Attack Type Count (approx.) Proportion Description 
+Normal ~420,000 22.1% Legitimate traffic 
+DDoS ~385,000 20.3% Distributed denial of 
+service 
+DoS ~360,000 19.0% Denial of service 
+Injection ~195,000 10.3% SQL / command 
+injection 
+Ransomware ~180,000 9.5% File-encryption 
+malware 
+Backdoor / MITM / 
+XSS / Password ~360,000 18.8% Miscellaneous attack 
+types 
+TOTAL ~1,900,000 100% 43 features 
+ 
+3.4 Data Fusion Strategy 
+The two data sets are treated independently. This may seem like a missed opportunity for joint 
+learning, but it is the right thing to do with the data. Their feature spaces are incommensurable: 
+CICIDS2017 contains CICFlowMeter-derived statistical aggregates, including Init_Win_bytes_forward 
+and Bwd Packet Length Std, while ToN-IoT contains Zeek connection-level attributes like dst_pkts and 
+dns_qclass. If the datasets were simply concatenated, there would be a need to align features, and 
+the imputation decisions made to fill in the gaps would be a confounder in the results.  
+We rather consider CICIDS2017 and ToN-IoT as two different cloud zones, enterprise IT and IoT edge, 
+and train and evaluate one model for each zone. The blockchain audit layer mimics this by logging a 
+cloud_zone attribute on each decision recorded, with AWS -US-EAST for decisions originating from 
+AWS and GCP -ASIA-SOUTH for decisions originating from ToN -IoT, as if a real multi -cloud ZT 
+deployment would do so. The SHAP analysis then produces two distinct importance profiles, one for 
+each zone, with the most di scriminative features being very different for enterprise traffic and IoT 
+traffic, as one would expect. 
+3.5 Preprocessing Pipeline 
+The order of the transformations is important: scaling should be done before SMOTE and SMOTE 
+should be applied to the binary training split only, otherwise the label -size mismatch problem 
+described below will occur. 
+
+Journal of Intelligent Decision Making and Information Science 
+Volume 3(6s), (2026) 1773-1788 
+1780 
+1. Quoting and stripping of whitespaces. Leading and trailing spaces and single-quotes are 
+removed from column names and label values. This step is necessary for CICIDS2017 and is applied 
+to all for consistency. 
+2. Stratified sampling (CICIDS2017 only). A 30% stratified random sample is taken, maintaining 
+the class proportions, and producing approximately 850,000 flows, without introducing bias in the 
+class distribution and with a manageable memory footprint. 
+3. Data cleaning. Approximately 0.3-0.5% of records are removed by replacing infinite values 
+with NaN and dropping them, as well as by removing duplicate rows 
+4. Label encoding. All attack classes are assigned 1, and BENIGN/normal is assigned 0. All 14 
+CICIDS2017 classes and all 10 ToN-IoT classes are preserved using scikit-learn's LabelEncoder for 
+multi-class labels. 
+5. Stratified 80/20 split, stratified on the binary label, ensuring proportional attack 
+representation in the test set even for rare classes. 
+6. MinMax normalisation. All features are standardized to [0,1] based on statistics from the 
+training set only, and the test set features are transformed with the same scaler to avoid 
+information leakage from the test set. 
+7. Oversampling using SMOTE (only for binary training split). The pre-SMOTE scaled training 
+matrix and multi-class training labels are saved separately as 𝑋_𝑡𝑟𝑎𝑖𝑛_𝑜𝑟𝑖𝑔 and ym_train before 
+SMOTE runs. This is an important step: SMOTE adds 𝑁𝑜𝑟𝑖𝑔𝑖𝑛𝑎𝑙 + 𝑁𝑠𝑚𝑜𝑡𝑒 − 𝑁_𝑜𝑟𝑖𝑔𝑖𝑛𝑎𝑙 rows to the 
+binary training set, while the multi-class label vector has only 𝑁_𝑜𝑟𝑖𝑔𝑖𝑛𝑎𝑙 entries, so the 
+combination of the SMOTE expanded matrix and the multi-class label vector results in a shape 
+mismatch, which causes the model to fail silently or crash depending on the version of the 
+framework. 
+4. ZT-ChainGuard Architecture 
+4.1 Overview 
+ZT-ChainGuard consists of six functional stages that trace the data flow from raw network traffic to 
+logged audit decision.ZT -ChainGuard consists of six functional stages that trace the data flow from 
+raw network traffic to logged audit decision. It is helpful to separate the training-time path (stages 1-
+3) from the inference -time path (stages 3 -6). During the training phase, the ensemble is trained to 
+map the vectors of the flow features to the posterior attack probabilities, while during the inference 
+phase, each new flow is scored, the score is used to make a ZT policy decision, and the decision is 
+added to the blockchain ledger with its corresponding SHAP explanation. 
+
+Journal of Intelligent Decision Making and Information Science 
+Volume 3(6s), (2026) 1773-1788 
+1781 
+ 
+Figure 1. ZT-ChainGuard end-to-end pipeline. 
+The trust score 𝑃(𝐴𝑡𝑡𝑎𝑐𝑘 | 𝑓𝑙𝑜𝑤)  ∈  [0,1] is the central artefact of the pipeline: it drives the ZT policy 
+decision (Step 4), provides the basis for SHAP decomposition (Step 5), and is persisted on the 
+blockchain alongside the access decision (Step 6). 
+4.2 The Trust Scoring Ensemble 
+The stacking ensemble is a two-layer ensemble. In Layer 1, XGBoost and Random Forest are trained 
+separately on the SMOTE -balanced binary training set, obtaining class -probability vectors 
+𝑃(𝐵𝑒𝑛𝑖𝑔𝑛 | 𝑥) and 𝑃(𝐴𝑡𝑡𝑎𝑐𝑘 | 𝑥)  for each flow x. The two probability values from each base learner 
+are then combined into a meta -feature vector of length four, which is the input to Layer 2. In Layer 
+2, a Logistic Regression meta -learner is trained on these meta -features to produce the f inal trust 
+score: 
+𝑇𝑟𝑢𝑠𝑡𝑆𝑐𝑜𝑟𝑒(𝑥) = 𝑃(𝐴𝑡𝑡𝑎𝑐𝑘|𝑥) = 𝑀𝑒𝑡𝑎𝐿𝑅(𝑋𝐺𝐵𝑜𝑜𝑠𝑡(𝑥), 𝑅𝐹(𝑥)) 
+This particular combination is not for accuracy, but for diversity in the ensemble. XGBoost constructs 
+trees one after another, with each new tree focusing on the errors of the previous ensemble, which 
+is well suited to learning non-linear interactions between features but can overfit if the regularisation 
+hyperparameters are not optimised. Random Forest constructs trees independently on bootstrap 
+samples, resulting in good variance reduction for some increase in bias. Stacking is beneficial over 
+either of the two methods since they are not effective on all types of examples. The Logistic 
+Regression meta-learner is designed to be simple: its purpose is to reweight the outputs of the base-
+learner, not to add to the complexity of the model. 
+
+
+Journal of Intelligent Decision Making and Information Science 
+Volume 3(6s), (2026) 1773-1788 
+1782 
+One point deserves to be stated explicitly. This is not a convention, it's the trust score, 𝑃(𝐴𝑡𝑡𝑎𝑐𝑘|𝑥), 
+not 𝑃(𝐵𝑒𝑛𝑖𝑔𝑛 | 𝑥). A high score should indicate increased suspicion, which is the semantics of 
+𝑃(𝐴𝑡𝑡𝑎𝑐𝑘) in a Zero Trust context. Several previous implementations reviewed in this paper do this 
+unintentionally, using 𝑝𝑟𝑒𝑑𝑖𝑐𝑡_𝑝𝑟𝑜𝑏𝑎[: , 0] instead of 𝑝𝑟𝑒𝑑𝑖𝑐𝑡_𝑝𝑟𝑜𝑏𝑎[: , 1] which results in a score 
+where 1.0 corresponds to ‘definitely benign’ and gives ROC-AUC close to 0.5 when the convention of 
+‘greater is more suspicious' is applied to setting thresholds. 
+4.3 Zero Trust Policy Decision 
+Given the trust score, the ZT policy decision follows directly: 
+𝐷𝑒𝑐𝑖𝑠𝑖𝑜𝑛(𝑥) ≔ { 𝐷𝐸𝑁𝑌, 𝑇𝑟𝑢𝑠𝑡𝑆𝑐𝑜𝑟𝑒(𝑥) ≥ 𝜏
+𝐴𝐿𝐿𝑂𝑊, 𝑇𝑟𝑢𝑠𝑡𝑆𝑐𝑜𝑟𝑒(𝑥) < 𝜏 
+where 𝜏 = 0.5 is the default decision threshold, which is the maximum -likelihood decision boundary 
+when using equal class weighting. In practice, 𝜏 is a tunable parameter: increasing it will decrease the 
+number of false positives, but increase the number of missed attacks, and vice versa. This depends 
+on the deployment environment, and a financial services cloud might be more tolerant of a high 
+number of false positives than a public facing API gateway. Throughout this paper, results are 
+reported at 𝜏 = 0.5, and would be adjusted on a held -out validation set during operational 
+deployments. 
+4.4 SHAP Explainability 
+ZT-ChainGuard employs the same algorithm for tree ensembles as described by Lundberg and Lee 
+[23] (TreeSHAP) with the base learner being XGBoost. The SHAP value φj(x) for feature j is a 
+decomposition of the flow x into d features such that the following holds true: 
+𝑇𝑟𝑢𝑠𝑡𝑆𝑐𝑜𝑟𝑒(𝑥) = 𝐸[𝑇𝑟𝑢𝑠𝑡𝑆𝑐𝑜𝑟𝑒] + ∑ 𝜑𝑗(𝑥)
+𝑀
+𝑗=1
+ 
+where 𝐸[𝑇𝑟𝑢𝑠𝑡𝑆𝑐𝑜𝑟𝑒] is the expected trust score, which is a baseline value prior to observing 
+features, over the training distribution. The Shapley value from cooperative game theory, 𝜑𝑗(𝑥) is the 
+marginal contribution of feature j, averaged over all possible orderings of the features. Positive values 
+move the score up from the baseline towards DENY, negative values move the score down towards 
+ALLOW. 
+Two types of output are produced. Global importance plots show the mean |φj| over the test set, 
+which represents the features that are most important to the model's decisions overall. Local 
+waterfall plots break down individual decisions, which is great fo r auditing: If a flow is denied, the 
+waterfall will display exactly which features were most responsible for the denial, and by how much. 
+The five most globally important features on CICIDS2017 were Init_Win_bytes_forward (mean 
+|SHAP| = 1.94), Destination Port (1.71), Bwd Packet Length Std (1.14), Init_Win_bytes_backward 
+(1.08), and Average Packet Size (0.98). On ToN -IoT the ranking was dst_port (1.99), dst_pkts (1.73), 
+src_ip_bytes (1.15), duration (1.04), and dns_qclass (1.03). These differences align with the two types 
+of traffic: enterprise traffic is most evident in TCP window and packet -length statistics, while IoT 
+
+Journal of Intelligent Decision Making and Information Science 
+Volume 3(6s), (2026) 1773-1788 
+1783 
+traffic is most evident in destination -port and packet -count statistics, which is consistent with the 
+features extracted by Zeek for ToN-IoT. 
+4.5 Blockchain Audit Layer 
+Each access decision (ALLOW or DENY) is written as a block in a SHA -256 hash-chained ledger. Each 
+block contains: (i) a sequential block index; (ii) a unix timestamp; (iii) a flow_id which is a hash of the 
+flow's source IP, destination IP, port, and unix t imestamp; (iv) the trust score scaled to an integer in 
+[0, 10000]; (v) the ZT decision; (vi) the ground -truth label (for offline evaluation purposes only); (vii) 
+a cloud_zone string describing the logical cloud zone from which the flow originated; (viii) t he top-5 
+SHAP feature attributions for that flow; and (ix) the SHA -256 hash of the contents of the current 
+block. The hash of the previous block is part of the contents of the current block before hashing, 
+creating the chain dependency that makes it easy t o detect tampering: If the hash of the previous 
+block is changed, the hash of the current block will also change, thus making it impossible to find a 
+block with the same prev_hash, and the inconsistency will cascade up the chain. 
+The implementation is based on an in -process EVM -compatible ledger (eth_tester backend) that 
+offers realistic hash computation and gas accounting without the need to run a node. The Solidity 
+smart contract ZTAuditLog.sol is designed to be efficient in term s of throughput, allowing for the 
+batch logging of up to 50 decisions per transaction, while also triggering a ThreatAlert event when 
+the flow's trust score exceeds 0.90, which can be used to integrate with external alerting pipelines. 
+Real deployments of consortium blockchain networks (such as Hyperledger Fabric or Ethereum 
+Sepolia) would impose consensus latency in addition to the hashing cost measured here; calculating 
+this additional cost is a future research goal outlined in Section 6. 
+5. Experimental Results 
+5.1 Experimental Setup 
+All experiments were conducted on a Windows 11 workstation with an Intel Core processor, with no 
+GPU acceleration. The main versions of the libraries used were XGBoost 3.2.0, scikit -learn 1.8.x, 
+imbalanced-learn 0.12.x, and SHAP 0.44+. The XGBoost base lea rner was set to n_estimators = 200, 
+max_depth = 6, learning_rate = 0.1, subsample = 0.8, colsample_bytree = 0.8 , and tree_method = 
+'hist'. Random Forest was trained with n_estimators = 150, max_depth = 15 and class_weight = 
+'balanced'. The lbfgs solver with max_iter = 1000 was used for Logistic Regression meta-learner. The 
+seed value was set to 42 all throughout. The binary and multi -class models were trained 
+independently, with the SMOTE -expanded data for the binary model and the original pre -SMOTE 
+data for the multi-class model. 
+5.2 Binary Classification 
+Table 4. Binary classification results (per-sample inference time in ms, measured on CPU). 
+Dataset Accuracy Precision Recall F1-Score ROC-AUC Lat. (ms) 
+CICIDS2017 99.90% 99.50% 99.92% 99.71% 99.99% 0.0064 
+ToN-IoT 99.81% 99.91% 99.85% 99.88% 100.00% 0.0066 
+
+Journal of Intelligent Decision Making and Information Science 
+Volume 3(6s), (2026) 1773-1788 
+1784 
+5.3 Multi-class Classification 
+Table 5. Multi-class classification results (AUC via one-vs-rest averaging; classes with fewer than 3 
+test samples excluded). 
+Dataset Accuracy Weighted F1 Weighted AUC 
+CICIDS2017 (14 classes) 99.86% 99.86% 99.97%* 
+ToN-IoT (10 classes) 99.73% 99.72% 99.95%* 
+5.4 Cross-Validation Stability 
+Table 6. 3-fold stratified cross-validation 
+Dataset CV Acc. ±Std CV F1 CV AUC 
+CICIDS2017 99.62% 0.11% 99.61% 99.99% ±0.00% 
+ToN-IoT 99.54% 0.06% 99.54% 99.98% ±0.00% 
+5.5 Baseline Comparison 
+Table 7. Baseline comparison on CICIDS2017. 
+Model Accuracy Precision Recall F1 AUC Lat. (ms) 
+Decision Tree 99.50% 98.21% 98.98% 98.59% 99.90% 0.0001 
+Random Forest 99.86% 99.51% 99.71% 99.61% 99.99% 0.0033 
+XGBoost (standalone) 99.89% 99.46% 99.94% 99.70% 100.00% 0.0010 
+ZTA-only (XGBoost) 99.89% 99.46% 99.94% 99.70% 100.00% 0.0010 
+ZT-ChainGuard (Ours) 99.90% 99.50% 99.92% 99.71% 99.99% 0.0069 
+5.6 Blockchain Audit Performance 
+Table 8. Blockchain audit latency across 500 logged decisions per dataset. 
+Dataset Mean Lat. P95 Lat. Max Lat. Tamper OK 
+CICIDS2017 0.015 ms 0.021 ms 0.160 ms Valid 
+ToN-IoT 0.019 ms 0.023 ms 1.142 ms Valid 
+ 
+5.7 On the Near-Perfect Metrics: What They Mean and What They Do Not 
+The results reported above, accuracy above 99% and ROC-AUC at or near 100% on both datasets, will 
+reasonably prompt a reviewer to ask whether something has gone wrong. That question deserves a 
+direct answer rather than a footnote. 
+5.7.1 These Results Are Normal for These Benchmarks 
+CICIDS2017 and ToN-IoT are controlled testbed datasets. Their attack traffic was generated by a small 
+number of machines executing well-defined attack scripts, and their benign traffic by a profile-based 
+simulator, so the statistical signatures of attacks are strong and consistent: DoS Hulk generates 
+systematically high SYN flag counts and anomalous byte rates, SSH -Patator produces characteristic 
+burst connection patterns, and so on. The learned decision boundary uses these signatures and the 
+test set comes  from the same distribution as the training set. In our trust -score analysis, the 
+separation is calculated directly: benign flows have a mean of 0.0014, attack flows have a mean of 
+
+Journal of Intelligent Decision Making and Information Science 
+Volume 3(6s), (2026) 1773-1788 
+1785 
+0.9979, and the separation in probability space is 0.9965 on a [0,1] scale, which means that the two 
+classes barely overlap. This is not anomalous, the accuracy of CICIDS2017 has been reported by 
+multiple independent groups to be above 99%, such as Shtayat  et al. [9] (99.9%) and El Gemayel et 
+al. [10] (99.32%) and a comprehensive survey [24] states that ensemble methods on CICIDS2017 
+routinely achieve accuracy above 99%. The results found here are in the middle of this range. 
+5.7.2 The Architecture Contributes Incrementally but Verifiably 
+The performance boost over simpler baselines is due to three design decisions. Firstly, SMOTE for the 
+binary training split guarantees that the model is exposed to balanced classes during training, which 
+would otherwise result in a trivial majority-class bias and reduce the recall on minority attack classes 
+while increasing the accuracy. Second, the stacking architecture leverages the diversity of error 
+patterns of XGBoost and Random Forest, which leads to a 0.01 percentage -point gain in Recall and 
+F1 over XGBoost alone, and is consistent across both datasets and all three folds of the cross 
+validation. Third, MinMax normalisation will give equal scales to feature contribution which is 
+important for the Logistic Regression meta-layer. 
+5.7.3 What the Results Do Not Imply 
+High benchmark performance on controlled testbed data does not imply equivalent performance on 
+live production traffic. Real networks have encrypted flows, protocol polymorphism, and zero -day 
+attacks which are not represented in CICIDS2017 or ToN -IoT. The results reported here are near -
+perfect, and provide an upper bound: the architecture works correctly, and its components integrate 
+as designed. They do not replace the need for evaluation on production captures, adversarial 
+perturbation testing, or concept-drift analysis, all of which are listed as future work in Section 6. 
+6. Discussion 
+6.1 What Is Actually Novel 
+It is important to distinguish what ZT -ChainGuard achieves technically from what its system -level 
+novelty consists of. There's not much new on the component level: Stacking ensembles is a common 
+approach, SHAP is already known, and blockchain logging has b een used in security applications 
+before. The novelty is in the architecture and how it works. First, the ZT trust score is not a rule-table 
+output but rather a probability of attack, P(Attack | flow), which is continuous, probabilistic, and 
+interpretable, and can be tuned directly to an organisation's risk tolerance; no previous ZTA system 
+reviewed in this paper uses a posterior probability as a trust signal. Second, the per -decision SHAP 
+decomposition is integrated into the ZT enforcement outcome itself: the explanation is a part of the 
+enforcement record, not a separate artefact, as it is produced as part of the decision itself. Third, the 
+per-flow blockchain log contains the SHAP attribution as block payload, which means that the 
+reasoning behind a decision is carried along with the decision itself. The combination of that decision, 
+trust score and feature attribution in a single tamper evident block has not been seen in previous 
+work reviewed here. 
+
+Journal of Intelligent Decision Making and Information Science 
+Volume 3(6s), (2026) 1773-1788 
+1786 
+6.2 Practical Considerations 
+The latency figures matter for the deployment argument. ZT-ChainGuard generates a trust score and 
+makes a policy decision in 0.006 ms per flow, and logs the policy decision to the blockchain in 0.015-
+0.019 ms, with a total per -flow overhead of less than 0. 03 ms, which is well within the bounds of 
+what can be done in-line at typical cloud-egress bandwidths. The ZT-ChainGuard overhead is several 
+orders of magnitude below operational significance, for example, the round -trip latency of a cloud 
+API call is typically measured in tens to hundreds of milliseconds. 
+The SHAP explainability layer addresses two regulatory requirements at once. GDPR Article 22 
+prohibits automated decisions that have a significant impact on the individual, and allows the 
+individual to ask for an explanation. Automated network access contr ol is likely to be considered a 
+high-risk AI system under the EU AI Act and is required to comply with certain transparency 
+requirements. The waterfall plots of the per-decision information, generated by ZT-ChainGuard, is a 
+natural fit for that explanation  artefact. In reality, this is important because regulatory compliance 
+continues to be a major obstacle to the use of ML in regulated industries like financial services and 
+healthcare. 
+6.3 Limitations and Future Work 
+Three limitations deserve honest acknowledgment. The first is the evaluation gap discussed in 
+Section 5.7.3: controlled testbed results are not production results, and the framework needs to be 
+evaluated on real or more realistic synthetic traffic before p roduction claims can be made with 
+confidence. The second is that the current architecture relies on a centralised trust -scoring engine, 
+which is a single point of failure in a true multi-cloud deployment; the obvious next step is to federate 
+the training of the model across the cloud zones, with each cloud zone training its own model based 
+on its local data, while contributing to a global model without sending the raw traffic. The third is 
+that the blockchain part is deployed on an in -process EVM simulator;  if it is deployed on a live 
+permissioned blockchain, for enterprise deployments Hyperledger Fabric, or for consortium 
+deployments Ethereum Sepolia, the consensus latency will not be present in our measurements. 
+Two further directions seem particularly worthwhile beyond these. The adversarial robustness 
+evaluation would involve perturbing the trust -scoring engine with FGSM and PGD, as detailed by 
+Pawlicki et al. [14] and measure the degradation in detection performance by an attacker who knows 
+the architecture of the trust -scoring engine. If the attack patterns are continually changing, then a 
+deployment that runs for a long time would require concept -drift monitoring, which would monitor 
+the distribution of the fe atures over time and trigger a retraining of the model when the detection 
+performance drops. 
+7. Conclusion 
+This paper set out to address three specific deficiencies in current Zero Trust implementations: static 
+rule-based trust scoring, opaque decision reasoning, and mutable audit trails. ZT-ChainGuard tackles 
+all three with a single architecture that maps netw ork-flow features to a probabilistic trust score 
+using a stacking ensemble, decomposes each decision into feature attributions using TreeSHAP, and 
+records both the decision and the feature attributions as an immutable hash-chained block. 
+
+Journal of Intelligent Decision Making and Information Science 
+Volume 3(6s), (2026) 1773-1788 
+1787 
+The empirical results on CICIDS2017 and ToN -IoT are promising: 99.90% accuracy and 99.99% ROC -
+AUC on CICIDS2017, 99.81% accuracy and 100% ROC -AUC on ToN -IoT, and 0.006 ms inference 
+latency, and less than 0.02 ms blockchain overhead per decision. We have go ne to great lengths to 
+make these numbers clear and to make them clear that they are not ready for unmodified 
+deployment on live enterprise traffic. The journey from here to production involves adversarial 
+robustness testing, live-traffic evaluation and deployment on a real consortium blockchain. 
+The deeper contribution, in our view, is the architectural pattern itself: treating the ZT trust score as 
+a continuous ML posterior, linking explainability to enforcement at the per -decision level, and 
+persisting the reasoning inside the audit record. This  pattern is not specific to the classifiers or the 
+blockchain platform used here and can be used with other base learners, other XAI methods, or other 
+distributed ledger technologies, depending on operational constraints. 
+Declarations 
+Data Availability 
+The datasets used in this study are publicly available. CICIDS2017 can be downloaded from the 
+Canadian Institute for Cybersecurity at https://www.unb.ca/cic/datasets/ids-2017.html. The ToN-IoT 
+dataset is available from UNSW Canberra at https://research.unsw.edu.au/projects/toniot-datasets. 
+No proprietary or restricted data were used. 
+Conflict of Interest 
+The author declares no conflict of interest. 
+Acknowledgements 
+The author thanks the Department of Computer Science, Christ (Deemed to be University), 
+Bengaluru, for institutional support. 
+References 
+[1]  S. Rose, O. Borchert, S. Mitchell, and S. Connelly, "Zero Trust Architecture," NIST Special Publication 800-207, NIST, 
+2020. 
+[2]  I. Sharafaldin, A. H. Lashkari, and A. A. Ghorbani, "Toward generating a new intrusion detection dataset," Proc. 
+ICISSP, 2018. 
+[3]  N. Moustafa, "ToN_IoT datasets," IEEE DataPort, DOI: 10.21227/fesz -dm97, 2021. 
+[4]  X. Chen, W. Feng, N. Ge, and Y. Zhang, "Zero trust architecture for 6G security," IEEE Network, vol. 38, no. 4, pp. 
+224–232, 2023. 
+[5]  E. B. Fernandez and A. Brazhuk, "A critical analysis of zero trust architecture (ZTA)," Computer Standards & 
+Interfaces, vol. 89, 103832, 2024. 
+[6]  M. J. Khan, "Zero trust architecture: redefining network security paradigms in the digital age," World Journal of 
+Advanced Research and Reviews, vol. 19, no. 3, pp. 105–116, 2023. 
+[7]  A. I. Weinberg et al., "Zero trust implementation in the emerging technologies era: a survey," Complex Engineering 
+Systems, vol. 4, p. 16, 2024. 
+[8]  X. Wu et al., "Dynamic security computing framework with zero trust based on privacy domain prevention and 
+control theory," IEEE J. Sel. Areas Commun., vol. 43, no. 6, pp. 2266–2278, 2025. 
+[9]  M. Shtayat et al., "A stacked ensemble approach to detect cyber attacks based on feature selection techniques," 
+Array, 2024. 
+
+Journal of Intelligent Decision Making and Information Science 
+Volume 3(6s), (2026) 1773-1788 
+1788 
+[10]  Gajula, S., Kandula, S.T.R. (2026). Securing Financial Data in Multi -Tenant Clouds Through AI, Blockchain, and 
+Attribute-Based Encryption. In: Nguyen, GN., Swaroop, A., Shukla, P. (eds) Proceedings of Fifth International 
+Conference on Computing and Communi cation Networks. ICCCN 2025. Lecture Notes in Networks and Systems, 
+vol 1859. Springer, Cham. https://doi.org/10.1007/978-3-032-21499-7_33 
+[11]  G. Karatas et al., "Enhancing intrusion detection systems with dimensionality reduction and multi -stacking 
+ensemble techniques," Algorithms, vol. 17, no. 12, p. 550, 2024. 
+[12]  R. Li et al., "SmartTrust: a hybrid deep learning framework for real -time threat detection in cloud environments 
+using Zero-Trust Architecture," Journal of Cloud Computing, Springer, 2025. 
+[13]  Z. Pelletier and M. Abualkibash, "Evaluating the CICIDS2017 dataset using machine learning methods," Science, 
+vol. 5, no. 2, pp. 187–191, 2024. 
+[14]  M. Pawlicki et al., "An adversarial robustness benchmark for enterprise network intrusion detection," 
+arXiv:2402.16912, 2024. 
+[15] D. Gaspar et al., "Explainable AI for IDS: LIME and SHAP applicability on MLP," IEEE Access, DOI: 
+10.1109/ACCESS.2024.3368377, 2024. 
+[16]  N. Capuano et al., "Explainable AI-based IDS for Industry 5.0 and adversarial XAI: a systematic review," Information, 
+vol. 16, no. 12, 2025. 
+[17]  S. P. Sunkara, "AI -Enabled Drone Image Analysis Workflows for Condition Monitoring of Power Distribution 
+Assets," 2026 International Symposium of Systems, Advanced Technologies and Knowledge (ISSATK), Hammamet, 
+Tunisia, 2026, pp. 1-6, doi: 10.1109/ISSATK69667.2026.11566851. 
+[18]  Anonymous, "A versatile XAI-based framework for efficient and explainable intrusion detection systems," Annals 
+of Telecommunications, Springer, 2025. 
+[19]  A. A. Khan et al., "IoT security with blockchain technology: a state-of-the-art review," IEEE Access, 2022. 
+[20]  A. Heidari et al., "Secure blockchain based intrusion detection for IoT networks," Discover Computing, Springer, 
+2025. 
+[21]  S. K. Ramareddy, "Integrating AI-Driven Data Visualization and Data Warehouse Analytics for Predictive Decision -
+Making in Financial and Stock Market Systems," 2026 International Symposium of Systems, Advanced 
+Technologies and Knowledge (ISSATK), Hammamet, Tunisia, 2026, pp. 1 -6, doi: 
+10.1109/ISSATK69667.2026.11566934. 
+[22]  Anonymous, "A zero -trust digital twin framework for privacy -preserving multi -dataset intrusion detection in 
+industrial IoT with lightweight blockchain auditing," Scientific Reports, 2025.  
+[23]  S. P. Sunkara, "Enhancing Grid Stability with AI -Driven Control Systems," 2026 International Symposium of 
+Systems, Advanced Technologies and Knowledge (ISSATK), Hammamet, Tunisia, 2026, pp. 1 -6, doi: 
+10.1109/ISSATK69667.2026.11566761. 
+[24]  H. Mohammed et al., "A machine learning approach for anomaly -based network intrusion detection," BMC 
+Medical Informatics and Decision Making, vol. 24, no. 1, p. 335, 2024. DOI: 10.1186/s12911 -024-02735-3 

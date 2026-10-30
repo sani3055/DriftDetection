@@ -1,0 +1,957 @@
+HuntGPT: Integrating Machine Learning-Based
+Anomaly Detection and Explainable AI with Large
+Language Models (LLMs)
+Tarek Ali and Panos Kostakos
+Faculty of Information Technology and Electrical Engineering
+Center for Ubiquitous Computing
+University of Oulu
+Oulu, Finland 90570
+Tarek.Ali, Panos.Kostakos@oulu.fi
+Abstract—Machine learning (ML) methods for network
+anomaly detection are emerging as effective proactive strategies
+in threat hunting, substantially reducing the time required
+for threat detection and response. However, the challenges in
+training and maintaining ML models, coupled with frequent false
+positives, diminish their acceptance and trustworthiness. In re-
+sponse, Explainable AI (XAI) techniques have been introduced to
+enable cybersecurity operations teams to assess alerts generated
+by AI systems more confidently. Despite these advancements,
+XAI tools have encountered limited acceptance from incident
+responders and have struggled to meet the decision-making needs
+of both analysts and model maintainers. Large Language Models
+(LLMs) offer a unique approach to tackling these challenges.
+Through tuning, LLMs have the ability to discern patterns
+across vast amounts of information and meet varying functional
+requirements. In this research, we introduce the development of
+HuntGPT, a specialized intrusion detection dashboard created
+to implement a Random Forest classifier trained utilizing the
+KDD99 dataset. The tool incorporates XAI frameworks like
+SHAP and Lime, enhancing user-friendliness and intuitiveness of
+the model. When combined with a GPT-3.5 Turbo conversational
+agent, HuntGPT aims to deliver detected threats in an easily
+explainable format, emphasizing user understanding and offering
+a smooth interactive experience. We investigate the system’s
+comprehensive architecture and its diverse components, assess the
+prototype’s technical accuracy using the Certified Information
+Security Manager (CISM) Practice Exams, and analyze the
+quality of response readability across six unique metrics. Our
+results indicate that conversational agents, underpinned by LLM
+technology and integrated with XAI, can enable a robust mech-
+anism for generating explainable and actionable AI solutions,
+especially within the realm of intrusion detection systems.
+Index Terms —Intrusion Detection, Security, ChatGPT, XAI,
+Chatbots, OpenAI, Explainable AI, Security Awareness
+I. I NTRODUCTION
+In recent decades, there has been a substantial escalation
+in cyber-attacks targeting critical and enterprise infrastructure.
+By 2025, anticipated annual financial damages from these
+cyber-attacks are projected to reach $10.5 trillion USD, a
+substantial leap from $3 trillion USD recorded in 2015 [1].
+To counteract the evolving cyber threats, the National Institute
+of Standards and Technology (NIST) introduced a Cybersecu-
+rity Framework in 2014. This framework prescribes iterative
+cybersecurity policies for identification, protection, detection,
+response, and recovery processes related to cyber incidents [2].
+In this backdrop, human experts play a vital role in
+analysing extensive telemetry data and Indicators of Com-
+promise (IoC) to isolate real threats [3, 4]. Consequently,
+building on the foundation laid by the NIST Framework,
+an extensive ecosystem—comprising tools, methodologies,
+and techniques—has been established to enable the proactive
+identification of threats, a process referred to as Cyber Threat
+Hunting (CTH) [5, 6, 7]. Threat hunting tools enable analysts
+to apply their specialized knowledge to formulate and test
+threat hypotheses by analysing system telemetry as well as
+threat intelligence from external sources [3].
+Machine learning-based anomaly detection tools are par-
+ticularly noteworthy, designed to uncover both known and
+unknown threats. Generally, network anomalies are catego-
+rized into performance-related, such as file server failures
+and transient congestion, and security-related anomalies like
+Denial of Service attacks, spoofing, and network intrusions [8].
+Evidently, the infusion of machine learning into CTH tools has
+notably increased the incidence of false positives in real-world
+operational environments [9].
+Explainable Artificial Intelligence (XAI) is at the focus of
+several proposed conceptual enhancements to existing cyber-
+security frameworks, aiming to address the challenges brought
+forth by integrations of machine learning [10]. A pivotal ad-
+vancement in this realm is the evolution of Cybertrust frame-
+works, accentuating the necessity to integrate explainable,
+interpretable, and actionable AI in cybersecurity operations
+[11]. Nevertheless, the swift advancements in the domain may
+lead to information overload for incident responders and ML
+model maintainers, potentially resulting in a sluggish adoption
+rate [12].
+Large Language Models (LLMs), driving the rapid devel-
+opment of autonomous agents, show significant potential to
+transform the landscape of cybersecurity. Their capability to
+seamlessly integrate diverse AI tasks and adapt to various
+use cases, positions them as versatile solutions that could
+boost the adoption of XAI as well as drive down operational
+arXiv:2309.16021v1  [cs.CR]  27 Sep 2023
+
+costs. Specifically, Large Language Models, and conversa-
+tional agents in particular, have showcased outstanding capa-
+bilities in promoting applications for actionable AI, which are
+vital in providing response suggestions to threat responders.
+In this paper, we introduce a novel prototype, HuntGPT,
+aimed at integrating actionable, interpretable, and explainable
+AI in cybersecurity operations. The prototype is designed to
+perform analysis on network traffic, utilizing a Random Forest
+classifier as the anomaly detection model. This model, trained
+utilizing the KDD99 dataset [13], is deployed to classify
+the acquired packets systematically. We utilize explainability
+frameworks like SHAP and LIME, in tandem with a conver-
+sational agent powered by the Language Learning Model API
+from OpenAI, predominantly known to users as ChatGPT. The
+prototype undergoes evaluation for technical accuracy through
+the utilization of Certified Information Security Manager Prac-
+tice (CISM) certification [14] and is appraised across six
+different metrics to gauge the quality of response readability.
+The remaining of the paper is structured as follows: Sec-
+tion II reviews relevant literature, summarizing findings from
+related studies. Section III details the system’s architecture
+and development process. Section IV presents the results and
+findings of our research. Finally, in Section V , we provide
+summaries, draw conclusions, and offer suggestions for future
+research directions.
+II. B ACKGROUND
+Adopting efficient cybersecurity strategies is challenging for
+small and medium-sized enterprises (SMEs) due to constraints
+such as limited budgets, a lack of skilled personnel, and
+insufficient time allocated to cybersecurity planning [15].
+Table I illustrates the typical expenses, totaling $1,635,000,
+required to sustain a medium-sized Security Operations Center
+(SOC) team, accounting for both personnel and infrastructure.
+Effectively, this cost analysis sheds light on the challenges
+faced by smaller organizations and emphasizes the importance
+of accessible and cost-efficient cybersecurity solutions. The
+remainder of the section explores three key enabling technol-
+ogy areas contributing to the advancements in cybersecurity
+operations.
+1) Network anomaly detection: The purpose of an anomaly
+detection mechanism is to analyze, understand and character-
+TABLE I
+AN ESTIMATE OF THE COST OF A MEDIUM SIZE SOC TEAM [16]
+Role Count Yearly Cost Total Cost
+Tier 1 Analyst 5 80,000 $ 400,000 $
+Tier 2 Analyst 3 100,000 $ 300,000 $
+Tier 3 Analyst 2 120,000 $ 240,000 $
+Malware Engineer 1 120,000 $ 120,000 $
+Forensic specialist 1 130,000 $ 130,000 $
+SOC manager 1 140,000 $ 140,000 $
+skill development 13 5,000 $ 65,000 $
+Products/Infrastructure* 1 240,000 $ 240,000 $
+Total cost for People / Infrastructure 1,635,000 $
+* SIEM, EDR, Server Hardware, Forensic Software, and V APT Tools
+ize network traffic behavior, as well as to identify or classify
+the abnormal traffic instances such as malicious attempts from
+normal instances. Thus, from a machine learning perspective,
+the anomaly detection problem is a classification problem
+[17]. Over the years, detection systems have experienced
+considerable evolution, resulting in the development of diverse
+approaches and deployment methods, including those in fifth
+Generation (5G) communication networks and decentralised
+architectures.
+Several Machine Learning (ML) techniques have been ex-
+tensively applied in the domain of network anomaly detection,
+encompassing both supervised and unsupervised algorithms.
+Yihunie et al. [18] reviewed five representative algorithms:
+Stochastic Gradient Descent, Random Forests, Logistic Re-
+gression, Support Vector Machine, and Sequential Model,
+applying them to the NSL-KDD dataset. The empirical results
+from their study indicated that the Random Forest Classifier
+surpassed the other examined classifiers in terms of perfor-
+mance.
+Eltanbouly et al. [19] introducing a hybrid system that
+combines the Random Forest and K-means algorithms. The
+proposed system is bifurcated into two distinct phases. The
+initial phase, known as the online phase, focuses on misuse de-
+tection by leveraging the Random Forest algorithm, followed
+by the offline phase, which categorizes random attacks through
+the use of the weighted K-means algorithm. Similarly, Zhao
+et al. [20] proposed a Multi-Task Deep Neural Network in
+Federated Learning (MT-DNN-FL) to simultaneously detect
+network anomalies, recognize VPN (Tor) traffic, and classify
+traffic, while preserving data confidentiality. Experimental
+results on representative datasets demonstrated superior per-
+formance in detection and classification compared to several
+baseline methods in centralized training architecture.
+Preuveneers et al. [21] proposed a blockchain-based fed-
+erated learning method, allowing for the auditing of model
+updates without centralizing training data, thus providing
+enhanced transparency and accountability in detecting mali-
+cious behavior. The experiments show that while integrating
+blockchain increases complexity, the impact on performance
+is minimal (varying between 5 and 15%), and the method is
+adaptable to more sophisticated neural network architectures
+and diverse use cases. Noticeably, the adoption of federated
+self-learning for anomaly detection and theat hunting is a
+rising trend in IoT devices, focusing on enhancing detection
+accuracy while prioritizing data privacy [22, 23, 24].
+Lately, the widespread adoption of 5G networks has in-
+creased the demand for the development of automated In-
+trusion Detection Systems, leading to a boost in specialized
+research in this domain [25]. Sheikhi et al. [26] focused
+on employing a federated learning-based method to identify
+DDoS attacks on the GTP protocol within a 5G core network.
+This approach capitalizes on the collective intelligence of
+various devices to proficiently and confidentially recognize
+DDoS attacks. While ML models exhibit strong performance
+in controlled settings, their efficacy in real-world environments
+is perceived as a significant barrier to their adoption [9]. In the
+
+following section, we will discuss various explainability meth-
+ods that have been proposed as potential solutions to overcome
+the barriers associated with the real-world performance of ML
+models.
+2) Explainable AI: Explainable artificial intelligence (XAI)
+refers to advanced techniques that aim to make the results of
+machine learning models understandable and more transparent
+to users. These techniques allow a practical deployment of
+ML models as they provide methods to ensure that the trained
+model is trustworthy by detecting biases in the model or in the
+corresponding training data, and increasing transparency in the
+predictions of the models by providing explanations for which
+input features had the most impact in the output of the model.
+For many critical applications in defense, medicine, finance,
+and law, explanations are essential for users to understand,
+trust, and effectively manage these new, artificially intelligent
+partners [27].
+Recent research in Explainable Artificial Intelligence (XAI)
+has been actively applied to cybersecurity, particularly in
+specialized use cases like intrusion detection and malware
+identification. [28]. Nguyen et al. develop GEE [29], a frame-
+work for detecting and explaining anomalies in network flow
+traffic. GEE comprises of two components. The first one
+consists of an unsupervised Variational Autoencoder (V AE)
+model for detecting network anomalies. The second one is
+a gradient-based fingerprinting technique for explaining the
+detected anomalies in the V AE. The evaluation shows that
+their approach is effective in detecting different anomalies as
+well as identifying fingerprints that are good representations
+of these attacks.
+Han et al. developed the DeepAID framework [30] to in-
+terpret unsupervised DL-based anomaly detection systems for
+cybersecurity. The approach helps security analysts understand
+why a certain sample is considered anomalous by searching the
+difference between the anomaly and a normal reference data
+point. Additionally, they propose a model distiller that serves
+as an extension to the black-box DL model using a simpler
+and easier to understand finite-state machine model that allows
+analysts to get involved in the model decision-making process.
+While XAI holds promise in enhancing the adoption of ML
+models within existing cybersecurity frameworks, there are
+still several challenges and considerations to be address.
+Nyre-Yu et al. [12] conducted a pilot study within an
+operational environment to assess an Explainable Artificial In-
+telligence (XAI) tool, focusing on insights gleaned from real-
+time interactions between cybersecurity analysts and XAI. The
+initial findings disclosed that, contrary to the goal of fostering
+trust and improving efficiency through XAI tools, their actual
+deployment was restricted and failed to considerably improve
+the accuracy of the decisions made by the analysts. Similarly, a
+recent systematic review [31] highlighted that research on XAI
+for cybersecurity shows that many XAI applications are crafted
+without a thorough understanding of their integration into
+analyst workflows. Moreover, security literature frequently
+fails to differentiate between diverse use cases or clearly
+separate the roles of model users and designers, which could
+potentially lead to diminished adoption.
+3) Chatbots for security & ChatGPT: Conversational
+agents, often referred to as chatbots, have gained attention
+for their role in supporting cybersecurity within businesses
+through sharing network and security information with non-
+technical staff [32].
+The Security focused chatbot introduced in [33] named
+SecBot demonstrates the role of a conversational agent for the
+support of cybersecurity planning and management. SecBot
+applies concepts of neural networks and Natural Language
+Processing (NLP), to interact and extract information from a
+conversation to (a) identify cyberattacks, (b) indicate solutions
+and configurations, and (c) provide insightful information for
+the decision on cybersecurity investments and risks.
+Another notable advancement in Natural Language Under-
+standing (NLU) with proven success in cybersecurity is the
+development of Generative Pre-trained Transformers (GPT)
+language models.
+These models can operate as standalone tools; for example,
+the application of GPT in formulating cybersecurity policies,
+as demonstrated in McIntosh et al. [34], heps deter and
+mitigate the impact of ransomware attacks involving data
+exfiltration. The results of the study indicated that, in specific
+scenarios, policies generated by GPT could surpass those
+created by humans, especially when supplied with customized
+input prompts. Similarly, Setianto et al. [35] developed a run-
+time system, GPT-2C, that utilizes a fine-tuned GPT-2 model
+to parse logs from a live Cowrie SSH honeypot effectively,
+achieving 89% inference accuracy in parsing Unix commands
+with minimal execution latency.
+Furthremore, research emphasis has been placed on ex-
+ploring the potential threats posed by Large Language Mod-
+els (LLMs) like OpenAI’s ChatGPT and Bard, particularly
+regarding their abilities to facilitate cyberattacks [36, 37].
+Nonetheless, limited research has been conducted on the
+potential integration of LLMs into cyber hunting interfaces.
+Bringing together conversational agents and GPT offers new
+opportunities for delivering knowledge and insights to non-
+professionals. Preliminary research and trials from other do-
+mains provide insight into this potential. For instance, [38]
+examines the viability of leveraging Explainable AI (XAI)
+and language models like ChatGPT to transform how financial
+knowledge is conveyed to those outside the financial sector.
+The findings suggest that ChatGPT holds significant promise
+in demystifying intricate financial principles for a broader
+audience.
+Finally, prompt engineering [39], an emerging research
+area, is showing promise as a potential solution for some
+of the shortcomings of LLMs since simple and effective
+prompts have been proven to improve GPT-3’s reliability. With
+appropriate prompts, GPT-3 is more reliable than smaller-scale
+supervised models on all these facets: generalizability, social
+biases, calibration, and factuality [40]. However, evaluating
+the performance of Large Language Models across diverse
+domains presents an ongoing challenge. Several research
+studies have examined ChatGPT’s performance in diverse
+
+fields. Gilson et al. [41] investigated its performance on the
+United States Medical Licensing Examination, highlighting the
+ability of ChatGPT to provide logical and informative context
+in the majority of its responses. Notably, when ChatGPT
+delivers accurate and up-to-date information, users report
+higher satisfaction levels and make more informed decisions
+[42]. Therefore, understanding and quantifying the accuracy
+of the data provided in the cybersecurity domain is of high
+importance.
+III. ARCHITECTURE
+Our system is organised into three distinct layers, each
+designed to fulfill specific functions and ensure optimal per-
+formance, as illustrated in Figure 1. Below, we outline the
+elements and functions of each layer, clarifying their roles
+and interactions within the overall system architecture.
+1) Analytics engine: This is a powerhouse layer responsible
+for performing the network packet analysis, examines
+network data, identifying and processing anomalies and
+irregularities within the network flow.
+2) Data Storage: We leverage Elasticsearch as our pri-
+mary document storage, prized for its near real-time
+search capabilities, scalability, and reliability. It houses
+all detected network anomalies and the corresponding
+original flow data. For storing plots and images, Amazon
+S3 buckets are our go-to, guaranteeing security and
+accessibility.
+3) User Interface (UI): The dashboard UI, constructed
+with Gradio, is the interactive front-end of our system,
+presenting the analytic engine’s outcomes to human
+analysts in a user-friendly manner. It is integrated with
+OpenAI’s Language Model API, facilitating seamless
+interactions between analysts and the system for ongoing
+discussions and analysis.
+We chose this configuration due to its modular design,
+placing a premium on the segregation of components. This
+allows each layer to be developed, maintained, and enhanced
+independently, providing flexibility and promoting efficient
+scalability. The autonomous nature of each module ensures
+streamlined adaptability to evolving requirements, reinforcing
+the robustness and responsiveness of the system.
+Fig. 1. High level diagram of dashboard integration.
+A. Component Diagram
+In this section, we narrow our focus to provide more detailed
+insights into the architecture of our system, engaging in a
+concise discussion on each primary component. Figure 2
+depicts a comprehensive illustration of the diverse components
+comprising our system, which include i) the Anomaly Detec-
+tion Application Server and ii) the Intrusion Detection System
+Dashboard.
+1) Anomaly Detection Application server: The Anomaly
+Detection Application Server serves as the central orchestrator
+of the entire anomaly detection process. This component
+integrates several sub-modules to facilitate the efficient and
+accurate identification of anomalous network behavior.
+1) ML Model Loader: The First step in our anomaly
+detection pipeline is the loading of our pre-trained
+machine learning model. The model was extensively
+trained on the KDD99 Dataset [13] which is a widely
+used benchmark dataset in the field of intrusion detec-
+tion and network security. We use the model to assess
+incoming data points against learned patterns. We also
+load the data into our engine which can be used to by
+explainability frameworks (SHAP and LIME) to provide
+interpretable explanations for predictions.
+2) Elasticsearch Connector: Enabling seamless communi-
+cation with Elasticsearch, the connector module handles
+authentication and index management, ensuring secure
+access to the Elasticsearch cluster. This components
+handles establishing a secure connection, creating and
+verifying indices, eventually enabling efficient storage of
+information pertaining to detected and original packets.
+3) Prediction: The prediction component analyzes individ-
+ual network flows to determine the presence of anoma-
+lies.
+4) Explainer: This component generates prediction factors,
+plots, and JSON documents. The explainer indexes
+the generated data into Elasticsearch, constructing a
+structured repository that facilitates efficient querying
+and exploration of detected and original network flows.
+To augment the interpretability of our findings, the
+explainer component uploads plot images to an AWS
+S3 bucket. These plots enhance our understanding of
+the model dynamics.
+5) Elasticsearch: Elasticsearch plays a pivotal role in stor-
+ing and organizing information. Our system leverages
+Elasticsearch to manage both the ”Detected Packets
+Index” and the ”Original Packets Index,” optimizing data
+accessibility and analysis.
+6) A WS S3 Bucket:Serving as a centralized repository for
+our visual resources housing the uploaded plots.
+2) Intrusion Detection System Dashboard: Our IDS Dash-
+board enhances trust in the AI system by revealing model
+insights and contributing features. It lets users inspect original
+data packets for manual anomaly inspection. AI-generated
+explanations further clarify predictions and suggest appropriate
+course of action. The dashboard also facilitates interactive
+
+Fig. 2. System Components Diagram
+discussions with the AI assistant, offering custom insights into
+the model’s operations. This component integrates several sub-
+modules to facilitate its work in presenting explainability and
+fairness to the end user.
+1) OpenAI Connector: The OpenAI Connector is mainly
+used for authentication with the OpenAI API and also
+initiaties the prerecorded message history. It also keeps
+track of the user conversations.
+2) Anomaly Packet Data Fetching: It looks through all
+the documents in Elasticsearch index and extracts all the
+important information we need from that document.
+3) OpenAI API Unit: Integrates the detected packet flow
+data with the curated fine-tuning prompts and feed them
+to the OpenAI API.
+4) AI Assistant Analysis: The AI Assistant receives all
+the data preserved in the document, accompanied by the
+refined prompts from the unit, and it generates a com-
+prehensive analysis for the human agent. This analysis
+not only reveals the details but also facilitates interactive
+communication directly with the human agent, enabling
+a seamless exchange of information and insights.
+B. Elasticsearch data schemas
+For telemetry storage, we principally utilize two Elas-
+ticsearch indices: detected-packets, original-packets. The
+”detected-packets” index serves as a structured repository for
+crucial information related to detected network anomalies.
+This schema is designed to store the attributes extracted using
+the two explainability frameworks SHAP and LIME, each
+contributing to the comprehensive understanding of identified
+anomalies.
+The schema for the ”detected-packets” index is designed to
+align with the objective of offering insights into the workings
+of the anomaly detection model, ensuring transparency and a
+deeper understanding of its mechanisms. It offers a structured
+means of storing textual predictions, influential factors, and
+other data, enhancing the dashboard’s capabilities to explain
+anomalies effectively. Table II provides an overview of the
+”Detected Packets” index, detailing each label and its corre-
+sponding description to ensure clarity and a comprehensive
+understanding of the data structure. The table emphasizes
+key attributes pivotal for anomaly detection and subsequent
+analysis.
+The ”original-packets” index requires a more complex and
+dynamic mapping. An in-depth review of each field in the
+document is superfluous since the KDD99 dataset description
+[13] already offers a comprehensive coverage. The schema
+for the original packets is crucial, aiding anomaly detection
+through manual reviews and enhancing trust between the
+human agent and the Intrusion Detection System (IDS).
+C. User Experience & Use Cases
+Collectively, all the elements of the IDS Dashboard we pre-
+viously discussed assist the user in making well-informed de-
+cisions regarding network anomalies by incorporating explana-
+tory visualizations, manual inspection, AI-generated explana-
+tions, and interactive conversations. The system is intended to
+be versatile and can aid the user in multiple scenarios.
+First, the Detection Engine offers updated threat identifi-
+cation and classification of incidents, swiftly classifying net-
+work threats and allowing security analysts to make informed
+responses through insightful visualizations and AI-generated
+explanations available on the Dashboard. Second, the dash-
+board enables ML model Interpretability, serving as a crucial
+tool for developers and data scientists to comprehend model
+functionality and its shortcomings, aiding the creation of more
+
+TABLE II
+DETECTED PACKETS INDEX
+Label Description
+id Represents a unique identifier for each detected
+packet entry.
+Prediction
+stores the prediction outcome associated with the
+detected packet wther normal or malicious and also
+the specific genre of the attack.
+Factors
+Captures the contributing factors that influenced the
+prediction outcome and the key attributes that led to
+the anomaly’s detection. We store textual descriptions
+of these factors, to be later translated into visual
+plots and also fed into the chatbot to provide
+contextual answers.
+Exp-img
+Stores references to the plots used in presenting the
+prediction process, enhancing the comprehensibility
+of the anomaly detection process. Exp-img represents
+the local explanation plot provided by LIME tabular
+explainer.
+Shap-img Shap-img represents the top features contributing to
+the predicted anomaly class using SHAP framework.
+Original-data
+Denotes the number of the detected packet which can
+be used as a foreign key to access the complete
+information regarding the detected packets.
+advanced models. Third, addressing the prevalent concern of
+soaring security operation costs, our dashboard promotes col-
+laborative analysis and reporting by providing a user-friendly
+interface suitable for individuals with varied security expertise
+and equipping users with essential tools, thereby optimizing
+operational effectiveness and cost efficiency.
+IV. EVALUATION AND RESULTS
+A. Prototype Functionality
+The dashboard shown in Figure 3 features a neatly organized
+layout that seamlessly integrates the multiple components of
+the HuntGPT. In the upper section, the dashboard provides
+a visual representation of the ML model inner workings.
+Moving down, the middle area presents the original data for
+manual inspection when needed. Lastly, the lower part is the
+AI assistant that provides context and explainability to the end
+user and also enables on going conversations. The system user
+can download a complete report of the incident including all
+the graphs an data regarding the incident using the generate
+report function. This setup ensures user-friendliness while
+uniting various functions.
+B. Response Quality Analysis
+In this section, we examine how well our prototype func-
+tions in explaining detected anomalies and assisting users via
+its chatbot feature. Assessing the responses of the chatbot, a
+common practice with conversational agents, posed distinctive
+challenges in quantifying the requisite metrics for performance
+appraisal. Our analysis can be segmented into two key com-
+ponents: i) Technical Knowledge in Cybersecurity and ii)
+Response Evaluation.
+We first examine whether ChatGPT (i.e., GPT-3.5 Turbo)
+possesses the requisite technical knowledge in the field of
+cybersecurity to effectively assist the user. A critical aspect
+of this analysis involves comparing ChatGPT’s knowledge to
+that of a certified IT professional. Following this knowledge
+assessment, we evaluate the responses provided by ChatGPT
+in terms of their quality and appropriateness. Special attention
+is paid to the level of difficulty in the answers since our goal
+is to provide knowledge to users with minimal cybersecurity
+experience.
+1) Technical Knowledge in Cybersecurity: In this assess-
+ment, our primary focus is to measure the accuracy and
+precision of answers generated by GPT-3.5-turbo, the model
+currently powering the HuntGPT system. To evaluate the
+model’s performance, we conducted tests using a set of stan-
+dardized certification exams in the field of cybersecurity. The
+detailed list of the standardized exams used for our assessment
+is presented below:
+1) CISM Certified Information Security Manager Practice
+Exams: The updated self-study guide Written by Peter
+H. Gregory featuring hundreds of practice exam ques-
+tions that match those on the live test [14].
+2) ISACA official CISM practice Quiz. A free practice quiz
+including questions from ISACA’s test prep solutions
+that are the same level of difficulty of ISACA’s official
+CISM exam [43].
+3) ISACA official cybersecurity fundamentals practice
+quiz: A practice quiz including questions from ISACA’s
+test prep solutions that are the same level of difficulty
+of ISACA’s official Cybersecurity Fundamentals exam
+[43].
+Based on the results presented in Table III, GPT-3.5-
+turbo demonstrates substantial proficiency in cybersecurity
+knowledge, with success rates ranging from 72% to 82.5%
+across varied and reputable exams. However, there is room for
+improvement, particularly in the ISACA official cybersecurity
+fundamentals practice quiz where the model achieved a lower
+success rate of 72%. The challenging CISM certification
+demands profound knowledge and experience in risk man-
+agement, illustrated by the fact that only 50-60% of first-
+time examinees attain success [44]. Nevertheless, preliminary
+results from our evaluation are highly promising and indicate
+that the model possesses the capacity to provide well-informed
+security decisions.
+2) Response Evaluation: We evaluated the responses pro-
+vided by GPT-3.5-turbo in terms of their quality and appropri-
+ateness. Table IV presents the comprehensive findings of our
+study, where we evaluated 20 different generated explanations
+TABLE III
+COMPARISON OF CISM AND CYBERSECURITY EXAM PREPARATIONS :
+GPT-3.5 S UCCESS RATES
+Exam No. of Questions GPT-3.5 turbo Success Rate
+CISM Certified Information
+Security Manager Practice Ex-
+ams [14]
+40 82.5%
+ISACA official CISM practice
+Quiz [43]
+10 80%
+ISACA official cybersecurity
+fundamentals practice quiz
+[43]
+25 72%
+
+Fig. 3. Sections of Detection and Explainability in the Dashboard.
+
+and 20 chat logs. Each chat log included approximately six
+questions regarding the detected anomaly. An example of a
+chat log is illustrated in Table V.
+We evaluated the responses using six unique readability
+formulas from the Python py-readability-metrics library [45],
+each applicable to different fields due to their distinct char-
+acteristics. The Flesch-Kincaid Grade Level, adopted by the
+U.S. Army, is used for assessing the complexity of technical
+manuals. The Flesch Reading Ease serves as a standard test
+for the U.S. Department of Defense, employed to determine
+the readability of its documents and forms. The Dale Chall
+readability formula is widely adopted in schools and edu-
+cational institutes to assess the difficulty level of texts. The
+Automated Readability Index was initially designed for real-
+time monitoring of readability on electric typewriters. The
+Coleman Liau Index has been specifically used to evaluate the
+readability of medical documents. Finally, the Linsear Write
+was purportedly developed for the United States Air Force to
+assess the readability of their technical manuals.
+The readability results in Table IV for both AI explainability
+and Chatbot logs were evaluated by most formulas as being
+at the graduate level or equivalent, revealing the presence of
+complex linguistic structures in the generated texts. While chat
+conversations can display different readability levels depend-
+ing on question types and user-required detail, the generated
+text is usually readable, typically necessitating only a basic,
+non-specialized college education level for comprehension.
+V. CONCLUSION AND FUTURE WORK
+In conclusion, the study illustrates the efficacy of integrating
+LLM-based conversational agents with Explainable AI (XAI)
+within intrusion detection systems. Our prototype, HuntGPT,
+combines the advanced capabilities of GPT-3.5-turbo with a
+user-friendly dashboard and adeptly elucidates the latent de-
+tails of detected anomalies. The model demonstrated substan-
+tial proficiency in cybersecurity knowledge, as evident from
+its success rates ranging between 72% and 82.5% on various
+reputable standardized certification exams in cybersecurity.
+However, these results also highlight areas for enhancement,
+mainly focusing on improving proficiency in fundamental
+cybersecurity concepts where the model achieved a lower
+success rate.
+TABLE IV
+EVALUATING GENERATED TEXT READABILITY
+Readability Formula
+Generated
+Anomaly
+explanation
+Chatbot
+Answers
+Score Grade
+level Score Grade
+level
+Flesch-Kincaid Grade Level 15.7 16 14.9 15
+Flesch Reading Ease 22.7 graduate 23.9 graduate
+Dale Chall 12.6 graduate 12.11 graduate
+Automated Readability Index 16.3 graduate 15.9 graduate
+Coleman Liau Index 15.3 15 16.3 16
+Linsear Write 17.4 17 15.8 16
+TABLE V
+EXAMPLES OF SUBMITTED QUERIES TO HUNT GPT AND THE RELATED
+ACTIONABLE RESPONSES
+Query Chatbot Response
+How can I
+prevent such
+attack
+To prevent DoS attacks, you can implement measures like
+traffic monitoring, firewalls, load balancers, and rate limiting
+to detect and mitigate abnormal traffic patterns. Ensuring
+network redundancy and having a robust incident response
+plan can also help minimize the impact.
+What is a
+firewall and how
+do I implement it
+with some good
+firewall examples
+A firewall is a network security device that filters incoming
+and outgoing network traffic based on predetermined security
+rules. Examples of good firewalls include: Cisco ASA
+(Adaptive Security Appliance), Palo Alto Networks
+Next-Generation Firewalls, Fortinet FortiGate Firewalls,
+Check Point Firewall. To implement a firewall, configure
+rule sets to allow or block specific types of network traffic
+and define security policies to secure your network from
+unauthorized access.
+Are there any
+free ones?
+Yes, there are free firewall solutions available. Some popular
+free firewall options include: ZoneAlarm: ZoneAlarm offers
+a free version of their firewall software for personal use,
+providing basic firewall protection along with additional
+features like identity protection and anti-phishing. Windows
+Firewall: If you are using a Windows operating system, it
+comes with a built-in firewall called Windows Firewall. It
+provides basic inbound and outbound traffic filtering
+capabilities. These free firewall solutions can offer varying
+levels of protection and features.
+How can I install
+zonealarm
+To install ZoneAlarm, follow these steps: Visit the official
+ZoneAlarm website (www.zonealarm.com) using your web
+browser. Go to the ”Products” or ”Downloads” section of the
+website. Look for the free version of ZoneAlarm Firewall.
+[proceeds to give detailed instrctions on downloading
+ZoneAlarm]
+What would be a
+good
+configuration for
+a small home
+network
+To configure ZoneAlarm Firewall for a small home network:
+Install and update ZoneAlarm. Use medium or high-security
+mode. Enable automatic program control. Customize
+program permissions. Enable Stealth Mode for added
+security. Set up Network Zones. Monitor network traffic.
+Keep ZoneAlarm updated.
+The extensive readability analysis of generated responses
+indicates that the content produced is generally comprehen-
+sible for individuals with a basic college education level,
+fostering user understanding and interaction. The implemented
+conversational agent effectively generates actionable responses
+and promotes user engagement by communicating complex
+concepts, thereby making a substantial contribution to enhanc-
+ing user comprehension in cybersecurity.
+This research contributes valuable insights into integrating
+advanced AI models within interactive, user-focused appli-
+cations in cybersecurity. The achieved success rates and the
+readability of generated responses emphasize the potential of
+implementing such integrated models in real-world applica-
+tions, providing a solid foundation for developing more sophis-
+ticated, explainable, interpretable, actionable, and user-friendly
+cybersecurity solutions. This study serves as a stepping stone
+for further research and development in creating LLM-driven
+security tools that integrate XAI in response to the evolving
+landscape of cybersecurity threats and user needs.
+In our future work, we aim to advance in two simultaneous
+directions, which are crucial for meeting the real-time detec-
+tion and response requirements. Our first approach involves
+refining our Machine Learning model and incorporating real-
+time detection capabilities by adapting existing frameworks,
+thereby enabling immediate and proactive responses to threats.
+
+Concurrently, we focus on embedding actionable AI within
+the chatbot, enabling it to issue active commands directly
+to the Security Information and Event Management (SIEM)
+component, facilitating instantaneous and intelligent responses
+to security events.
+ACKNOWLEDGMENT
+This work was funded by the European Commission grants
+IDUNN (grant no. 101021911) and the Academy of Finland
+6Genesis Flagship program (grant no. 318927).
+REFERENCES
+[1] Steve Morgan. 2023 Cybersecurity Almanac: 100 Facts,
+Figures, Predictions, And Statistics — cybersecuri-
+tyventures.com. https : / / cybersecurityventures . com /
+cybersecurity-almanac-2023/. [Accessed 23-09-2023].
+[2] Critical Infrastructure Cybersecurity. “Framework for
+improving critical infrastructure cybersecurity”. In:
+URL: https://nvlpubs. nist. gov/nistpubs/CSWP/NIST.
+CSWP 4162018 (2018).
+[3] Xiaokui Shu et al. “Threat intelligence computing”.
+In: Proceedings of the 2018 ACM SIGSAC confer-
+ence on computer and communications security . 2018,
+pp. 1883–1898.
+[4] Monowar H. Bhuyan, D. K. Bhattacharyya, and J. K.
+Kalita. “Network Anomaly Detection: Methods, Sys-
+tems and Tools”. In: IEEE Communications Surveys
+& Tutorials 16.1 (2014), pp. 303–336. DOI: 10.1109/
+SURV .2013.052213.00046.
+[5] Vasileios Mavroeidis and Audun Jøsang. “Data-Driven
+Threat Hunting Using Sysmon”. In: Proceedings of the
+2nd International Conference on Cryptography, Secu-
+rity and Privacy. ICCSP 2018. Guiyang, China: Associ-
+ation for Computing Machinery, 2018, pp. 82–88. ISBN :
+9781450363617. DOI: 10.1145/3199478.3199490. URL:
+https://doi.org/10.1145/3199478.3199490.
+[6] Kiruthiga Subramanian and Weizhi Meng. “Threat
+Hunting Using Elastic Stack: An Evaluation”. In: 2021
+IEEE International Conference on Service Operations
+and Logistics, and Informatics (SOLI) . 2021, pp. 1–6.
+DOI: 10.1109/SOLI54607.2021.9672347.
+[7] Fatimah Aldauiji, Omar Batarfi, and Manal Bayousef.
+“Utilizing Cyber Threat Hunting Techniques to Find
+Ransomware Attacks: A Survey of the State of the Art”.
+In: IEEE Access 10 (2022), pp. 61695–61706. DOI: 10.
+1109/ACCESS.2022.3181278.
+[8] M. Thottan and Chuanyi Ji. “Anomaly detection in IP
+networks”. In: IEEE Transactions on Signal Processing
+51.8 (2003), pp. 2191–2204. DOI: 10.1109/TSP.2003.
+814797.
+[9] Lorenzo Cavallaro et al. “Are Machine Learning Models
+for Malware Detection Ready for Prime Time?” In:
+IEEE Security & Privacy 21.2 (2023), pp. 53–56.
+[10] Fabien Charmet et al. “Explainable artificial intelligence
+for cybersecurity: a literature survey”. In: Annals of
+Telecommunications 77.11-12 (2022), pp. 789–812.
+[11] Igor Linkov et al. “Cybertrust: From Explainable to
+Actionable and Interpretable Artificial Intelligence”. In:
+Computer 53.9 (2020), pp. 91–96. DOI: 10.1109/MC.
+2020.2993623.
+[12] Megan Nyre-Yu et al. “Explainable AI in Cyberse-
+curity Operations: Lessons Learned from xAI Tool
+Deployment”. In: Proceedings of the Usable Security
+and Privacy (USEC) Symposium, San Diego, CA, USA .
+V ol. 28. 2022.
+[13] et al. Stolfo Salvatore. KDD Cup 1999 Data .
+UCI Machine Learning Repository. DOI:
+https://doi.org/10.24432/C51C7N. 1999.
+[14] P.H. Gregory. CISM Certified Information Security
+Manager Practice Exams, Second Edition. McGraw Hill
+LLC, 2023. ISBN : 9781264697137. URL: https://books.
+google.fi/books?id=4I-nEAAAQBAJ.
+[15] Marjo Heikkil ¨a et al. “Security challenges in small- and
+medium-sized manufacturing enterprises”. In: 2016 In-
+ternational Symposium on Small-scale Intelligent Man-
+ufacturing Systems (SIMS) . 2016, pp. 25–30. DOI: 10.
+1109/SIMS.2016.7802895.
+[16] SharkStriker Inc. What is the Cost of Building a Robust
+24/7 SOC for Your Organization. Jan. 2022. URL: https:
+//sharkstriker.com/blog/what-is-the-cost-of-building-
+a- robust- 24- 7- soc- for- your- organization/ (visited on
+08/26/2023).
+[17] Dhruba K Bhattacharyya and Jugal Kalita. Network
+Anomaly Detection: A Machine Learning Perspective .
+Apr. 2013. DOI: 10.1201/b15088.
+[18] Fekadu Yihunie, Eman Abdelfattah, and Amish Regmi.
+“Applying Machine Learning to Anomaly-Based In-
+trusion Detection Systems”. In: 2019 IEEE Long Is-
+land Systems, Applications and Technology Conference
+(LISAT). 2019, pp. 1–5. DOI: 10 . 1109 / LISAT. 2019 .
+8817340.
+[19] Sohaila Eltanbouly et al. “Machine Learning Tech-
+niques for Network Anomaly Detection: A Survey”.
+In: 2020 IEEE International Conference on Informatics,
+IoT, and Enabling Technologies (ICIoT). 2020, pp. 156–
+162. DOI: 10.1109/ICIoT48696.2020.9089465.
+[20] Ying Zhao et al. “Multi-Task Network Anomaly De-
+tection Using Federated Learning”. In: Proceedings of
+the 10th International Symposium on Information and
+Communication Technology. Association for Computing
+Machinery, 2019, pp. 273–279. ISBN : 9781450372459.
+DOI: 10.1145/3368926.3369705. URL: https://doi.org/
+10.1145/3368926.3369705.
+[21] Davy Preuveneers et al. “Chained Anomaly Detection
+Models for Federated Learning: An Intrusion Detection
+Case Study”. In: Applied Sciences 8.12 (2018). ISSN :
+2076-3417. DOI: 10.3390/app8122663. URL: https://
+www.mdpi.com/2076-3417/8/12/2663.
+[22] Saeid Sheikhi and Panos Kostakos. “Cyber threat hunt-
+ing using unsupervised federated learning and adversary
+emulation”. In: 2023 IEEE International Conference
+
+on Cyber Security and Resilience (CSR) . IEEE. 2023,
+pp. 315–320.
+[23] Viraaji Mothukuri et al. “Federated-Learning-Based
+Anomaly Detection for IoT Security Attacks”. In: IEEE
+Internet of Things Journal 9.4 (2022), pp. 2545–2554.
+DOI: 10.1109/JIOT.2021.3077803.
+[24] Thien Duc Nguyen et al. “D ¨IoT: A Federated Self-
+learning Anomaly Detection System for IoT”. In: 2019
+IEEE 39th International Conference on Distributed
+Computing Systems (ICDCS) . 2019, pp. 756–767. DOI:
+10.1109/ICDCS.2019.00080.
+[25] Pawani Porambage et al. “The roadmap to 6G security
+and privacy”. In: IEEE Open Journal of the Communi-
+cations Society 2 (2021), pp. 1094–1122.
+[26] Saeid Sheikhi and Panos Kostakos. “DDoS attack de-
+tection using unsupervised federated learning for 5G
+networks and beyond”. In: 2023 Joint European Confer-
+ence on Networks and Communications & 6G Summit
+(EuCNC/6G Summit) . 2023, pp. 442–447. DOI: 10 .
+1109/EuCNC/6GSummit58263.2023.10188245.
+[27] David Gunning et al. “XAI—Explainable artificial in-
+telligence”. In: Science Robotics 4.37 (2019), eaay7120.
+DOI: 10.1126/scirobotics.aay7120. eprint: https://www.
+science.org/doi/pdf/10.1126/scirobotics.aay7120. URL:
+https://www.science.org/doi/abs/10.1126/scirobotics.
+aay7120.
+[28] Igor Linkov et al. “Cybertrust: From Explainable to
+Actionable and Interpretable Artificial Intelligence”. In:
+Computer 53.9 (2020), pp. 91–96. DOI: 10.1109/MC.
+2020.2993623.
+[29] Quoc Phong Nguyen et al. “GEE: A Gradient-
+based Explainable Variational Autoencoder for Network
+Anomaly Detection”. In: June 2019. DOI: 10.1109/CNS.
+2019.8802833.
+[30] Dongqi Han et al. DeepAID: Interpreting and Improving
+Deep Learning-based Anomaly Detection in Security
+Applications. Sept. 2021.
+[31] Azqa Nadeem et al. “Sok: Explainable machine learning
+for computer security applications”. In: 2023 IEEE 8th
+European Symposium on Security and Privacy (Eu-
+roS&P). IEEE. 2023, pp. 221–240.
+[32] Dania Ben Peretz. A Siri for Network Security: How
+Chatbots can Enhance Business Agility . Mar. 2020.
+URL: https://www.infosecurity-magazine.com/opinions/
+network-chatbots-agility/ (visited on 07/22/2023).
+[33] Muriel Figueredo Franco et al. “SecBot: a Business-
+Driven Conversational Agent for Cybersecurity Plan-
+ning and Management”. In: 2020 16th International
+Conference on Network and Service Management
+(CNSM). 2020, pp. 1–7. DOI: 10.23919/CNSM50824.
+2020.9269037.
+[34] Timothy McIntosh et al. “Harnessing GPT-4 for Gener-
+ation of Cybersecurity GRC Policies: A Focus on Ran-
+somware Attack Mitigation”. In: Computers & Security
+134 (Aug. 2023). DOI: 10.1016/j.cose.2023.103424.
+[35] Febrian Setianto et al. “GPT-2C: A Parser for Honey-
+pot Logs Using Large Pre-Trained Language Models”.
+In: Proceedings of the 2021 IEEE/ACM International
+Conference on Advances in Social Networks Analysis
+and Mining . ASONAM ’21. New York, NY , USA:
+Association for Computing Machinery, 2022, pp. 649–
+653. ISBN : 9781450391283. DOI: 10 . 1145 / 3487351 .
+3492723. URL: https : / / doi . org / 10 . 1145 / 3487351 .
+3492723.
+[36] Boubakr Nour, Makan Pourzandi, and Mourad Debbabi.
+“A Survey on Threat Hunting in Enterprise Networks”.
+In: IEEE Communications Surveys & Tutorials (2023).
+[37] Glorin Sebastian. “Do ChatGPT and other AI chatbots
+pose a cybersecurity risk?: An exploratory study”. In:
+International Journal of Security and Privacy in Perva-
+sive Computing (IJSPPC) 15.1 (2023), pp. 1–11.
+[38] Thomas Yue. Democratizing Financial Knowledge with
+ChatGPT by OpenAI: Unleashing the Power of Tech-
+nology. Feb. 2023. DOI: 10.2139/ssrn.4346152.
+[39] Wikipedia contributors. Prompt engineering —
+Wikipedia, The Free Encyclopedia . [Online; accessed
+26-September-2023]. 2023. URL: https://en.wikipedia.
+org / w / index . php ? title = Promptengineering & oldid =
+1176364192.
+[40] Chenglei Si et al. Prompting GPT-3 To Be Reliable. Oct.
+2022. DOI: 10.48550/arXiv.2210.09150.
+[41] Aidan Gilson et al. “How Does ChatGPT Perform on
+the United States Medical Licensing Examination? The
+Implications of Large Language Models for Medical
+Education and Knowledge Assessment”. In: JMIR Med
+Educ 9 (Feb. 2023), e45312. ISSN : 2369-3762. DOI: 10.
+2196/45312. URL: https://doi.org/10.2196/45312.
+[42] Mi-Na Chu. “Assessing the Benefits of ChatGPT for
+Business: An Empirical Study on Organizational Perfor-
+mance”. In: IEEE Access 11 (2023), pp. 76427–76436.
+DOI: 10.1109/ACCESS.2023.3297447.
+[43] Wikipedia contributors. ISACA — Wikipedia, The Free
+Encyclopedia. [Online; accessed 3-August-2023]. 2023.
+URL: https : / / en . wikipedia . org / w / index . php ? title =
+ISACA&oldid=1170788297.
+[44] Aditi Jain. CISM Difficulty Level: Exam Format and
+Study Guide . July 2023. URL: https : / / www .
+knowledgehut.com/blog/security/cism-difficulty-level#
+cism - exam - format % C2 % A0 % C2 % A0 (visited on
+08/20/2023).
+[45] py-readability-metrics: A Python library for computing
+readability metrics . https : / / pypi . org / project / py -
+readability-metrics/. Accessed: Sep. 2023.

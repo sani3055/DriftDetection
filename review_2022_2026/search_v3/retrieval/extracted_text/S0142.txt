@@ -1,0 +1,1686 @@
+Haddane et al. Cybersecurity           (2026) 9:130  
+https://doi.org/10.1186/s42400-026-00558-7
+RESEARCH Open Access
+© The Author(s) 2026. Open Access  This article is licensed under a Creative Commons Attribution 4.0 International License, which 
+permits use, sharing, adaptation, distribution and reproduction in any medium or format, as long as you give appropriate credit to the 
+original author(s) and the source, provide a link to the Creative Commons licence, and indicate if changes were made. The images or 
+other third party material in this article are included in the article’s Creative Commons licence, unless indicated otherwise in a credit line 
+to the material. If material is not included in the article’s Creative Commons licence and your intended use is not permitted by statutory 
+regulation or exceeds the permitted use, you will need to obtain permission directly from the copyright holder. To view a copy of this 
+licence, visit http:// creat iveco mmons. org/ licen ses/ by/4. 0/.
+Cybersecurity
+React-d3qn: resilient adaptive 
+concept-drift-aware dueling double deep 
+Q-network for robust edge-centric intrusion 
+detection
+Ibtissam Haddane1*, Badr Hirchoua1 and Hicham Moutachaouik1 
+Abstract 
+Deep Reinforcement Learning (DRL) has demonstrated significant potential in autonomous network defense; 
+however, existing models frequently suffer from "Recall Collapse" when faced with concept drift or the "Information 
+Poverty" of resource-constrained edge devices. This paper proposes REACT-D3QN (Resilient Adaptive Concept-drift-
+aware Dueling Double Deep Q-Network), a framework designed to maintain operationally relevant detection integrity 
+during cross-dataset migration. By integrating a Dueling architecture, the framework decouples state-value estima-
+tion from action advantages, allowing the agent to recognize the "intrinsic risk" of network states even under extreme 
+feature pruning. A core innovation of this work is the REACT reward engine, which utilizes a 10:1 asymmetric penalty 
+ratio to establish a "Recall Floor" , prioritizing the detection of drifted attack signatures over simple accuracy. Evalu-
+ated through a zero-base transfer learning transition from CIC-IDS2017 to CIC-IDS2018 traffic patterns, REACT-D3QN 
+achieved a 99.85% Recall while operating on an 84.4% reduced feature set (5 features). These results prove that archi-
+tectural resilience can compensate for significant signal loss, providing a robust pathway for deploying high-perfor-
+mance Intrusion Detection Systems (IDS) on low-power edge infrastructure and setting the stage for decentralized, 
+blockchain-verified autonomous defense.
+Keywords Deep Reinforcement Learning, Dueling Double Deep Q-Network, Intrusion Detection Systems, 
+Concept Drift, Transfer Learning, Cost-Sensitive Learning, Asymmetric Reward Shaping, Information Poverty, Feature 
+Dimensionality Reduction, Edge Computing Security, Behavioral Adaptation
+Introduction
+The growing complexity of modern software systems 
+and the emergence of diverse platforms have created 
+vast exploit surfaces, making vulnerability identification 
+increasingly difficult and costly (Sahingoz et  al. 2021). 
+Effective risk management requires reliable Intrusion 
+Detection Systems (IDS) capable of continuous network 
+analysis and automated protective response (Kim et  al. 
+2020).
+Traditional signature-based methods are limited 
+by their inability to detect novel or zero-day attacks 
+(Abdulrahman and Ibrahem 2020; Zhong et  al. 2024; 
+Bu and Wang 2019). Consequently, AI-driven solu -
+tions–particularly Reinforcement Learning (RL)–have 
+become the standard for proactive defense (Hirchoua 
+et  al. 2024; Nayak et  al. 2023; Tellache et  al. 2024; Aza -
+deh 2024; Taveras Cruz et al. 2025). By interacting with 
+the network environment, RL agents learn to distinguish 
+between benign and malicious actions, providing the 
+adaptability needed to counter polymorphic malware 
+*Correspondence:
+Ibtissam Haddane
+haddane.ibtissam@gmail.com
+1 AIMCE Laboratory, National Higher School of Arts and Crafts (ENSAM), 
+Hassan II University of Casablanca (UH2), Casablanca, Morocco
+
+Page 2 of 20Haddane et al. Cybersecurity           (2026) 9:130 
+and living-off-the-land tactics (Wu et al. 2024; Adawad-
+kar and Kulkarni 2022; Fivel et al. 2025; Liu et al. 2024). 
+Deep RL (DRL) further enhances this by processing high-
+dimensional traffic features to maximize a long-term 
+reward signal, addressing the limitations of static data -
+bases and reducing alert fatigue (Hirchoua et  al. 2021; 
+Khenwar and Nawal 2024; P et al. 2024).
+Despite these advances, most DRL models strug -
+gle with concept drift and information poverty when 
+deployed across different datasets or resource-con -
+strained edge devices. Precisely, transfer learning in these 
+environments is often non-trivial and prone to perfor -
+mance degradation.
+To address these challenges, we propose REACT-
+D3QN (Resilient Adaptive Concept-drift-aware Dueling 
+Double Deep Q-Network). This framework is specifically 
+engineered to maintain operationally relevant detec -
+tion integrity under ’Information Poverty’ by decoupling 
+environmental state-values from specific action advan -
+tages. By prioritizing architectural resilience over simple 
+pattern matching, REACT-D3QN establishes a robust 
+pathway for autonomous defense on low-power edge 
+infrastructure where traditional models typically fail.
+Overall, the main contributions of this paper are:
+• The REACT Mechanism: An asymmetric 10:1 risk-
+aware penalty that anchors detection by prioritizing 
+the cost of False Negatives (missed attacks) to main -
+tain a consistent Recall Floor.
+• Resilient Architecture: Implementation of a Dueling 
+Double Deep Q-Network to separate State Value (V) 
+from Action Advantage (A), enabling threat recogni -
+tion even with sparse input signals.
+• Knowledge Persistence: Successful Transfer Learning 
+from CICIDS-2017 to CICIDS-2018, demonstrat -
+ing the framework’s ability to mitigate concept drift 
+without full-scale retraining.
+• Operational Efficiency: Our model achieves an 84.4% 
+reduction in feature dimensionality (from 32 to 5 fea-
+tures) while maintaining a high 99.85% Recall, prov -
+ing suitability for high-speed edge deployment.
+The rest of this paper is structured as follows: Section II 
+discusses related work; Section III details the REACT-
+D3QN methodology; Section IV describes the experi -
+mental setup; Sections V and VI present the results; and 
+Section VII concludes the study.
+Related work
+This section situates REACT-D3QN within the broader 
+landscape of autonomous cyber-defense. The integration 
+of Deep Reinforcement Learning (DRL) has emerged as a 
+transformative approach to addressing the dynamic and 
+decentralized nature of modern cybersecurity threats. 
+We explore existing literature across several dimensions: 
+from adaptive protection in critical infrastructures–such 
+as microgrids and power systems–to sophisticated intru -
+sion detection systems (IDS) for the Industrial IoT and 
+vehicular networks.
+Furthermore, this section examines critical and techni -
+cal advancements in training stability, such as the miti -
+gation of overestimation bias, and addresses emerging 
+safety challenges through dynamic shielding. By synthe -
+sizing these diverse research directions, we establish the 
+context for our framework and identify current research 
+gaps–specifically the lack of resilient behavioral adapta -
+tion when agents are faced with concept drift between 
+datasets and severe feature constraints.
+Multi‑agent architectures and decentralized coordination
+A fundamental challenge in modern network security is 
+the requirement for decentralized coordination in large-
+scale environments. Taveras Cruz et al. (2025) performed 
+a systematic review of over 150 studies, identifying MAS 
+and DRL as essential components for the adaptive pro -
+tection of critical cyber-physical systems. This architec -
+tural shift is necessitated by the inherent non-stationarity 
+and high dimensionality of modern networks (Azadeh 
+2024). Tellache et al. (2024) optimized MAS for intrusion 
+detection by employing cost-sensitive learning to address 
+inherent class imbalances. To enhance scalability, special-
+ized frameworks such as InforMARL, Nayak et al. (2023) 
+utilized graph neural networks to aggregate local neigh -
+borhood information, allowing decentralized agents to 
+compute paths and actions effectively even as the num -
+ber of network nodes grows. Table  1 highlights the MAS 
+and Decentralized Coordination works.
+Algorithmic advancements in value‑based learning
+The stability of DRL agents is often undermined by over -
+estimation bias in value-function approximation. Recent 
+literature has focused on mathematical refinements to 
+ensure convergence and policy optimality (Hirchoua 
+et  al. 2022). Double Deep Q-Networks (DDQN) have 
+been proven effective in capturing complex temporal 
+dependencies in attack patterns within power systems 
+(Zeng et al. 2023) while mitigating overestimation (Naga-
+rajan et al. 2025). Beyond standard DDQN, Mutlu et al. 
+(2024) introduced a parameter-free approach to reduce 
+the underestimation bias in deterministic policy gra -
+dients, while Tian et  al. (2022) proposed the Dynamic 
+Partial Average (DPAV) estimator to stabilize learning in 
+dialogue-based policy modules. Furthermore, multi-stage 
+training strategies (Yang et al. 2022) and dueling architec-
+tures (Tian et al. 2022) have been integrated to improve 
+
+Page 3 of 20
+Haddane et al. Cybersecurity           (2026) 9:130 
+ 
+stability in high-speed, dynamic environments. Table  2 
+shows algorithmic advances in value-based learning.
+Reward specification and training efficiency
+Cybersecurity environments present a unique challenge 
+where the cost of a False Negative (FN)–a missed attack–
+far outweighs the cost of a False Positive (FP). Bates and 
+Mavroudis (Bates et al. 2023) demonstrated that autono -
+mous cyber-agents are highly sensitive to the magnitude 
+and relative size of penalties, suggesting that traditional, 
+symmetric reward structures often lead to suboptimal 
+defense policies. Although curiosity-driven models (Cao 
+et al. 2024) and expert demonstrations (Pettersson et al. 
+2024) have been proposed to solve sparse reward issues 
+and accelerate convergence, they do not inherently 
+address the risk-asymmetry required for operationally 
+relevant intrusion detection. A significant gap remains 
+in Cost-Sensitive Reinforcement Learning, particularly 
+regarding how extreme penalty ratios can be used to 
+anchor model performance during domain migration. 
+Existing reward shaping methods (Roy 2024) often seek 
+to balance multiple objectives but rarely focus on using 
+asymmetric penalties as a stabilization anchor for Recall 
+when faced with concept drift. Our proposed REACT-
+D3QN framework addresses this by implementing a 10:1 
+risk-aware penalty, moving beyond simple efficiency 
+toward a safety-first reward architecture. Table  3 pre -
+sents the comparison of different works related to reward 
+design and cost-sensitivity.
+Domain‑specific applications: IoT, IoV, and CPS
+The application of DRL-based security must be tailored 
+to the specific constraints of the deployment domain. 
+Precisely,
+• Industrial and Internet of Things (IoT): DRL-based 
+Intrusion Detection Systems (IDS) have demon -
+strated superiority over static machine learning mod-
+Table 1 Multi-agent architectures and decentralized coordination
+References Methodology Domain Key contributions
+Taveras Cruz et al. (2025) MAS Review Critical Infra Identified MAS/RL as vital for adaptive CPS protection
+Tellache et al. (2024) Multi-agent RL Network IDS Cost-sensitive learning to address class imbalances
+Azadeh (2024) Relational Net Robotics Value factorization to address non-stationarity
+Lee et al. (2024a, 2024b) MARL+Heuristics Industrial Optimized asynchronous throughput in handling systems
+Valianti et al. (2025) MARL Mobility Drone Search Joint search and track of rogue drones in interception
+Nayak et al. (2023) InforMARL Navigation GNN-based aggregation for decentralized coordination
+Table 2 Algorithmic advancements in value-based learning
+References Methodology Domain Key contributions
+Zeng et al. (2023) Double DQN Power Sys Captured temporal dependencies in attack patterns
+Yang et al. (2022) Multi-Stage DDQN Aerial Env Improved stability in high-speed 3D environments
+Nagarajan et al. (2025) Double Q Theory RL Theory Proved reduction of bias via double estimators
+Zhang et al. (2022) M2DQN Optimization Minimized max TD-error for better data efficiency
+Zhu et al. (2022) Pareto DQN Anti-Jamming Prioritized high-value samples for training
+Badr (2022) Dueling DDQN General NIDS RL resilience against model drift vs static ML
+Mutlu et al. (2024) SWTD3 Update Deterministic Parameter-free approach to reduce underestimation
+Tian et al. (2022) DP AV Estimator Policy Design Weighted action-value averages for stability
+Table 3 Related research: reward design and cost-sensitivity
+References Methodology Domain Key contributions
+Cao et al. (2024) Curiosity DQN Exploration Addressed sparse reward issues through intrinsic motivation
+Pettersson et al. (2024) Pre-training Efficiency Utilized expert demonstrations to reduce sample complexity
+Bates et al. (2023) Reward Shaping CybORG Proved agent sensitivity to penalty magnitude and relative sizing
+Roy (2024) Multi-objective Reward Design Balanced diverse goals but relied on symmetric reward structures
+
+Page 4 of 20Haddane et al. Cybersecurity           (2026) 9:130 
+els in dynamic industrial traffic (Tharewal et al. 2022). 
+Comparative analyses on the CIC-IDS 2017 dataset 
+indicate that hybrid models offer the most efficient 
+performance for resource-constrained gadgets, while 
+specialized models address real-time malicious intru-
+sions in IoT infrastructures (Kandhro et  al. 2023). 
+While these DRL-based IDS show high efficacy on 
+standard benchmarks like CIC-IDS2017, a critical 
+limitation remains: model drift when transitioning to 
+newer datasets. Most current studies (Tharewal et al. 
+2022; Kandhro et al. 2023; Malgwi et al. 2022) report 
+near-perfect scores on the same distribution they 
+were trained on but fail to address the Cross-Dataset 
+challenge. For instance, a model trained on 2017 data 
+often suffers a catastrophic drop in Recall when fac -
+ing the 2018 iteration of the same network environ -
+ment due to evolving attack signatures.
+• Internet of Vehicles (IoV): High-mobility environ -
+ments require specialized mitigation for flood attacks 
+(Gelenbe and Nasereddin 2025) and secure pseu -
+donym authentication (Mohammed et  al. 2023). 
+Recent models like MDHP-Net (Liu et al. 2024) uti -
+lize Multi-Dimensional Hawkes Processes to profile 
+the time-excitation effects of injection attacks on in-
+vehicle networks.
+• Cyber‑Physical Systems (CPS): Integrated frame -
+works combining ensemble deep learning with quan-
+tum-inspired optimization (Almutairi et  al. 2023) 
+and graph convolutional networks (Lin et  al. 2022) 
+provide privacy-enhanced protection for critical 
+infrastructure.
+Table  4 highlights the related research in terms of 
+domain-specific security applications.
+Table 4 Domain-specific security applications
+References Methodology Domain Key contributions
+Tharewal et al. (2022) Deep RL IIoT Superiority over static ML in dynamic industrial traffic
+Wan and Dragicevic (2022) Data-driven Microgrids Detection of stealthy CPS attacks in power grids
+Thirimanne et al. (2022) DNN Network Sec Real-time detection constraints in live pipelines
+Al-shareeda et al. (2019) Review VANETs Prevention schemes for Replay Attacks
+Almazroi et al. (2023a) ECA-VFog 5 G Fog Reduced auth overhead in vehicular fog computing
+Almazroi et al. (2023b) Lattice Auth 5 G Fog Post-quantum secure privacy-preserving protocol
+Al-Mekhlafi et al. (2023) Chebyshev Poly 5 G VANETs Secure auth and efficient pseudonym revocation
+Han and Pak (2023) Two-Stage LSTM Sequential IDS Reduced detection delay for traffic data
+Varghese and Taghiyarrenani (2025) Domain Adapt Heterogeneous Generalization across datasets with varying features
+Qu et al. (2023) Domain Confus Cross-Network Mapped traffic to shared feature spaces for migration
+Mohamed (2023) Autoencoders Anomaly Det Improved performance on shifting IP/Port features
+Hui and Chiew (2025) CNN-LSTM-SA Network IDS Spatial/temporal feature extraction with Attention
+Qazi et al. (2023) Hybrid DL General NIDS High-performance benchmark for hostile attacks
+Li et al. (2025) GNN-DRL Resilience Scaling to unstructured network topologies
+Ahmad and Truscan (2022) Compact DL Early Detection Detection via first few packets of a flow
+Lin et al. (2022) Privacy DRL CPS Security Concurrent defense and data privacy in CPS
+Almutairi et al. (2023) QDMO + Ens CPS IDS Quantum optimization for feature selection
+Kandhro et al. (2023) Real-time DRL IoT Security Low-latency detection framework for IoT infra
+Khozam et al. (2024) DRL DDoS / SDN Mitigated DDoS while maintaining QoS in SDN
+Razak et al. (2023) Simulation IoV Botnets Mobility impact on vehicular DDoS effectiveness
+Mohammed et al. (2023) Fog Auth 5 G IoV Privacy-preserving pseudonym authentication
+Gelenbe and Nasereddin (2025) SQF / AAM IoV Flooding Regulated traffic backlogs during flood attacks
+Liu et al. (2024) Hawkes Proc In-vehicle Modeled temporal excitation of injection attacks
+Kim et al. (2020) CNN-LSTM Web IDS Character encoding for HTTP traffic analysis
+Sabeel et al. (2021) AI Engine Atypical Flow Hyperparameter optimization for non-standard flows
+Malgwi et al. (2022) ANN Network IDS Utility of standard ANNs vs traditional methods
+Jose and Jose (2023) Comparative DL IoT Security Benchmarks on the CIC-IDS 2017 dataset
+
+Page 5 of 20
+Haddane et al. Cybersecurity           (2026) 9:130 
+ 
+Adversarial resilience and robustness
+As AI-driven detectors become more prevalent, the 
+emergence of adversarial AI poses a significant threat. 
+Saini and Chennamaneni (2024) highlight the vulner -
+ability of the network IDS to data poisoning and test-time 
+evasion. For instance, Chathoth and Lee (2025) demon -
+strate that poisoning as little as 1% of a training dataset 
+can effectively backdoor a model. Frameworks such as 
+UNIDOOR (Ma et  al. 2025) and Deep PackGen (Hore 
+et al. 2025) illustrate how attackers can use DRL to gen -
+erate adversarial packets that evade modern detectors. 
+To counter these threats, research has shifted towards 
+Dynamic Shielding (Xiao et  al. 2023), which monitors 
+and corrects agent behavior in real-time, and out-of-
+distribution (OOD) dynamics detection (Gardille and 
+Ahmad 2023) to identify anomalous behavior during 
+deployment. Furthermore, techniques such as Condi -
+tional GANs (Barkah et  al. 2023) are employed to syn -
+thesize minority attack data, ensuring that the resulting 
+IDS is robust against highly imbalanced traffic patterns. 
+Table  5 highlights the comparison between different 
+adversarial resilience and robustness works.
+Architectural evolution: towards REACT‑D3QN resilience
+While standard Double Deep Q-Networks (DDQN) are 
+effective at mitigating overestimation bias (Nagarajan 
+et al. 2025), they often struggle to maintain policy stabil -
+ity when input features are significantly pruned or when 
+the data distribution shifts. To address the requirements 
+of Cross-Dataset generalization between CIC-IDS2017 
+and CIC-IDS2018, the framework was evolved into 
+REACT-D3QN (Resilient Adaptive Concept-drift-aware 
+Dueling Double Deep Q-Network). The core innovation 
+of REACT-D3QN lies in the integration of the Dueling 
+architecture, which decouples the estimation of the state-
+value V(s) from the advantage A(s,  a). This structural 
+refinement is critical for"Information Poverty scenarios, 
+such as our 5-feature restricted track. By isolating V(s), 
+the agent learns to recognize the intrinsic risk of a state 
+even when the specific action signals are weakened by the 
+84.4% reduction in feature dimensionality. Furthermore, 
+the synchronization provided by Soft Target Updates 
+( τ ) ensures that the aggressive 10:1 risk-aware penalty 
+anchors the model’s Recall without causing the weight 
+instability often observed in high-penalty reinforcement 
+learning environments.
+Despite the proliferation of DRL-based IDS solutions, 
+a significant gap remains in behavioral Transfer Learning 
+and domain adaptation. As summarized in the preced -
+ing sections, current methodologies often treat domain 
+migration as a static mathematical mapping or require 
+full-scale retraining when faced with new attack signa -
+tures (Varghese and Taghiyarrenani 2025). There is a 
+profound lack of research into how an autonomous agent 
+can perform Zero-Base Transfer Learning–effectively 
+transposing security intuition from one dataset iteration 
+(CIC-IDS2017) to another (CIC-IDS2018) while simulta -
+neously undergoing extreme feature pruning.
+Existing models frequently suffer from Catastrophic 
+Forgetting or a total Recall collapse when encounter -
+ing the concept drift inherent in 2018 traffic patterns. 
+REACT-D3QN bridges this gap by replacing rigid statis -
+tical alignment with a dynamic, transfer-oriented adapta-
+tion mechanism. By combining the structural resilience 
+of Dueling streams with a cost-sensitive 10:1 reward 
+anchor, this framework demonstrates that learned behav-
+ioral patterns from 2017 can be successfully transferred 
+to a 2018 environment. This achieves an 84.4% reduction 
+in data overhead while preserving a Recall of 99.85%, sig -
+nificantly mitigating the trade-off between cross-dataset 
+knowledge persistence and operational efficiency.
+Preliminaries
+This section establishes the mathematical and algorith -
+mic foundations of our proposed framework. We tran -
+sition from the basic Markovian decision process to the 
+Table 5 Related research: adversarial security and resilience
+References Methodology Domain Key contributions
+Alabsi et al. (2023) CTGAN + IDS IoT IDS Synthesized data to handle class imbalance
+Saini and Chennamaneni (2024) Review Adversarial RL Analysis of Poisoning and Evasion attacks
+Gardille and Ahmad (2023) OOD Dynamics Autonomous Detected safety-critical OOD situations
+Oh et al. (2023) Agent DRL Simulation Automated red teaming for optimal attack strategies
+Ma et al. (2025) UNIDOOR Backdoor Universal action-level trigger framework
+Xiao et al. (2023) Shielding Safe MARL Formal safety guarantees for decentralized agents
+Chathoth and Lee (2025) Poisoning CPS/IoT Backdoors with <1% training data corruption
+Barkah et al. (2023) CGAN Data Gen Synthesized minority attack classes for robustness
+Hore et al. (2025) Deep PackGen Adversarial Gen Generated packets that evade deep-learning detectors
+
+Page 6 of 20Haddane et al. Cybersecurity           (2026) 9:130 
+sophisticated Dueling Double DQN architecture, which 
+provides the stability required for cross-dataset intrusion 
+detection.
+The main objective of Reinforcement Learning (RL) 
+is to train an agent to make decisions while interacting 
+with an environment. An agent tries to maximize a total 
+expected reward by taking the best actions over time. 
+It is mostly based on trial-and-error mechanisms. The 
+agent explores the environment and learns which actions 
+give the best outcomes, and it continues to learn better 
+actions as times goes on. The agent does not even need to 
+be told what actions to take; it learns its actions based on 
+feedback (rewards or punishments).
+Markov decision processes (MDPs)
+A Markov Decision Process (MDP) is a formal frame -
+work for decision-making problems where outcomes are 
+partly random and partly controlled by a decision-maker. 
+It is defined as 5-tuple:< S, A, P, R, γ>  , where: 
+1. State Space S: a set of all possible states of the envi -
+ronment. Each state represents a specific situation 
+the agent can be in.
+2. Action Space A: a set of all possible actions the agent 
+can take. The available actions depend on the current 
+state.
+3. Transition Probability P(s′|s, a): it is the probability 
+distribution representing the likelihood of transition-
+ing from state s to a new state s’ given that action a 
+was taken. Formally: 
+• This satisfies the Markov property, meaning that 
+the next state depends only on the current state and 
+action, not on the history.
+4.  Reward Function R(s, a): A mapping that assigns a 
+numerical reward r ∈ R for taking action a in state s: 
+5.  Discount Factor γ : A scalar 0 ≤ γ< 1 determining 
+the importance of future rewards. Smaller values pri -
+oritize immediate rewards, while values closer to 1 
+emphasize long-term rewards.
+In the context of NIDS, the state S represents the high-
+dimensional flow features (e.g., CIC-IDS2017/2018), 
+and the action A corresponds to the binary classification 
+(Benign vs. Malicious).
+Deep Q‑network
+Deep Reinforcement Learning (DRL) has been dem -
+onstrated to effectively solve complex sequential 
+(1)P(s′|s, a) = Pr(St+1 = s′|St = s, At = a)
+(2)R(s, a) = E(rt |St = s, At = a)
+decision-making problems, most notably starting with 
+the Deep Q-Network (DQN) developed by Mnih et  al. 
+(2015). These methods based on DRL leverage Deep 
+Neural Networks, like the policy π( s, a) , that have been 
+shown to successfully approximate the value of taking 
+different actions while in a state st (which acts as input 
+to the neural network). At each time step in the process, 
+the agent chooses an action at , based on these action val -
+ues, and saves the experience (st , at , rt+1, st+1) in a replay 
+memory buffer.
+Traditional policy gradient techniques typically per -
+form one update to the gradient for each data point. 
+Consequently, systems with high-frequency interactions 
+demand a large number of gradient updates. Fundamen -
+tally, DQN operates by selecting an action and refining its 
+value function, which reflects the advantage of choosing 
+a particular action. Given a specific state, the decision-
+making strategy learned by DQN can determine the sub -
+sequent action to take to enhance the Q-function using 
+newly acquired experience.
+DQN employs the Bellman equation as follows:
+where, Q(s, a) represents the current Q-value, R(s,  a) sig-
+nifies the reward received for taking action a in state s, 
+α denotes the learning rate, γ is the discount factor, and 
+max Q(s′, a′) indicates the highest anticipated future 
+reward achievable from the subsequent state s′ across all 
+possible actions a′.
+While DQN effectively approximates the Q-value func-
+tion, it is prone to instability and divergent behavior in 
+high-stakes environments like cybersecurity, necessitat -
+ing refinements in value estimation.
+Double deep Q‑network
+In conventional Deep Q-Networks (DQNs), the same 
+network is employed for action selection (max) and eval -
+uation, which can result in an overestimation bias from 
+the network overestimating the Q-values due to noise or 
+approximation error. Double Q-learning was proposed to 
+address this issue (figure  1). It separates the action selec -
+tion and evaluation steps, reducing the overestimation 
+bias. The action selection uses one Q-function to choose 
+the best action. While the evaluation uses a separate 
+Q-function to evaluate that action.
+Double DQN applies the Double Q-learning idea to 
+the DQN framework (Van  Hasselt et  al. 2016). Instead 
+of using the same network for both action selection and 
+evaluation, it uses the current/online Q-network ( Q ) for 
+selecting the action, and the target network ( Q− ) for eval-
+uating the action.
+(3)Q(s, a) ← Q(s, a) + α
+[
+R(s, a) + γ max
+a′ Q(s′, a′) − Q(s, a)
+]
+,
+
+Page 7 of 20
+Haddane et al. Cybersecurity           (2026) 9:130 
+ 
+The target for the TD update in Double DQN becomes:
+where, arg maxa′ Q(s′, a′; θ) represents the action selected 
+using the he online Q-network (with weights θ ), and the 
+Q(s′, ·;θ − ) represents the valuation of the selected action 
+the target Q-network (with older, less frequently updated 
+weights θ−)
+Dueling architecture
+To further improve the agent’s ability to generalize across 
+heterogeneous datasets, we employ the Dueling DQN 
+architecture. Unlike standard architectures that estimate 
+Q(s, a) directly, the Dueling network splits the last layer 
+into two separate streams: 
+1. Value Function V(s): Represents the "goodness" of 
+being in a state s, regardless of the action taken.
+2. Advantage Function A(s, a): Represents the relative 
+importance of each action.
+The streams are combined using the following 
+aggregation:
+where, θ represents the shared parameters, α the advan -
+tage parameters, and β the value parameters.
+This architecture is particularly effective for NIDS 
+because it allows the agent to learn which network states 
+are inherently safe or dangerous (Value) without having 
+(4)y = r + γ Q(s′, arg max
+a′
+Q(s′, a′;θ);θ − ),
+(5)
+Q(s, a;θ , α, β)
+= V (s;θ , β) +
+
+A(s, a;θ , α) − 1
+|A|
+�
+a′
+A(s, a′;θ , α)
+
+ ,
+to learn the effect of every specific action (Advantage) 
+for every state, significantly enhancing robustness during 
+cross-dataset transfer. This separation of V(s) and A(s, a) 
+is the mathematical foundation that allows the agent to 
+survive in the Information Poverty of the 5-feature track; 
+the agent learns the ’threat level’ of a state even when the 
+specific action signals are weakened by the 84.4% reduc -
+tion in dimensionality.
+Target network stabilization and soft updates
+A core challenge in applying DRL to evolving network 
+traffic (2017 to 2018) is the stability of the moving target. 
+Instead of Hard Updates (copying weights every N steps), 
+we implement Soft Updates ( τ ). The target network 
+weights θ− are updated slowly toward the online weights 
+θ:
+where τ ≪ 1 . This mechanism, combined with a risk-
+aware reward function, ensures that the agent’s knowl -
+edge from CIC-IDS2017 is not abruptly discarded when 
+encountering the new signatures of CICIDS2018. This 
+stabilization is what enables the high-precision domain 
+adaptation presented in our REACT-D3QN framework.
+REACT‑D3QN: resilient adaptive 
+concept‑drift‑aware dueling double deep 
+Q‑network
+The rapid evolution of cyber-threats necessitates a shift 
+from static detection models to adaptive security frame -
+works. This section details the experimental methodology 
+designed to bridge the gap between historical knowledge 
+learned from the source domain and the volatile reality of 
+(6)θ − ← τθ + (1 − τ )θ−
+Fig. 1 illustrating the detrimental effects of overestimation during learning (Van Hasselt et al. 2016)
+
+Page 8 of 20Haddane et al. Cybersecurity           (2026) 9:130 
+concept drift in the target domain. Our approach follows 
+an evolutionary three-phase trajectory: 
+1. Phase I establishes a foundational source Dueling 
+DQN agent trained on the CIC-IDS2017 dataset to 
+capture core malicious signatures.
+2. Phase II acts as a stress test, where we expose the 
+static model to the CIC-IDS2018 dataset to analyze 
+the performance collapse caused by statistical distri -
+bution shifts and new attack vectors.
+3. Phase III introduces our primary contribution: the 
+REACT-D3QN framework. By integrating Dueling 
+Double Deep Q-Learning with a risk-aware asym -
+metric reward engine and transfer learning, we dem -
+onstrate how an agent can react and recalibrate its 
+policy to survive in a drifted environment.
+The following sections detail the mathematical formula -
+tion, architectural design, and preprocessing protocols 
+used to evaluate the resilience of this framework at differ-
+ent levels of feature granularity.
+Phase I: network intrusion detection as a Markov decision 
+process: the source dueling DQN agent
+Before introducing our adaptive framework, we establish 
+a baseline using a standard Dueling Deep Q-Network. 
+In this phase, the agent is trained exclusively on CIC-
+IDS2017 to acquire Source Domain Expertise.
+Problem formulation as a Markov decision process (MDP)
+We define the Network Intrusion Detection task as a 
+Markov Decision Process (MDP). Formally,
+• State Space (S): A state st ∈ S at time step t is repre -
+sented by a vector of n network flow characteristics. 
+To evaluate architectural resilience under varying 
+levels of signal density, we employ a dual-track state 
+space. While the comprehensive track utilizes n = 32 
+high-entropy features, we introduce a Resource-
+Constrained Track using only n = 5 basic flow coun-
+ters. This information poverty scenario is specifically 
+designed to test the framework’s ability to maintain 
+detection integrity on low-power edge devices where 
+processing overhead must be minimized.
+• Action Space (A): The action space is binary, defined 
+as A ={ 0, 1} , where 0 denotes benign traffic and 1 
+denotes malicious traffic.
+• Initial Reward Function (R): The reward serves as 
+the primary driver of agent adaptation. In REACT-
+D3QN, we move from a standard symmetric reward 
+scheme to a Risk-Aware Asymmetric Reward formu -
+lation: 
+Dimensionality analysis: 32 vs. 5 features
+A core contribution of this phase is the comparative 
+study of feature sets. Table  6 shows two distinct config -
+urations to analyze and evaluate the trade-off between 
+information density and computational efficiency.
+This dual-track methodology allows us to determine 
+if a significantly reduced feature space (representing an 
+84% dimensionality reduction) can maintain competitive 
+detection rates.
+Training Paradigm and Robustness Features
+To ensure the stability of the source model, which 
+is trained on CIC-IDS2017, we integrate several key 
+mechanisms:
+• Data Balancing and Randomized Shuffling: We 
+implement a strict 1:1 class ratio during training. By 
+undersampling the majority benign class, we pre -
+vent the agent from developing a laziness bias where 
+it might otherwise achieve high accuracy simply by 
+ignoring the minority attack class.
+• Benign‑Baseline Methodology: The agent is trained 
+to establish a robust internal representation of nor -
+mal traffic behaviors, using it as a baseline to identify 
+anomalies.
+• Huber Loss Optimization: To handle the extreme 
+outliers often found in raw network logs (such as 
+massive flow durations), the model uses Huber loss, 
+(7)
+rt =
+
+
+
++1.0 if at = yi (Correct)
+−1.0 if at = 1, yi = 0 (False Positive)
+−5.0 if at = 0, yi = 1 (False Negative)
+Table 6 Comparison of feature configurations for IDS agent
+Configuration Scope Target use case
+Comprehensive (32) Full set of temporal, packet-level, and window-based metrics Deep packet inspec-
+tion and high-perfor-
+mance server security
+Optimized (5) Top 5 strategic features (Flow Duration, Total Fwd Packets, Total Backward Packets, 
+Flow Packets/s, Packet Length Mean)
+Real-time monitoring 
+for IoT and resource-
+constrained Edge 
+devices
+
+Page 9 of 20
+Haddane et al. Cybersecurity           (2026) 9:130 
+ 
+which is less sensitive to outliers than the mean 
+squared error.
+• Statistical Validation (5‑Run Protocol): To ensure 
+that the learned policy is reproducible and robust, 
+the training process is executed over five independ -
+ent runs. This allows us to account for the stochas -
+tic nature of weight initialization and epsilon-greedy 
+exploration. The model selected for the subsequent 
+adaptation phases (e.g., model_run_4.keras) 
+represents the iteration that achieved the most sta -
+ble convergence and the highest F1-score during this 
+source training phase.
+Although the source Dueling DQN agent achieves high 
+accuracy on the CIC-IDS2017 dataset, its reliance on 
+fixed signatures raises questions about its resilience. To 
+validate its effectiveness in an evolving real-world threat 
+landscape, it is essential to test its performance against a 
+more recent and diverse dataset, such as CIC-IDS2018, 
+which introduces the challenge of Concept Drift.
+Phase II: the concept drift challenge: performance 
+degradation under evolving threat landscapes
+This phase investigates the limitations of static detection 
+models when faced with the temporal evolution of net -
+work traffic and the emergence of new cyber-threats.
+To assess the generalization of the source Dueling 
+DQN agent, we subjected the pre-trained models (both 
+the 32-feature and 5-feature configurations) to a direct 
+evaluation on the CIC-IDS2018 dataset. This test was 
+conducted in a Zero-Shot manner, meaning that agents 
+were required to classify traffic from a newer environ -
+ment without any prior exposure or fine-tuning. In this 
+study, the term zero-base transfer learning is used to 
+describe the subsequent adaptation phase, in which the 
+target-domain training is initialized without replaying 
+source-domain samples, while preserving the learned 
+policy parameters from the source environment. The goal 
+was to determine whether the signatures learned from 
+the 2017 baseline remained valid across different network 
+infrastructures and time-frames.
+The results of this direct evaluation revealed a signifi -
+cant performance collapse, characterized by a drastic 
+reduction in the recall and the F1-Score. Our analysis 
+identifies two primary causes for this failure, collectively 
+known as Concept Drift:
+• Feature Distribution Shift: The statistical proper -
+ties of network metrics, such as flow duration and 
+inter-arrival times, underwent fundamental changes 
+between the 2017 and 2018 datasets. This shift ren -
+dered the decision boundaries learned by the agent in 
+Phase 1 obsolete.
+• Evolving Attack Signatures: The 2018 dataset intro-
+duced sophisticated attack patterns (e.g., modern 
+DDoS and Brute Force variations) that were not pre -
+sent in the 2017 training set. The models, particularly 
+the high-dimensional 32-feature version, exhibited a 
+generalization gap, where they were over-specialized 
+to 2017 signatures and failed to recognize the new 
+behavioral traits of 2018 threats.
+The failure of direct evaluation confirms that even a 
+robust RL model cannot remain effective in a dynamic 
+cybersecurity landscape if it remains static. Relying solely 
+on historical data leads to rapid obsolescence of the 
+NIDS. Consequently, this phase concludes that a simple 
+training-test approach is insufficient for modern threats, 
+establishing a clear necessity for an adaptive Transfer 
+Learning strategy to bridge the knowledge gap between 
+the source domain (2017) and the target domain (2018).
+Phase III: the REACT‑D3QN framework – adaptive transfer 
+learning and design
+Phase III represents the core contribution of this study: 
+the deployment of the REACT-D3QN (Resilient Efficient 
+Adaptive Concept-drift-aware Transfer Dueling Double 
+Deep Q-Network). This phase is specifically engineered 
+to bridge the performance gap between the CICIDS-2017 
+and CICIDS-2018 datasets by employing transfer learn -
+ing and architectural resilience to combat concept drift.
+Architectural foundation: D3QN with lambda aggregation
+To address the instability and overestimation bias com -
+mon in standard reinforcement learning, we propose 
+a Dueling Double DQN architecture. The fundamen -
+tal innovation lies in the separation of the network into 
+two streams: one estimating the state-value function 
+V(s) and the other estimating the Advantage function 
+A(s,  a). These streams are combined through a special -
+ized Lambda aggregation layer using the mapping func -
+tion presented in Eq. 5. This structure allows the agent to 
+recognize the intrinsic risk of a network state even when 
+moving into the information poverty of the 5-feature 
+track. To ensure knowledge persistence during the tran -
+sition from 2017 to 2018, we utilize Soft Target Updates 
+(Eq.  6) with a smoothing factor of τ = 0.005 , prevent-
+ing the catastrophic forgetting of established threat 
+signatures.
+Cross‑dataset alignment and pre‑processing
+A critical challenge in transfer learning is the struc -
+tural evolution of the network environment. Significant 
+shifts occurred in both feature labels and their statistical 
+
+Page 10 of 20Haddane et al. Cybersecurity           (2026) 9:130 
+distributions between the CIC-IDS2017 and CIC-
+IDS2018 datasets (e.g., mapping Total Fwd Packets to 
+Tot Fwd Pkts). To align these domains, we implement a 
+Dynamic Feature Mapping layer followed by a Quantile 
+Transformation. This transformation maps the heavy-
+tailed distributions characteristic of network flow data, 
+such as flow duration and packet counts, into a Gauss -
+ian space. This normalization is essential for stabilizing 
+the D3QN gradients, ensuring that extreme values in the 
+2018 dataset do not cause the policy to diverge from its 
+2017 baseline.
+Multi‑granularity state space (32 vs. 5 features)
+To evaluate the framework’s resilience under varying lev-
+els of signal density, we employ a dual-track state space 
+evaluation:
+• Comprehensive Track ( n = 32): Utilizes the full 
+high-entropy feature suite to provide maximum reso-
+lution for complex attack detection.
+• Resource‑Constrained Track ( n = 5): A specialized 
+"Information Poverty" track utilizing only basic flow 
+counters (e.g., Flow Duration, Total Forward Pack -
+ets). This track is designed to validate the frame -
+work’s suitability for Edge Computing, where low 
+computational overhead is a prerequisite for real-
+time deployment.
+The asymmetric REACT reward engine (10:1 Ratio)
+The proposed REACT mechanism is defined by its 
+cost-sensitive reward structure. Unlike traditional 
+symmetric rewards, we implement an asymmetric 
+10:1 penalty ratio to anchor the detection capabili -
+ties of the model. The agent receives a reward of +1.0 
+for correct classifications and a minor penalty of −1.0 
+for false positives. However, a severe penalty of −10.0 
+is applied to false negatives (missed attacks). This 
+aggressive penalty forces the agent to prioritize recall 
+during domain migration, ensuring that even if attack 
+signatures drift in the 2018 dataset, the agent main -
+tains a safety-first posture that minimizes the risk of 
+system compromise.
+Dynamic adaptation and training logic
+Upon transition to the 2018 dataset, the exploration 
+rate is reset to ǫ = 0.4 , allowing the agent to actively 
+explore the new distribution while still leveraging its 
+2017 weights. We employ Huber Loss for error calcu -
+lation, which provides robustness against the outliers 
+typically found in drifted network traffic. The training 
+is supported by an Experience Replay buffer of 20,000 
+transitions, allowing the agent to break temporal cor -
+relations and learn from a balanced mix of historical 
+and real-time environmental interactions.
+Table  7 summarizes the technical evolution of the 
+REACT-D3QN framework by comparing the architec -
+tural, reward-based, and optimization hyperparameters 
+utilized during the initial source training in Phase I ver -
+sus the adaptive transfer learning phase in Phase III.
+The methodology presented in this section moves 
+beyond traditional classification by framing Network 
+Intrusion Detection as a dynamic, continuous learning 
+problem. Through the progression from Phase I to Phase 
+III, we have established that high-dimensional feature 
+spaces–while powerful–are exceptionally vulnerable to 
+Concept Drift if they remain static. The design of the 
+REACT-D3QN framework addresses these vulnerabili -
+ties through three technical pillars:
+• Structural Resilience: The dueling architecture cap -
+tures the underlying value of a network state, while 
+the double DQN mechanism provides the stability 
+required to update policies in a noisy environment 
+without overestimation.
+• Adaptive Reinforcement: The transition from a 1:5 
+to a 10:1 penalty ratio for False Negatives creates a 
+Table 7 Architecture and hyperparameter comparison: training (phase I) vs. adaptation (phase III)
+Phase I (Source training) Phase III (Target adaptation)
+Architecture Dueling DQN Dueling Double DQN (D3QN)
+Normalization StandardScaler QuantileTransformer (Normal)
+Penalty Ratio (FN:FP) 5:1 ( −5.0 penalty) 10:1 ( −10.0 penalty)
+Target Update Hard Update (Per Episode) Soft Update ( τ = 0.005)
+Initial Exploration ( ǫ) 1.0 → 0.01 Reset to 0.4 → 0.01
+Learning Rate (LR) 0.001 0.0005 (Adaptive reduction)
+Loss Function Huber Loss Huber Loss
+Steps / Episodes 500 steps / 60 episodes 600 steps / 30 episodes
+
+Page 11 of 20
+Haddane et al. Cybersecurity           (2026) 9:130 
+ 
+strong mathematical incentive for the agent to pri -
+oritize Recall when faced with mutated attack signa -
+tures.
+• Data Harmony: The use of Quantile Transformation 
+and semantic mapping ensures that the agent’s 2017 
+expertise remains transferable and relevant to the 
+2018 environment.
+By systematically comparing 5-feature and 32-feature 
+configurations, this methodology provides a statistically 
+robust foundation for evaluating how RL can maintain 
+a high-security posture in the face of evolving cyber-
+threats. The effectiveness of these design choices is ana -
+lyzed in the following section.
+Experimental setup
+This section describes the technical environment, data -
+set characteristics, and implementation details used to 
+evaluate both the Source Dueling DQN and the REACT-
+D3QN framework across the three experimental phases. 
+By detailing the computational resources and data align -
+ment strategies, we ensure the reproducibility of our 
+results in bridging the gap between historical training 
+and live adaptation.
+The framework is validated using 5 independent runs. 
+For each run, performance is measured on the 2018 tar -
+get dataset. The final results are reported as the mean 
+and standard deviation of accuracy, precision, recall, and 
+F1-score, ensuring that the resilience of the framework is 
+statistically significant.
+Technical environment
+The experiments were implemented and executed using 
+a cloud-based computing environment, which provides 
+a standardized platform for high-performance machine 
+learning tasks. This choice ensures the reproducibility of 
+the results by utilizing consistent hardware and pre-con -
+figured software dependencies.
+• Hardware Configuration:
+– GPU: NVIDIA Tesla P100 (or T4) with 16GB 
+VRAM (utilized for accelerating the gradient 
+updates and handling the Dueling Double DQN 
+weight synchronization).
+– RAM: 13GB - 30GB (depending on the instance, 
+sufficient for handling the stratified 15% sample).
+– CPU: Intel(R) Xeon(R) @ 2.20GHz.
+• Software Stack:
+– Programming Language: Python 3.10.
+– Deep Learning Framework: TensorFlow 2.12.0 and 
+Keras.
+– Libraries: Pandas for flow-based sampling, NumPy 
+for matrix operations, and Scikit-learn for Quantile-
+Transformer preprocessing.
+Dataset specifications and domain definition
+To evaluate our framework against temporal concept 
+drift, we consider two distinct generations of network 
+traffic logs from the Canadian Institute for Cybersecurity 
+(CIC).
+• Source Domain: The initial expertise of the agent 
+is built using the CIC-IDS2017 dataset. This data -
+set represents the baseline network behaviors and 
+provides the foundation for the Source Dueling 
+DQN model. We focus on the Working Hours sub -
+sets, ensuring a balanced representation of common 
+attacks such as DoS, Brute Force, and PortScan.
+• Target Domain (Drifted): The CIC-IDS2018 data -
+set serves as the target environment. It introduces 
+a significant Distribution Shift due to updated net -
+work infrastructures and evolved attack variations. 
+This dataset is used in Phase II for zero-shot evalu -
+ation and in Phase III for the adaptive training of the 
+REACT-D3QN framework.
+Table 8 presents a comparative summary of the two dis -
+tinct datasets we used to evaluate our framework against 
+temporal concept drift.
+Feature alignment and implementation
+A major technical challenge addressed in this setup is the 
+structural divergence between the 2017 and 2018 logs.
+• Semantic Mapping: We implemented a mapping 
+protocol to synchronize the features across years. 
+For instance, features labeled as Total Fwd Packets in 
+Table 8 Comparative summary of CIC-IDS2017 and CSE-CIC-
+IDS2018 datasets
+Feature CIC‑IDS2017 CSE‑CIC‑IDS2018
+Environment Physical Lab Cloud-based (AWS)
+Size ∼2.8 Million rows ∼ 16 Million rows
+Diversity Standard network attacks High-volume cloud attacks
+Complexity Moderate High (due to noise 
+and scale)
+Primary Use Training base / Initial valida-
+tion
+Robustness testing / Cross-
+dataset transfer
+
+Page 12 of 20Haddane et al. Cybersecurity           (2026) 9:130 
+2017 were mapped to Tot Fwd Pkts in 2018 to ensure 
+the input vector st remained semantically consistent.
+• Feature Granularity Configurations:  We main -
+tained two parallel configurations to test the Dimen -
+sionality Paradox: 
+1. The 32‑Feature Set:  Capturing high-entropy 
+temporal and window-based metrics (e.g., IAT, 
+Packet Length Mean).
+2. The 5‑Feature Set: Using only fundamental flow 
+descriptors (Flow Duration, Tot Fwd Pkts, Tot 
+Bwd Pkts, Flow Pkts/s, Pkt Len Mean).
+• Normalization Strategy: While Phase I applied 
+StandardScaler, Phase III uses QuantileTransformer 
+with a normal output distribution to better handle 
+the heavy-tailed distributions and extreme outliers 
+characteristic of the 2018 traffic logs.
+Agent implementation details
+The transition from a standard trainer to an adaptive 
+framework involves a specific architectural shift.
+Base dueling architecture
+The agent’s internal structure is a direct implementation 
+of the Dueling architecture formulated in Sect.  4.3.1. The 
+two streams–value V (s) and advantage A (s,  a) functions–
+are processed through dense layers with ReLU activation 
+before being merged via a custom Lambda layer. This spe-
+cific implementation choice allows the framework to center 
+the advantage stream in real-time during the forward pass, 
+effectively decoupling the state-value from the action-
+advantage as required by the REACT-D3QN design.
+REACT‑D3QN
+During the adaptation phase (phase III), the agent is 
+upgraded from a standard Dueling DQN to the D3QN 
+variant to handle the volatility of drifted 2018 traf -
+fic. Instead of the abrupt Hard Updates used in phase 
+I, the synchronization of the target network is gov -
+erned by the soft update logic described in Sect.  4.3.1. 
+In this setup, the target weights are smoothed after 
+every 5 optimization steps using the hyperparam -
+eter τ = 0.005 . This implementation ensures that the 
+agent’s Target Q-values remain stable, preventing the 
+divergent gradients that typically occur when a model 
+trained on 2017 signatures is suddenly exposed to the 
+shifted feature distributions of the 2018 dataset.
+Evaluation performance metrics
+We utilize three primary binary classification metrics to 
+measure the framework’s resilience: 
+1. Recall (Detection Rate): The primary target for our 
+10:1 penalty logic. 
+2. Precision: Measuring the impact of False Positives. 
+3. F1‑Score: The benchmark for overall framework 
+effectiveness
+According to the 5-run independent trial protocol, all 
+results in the following section are reported as mean 
+( µ ) and Standard Deviation ( σ ) for five iterations. This 
+ensures that performance gains are statistically robust.
+ Results and discussion
+This section presents and analyzes the experimental 
+results obtained from the three-phase evolution of the 
+REACT-D3QN framework. By transitioning from the 
+controlled environment of the 2017 source domain to 
+the volatile, drifted landscape of the 2018 target domain, 
+we provide an empirical roadmap of how reinforcement 
+learning agents fail and subsequently recover.
+The following analysis is organized to emphasize the 
+recall recovery phenomenon, tracking the agent’s per -
+formance through three distinct stages of adaptive 
+evolution:
+• Phase I (Baseline Performance): Establishing the 
+high-accuracy ceiling of the Source Dueling DQN.
+• Phase II (The Generalization Gap): Quantifying the 
+catastrophic performance collapse when static mod -
+els face concept drift.
+• Phase III (The REACT Effect): Demonstrating the 
+resilience of the D3QN architecture and the impact 
+of the 10:1 risk-aware penalty in restoring detection 
+capabilities.
+Phase I results: source expertise acquisition (CIC‑IDS2017)
+The objective of phase I was to establish the upper bound 
+of the agent’s performance in a static environment. 
+By training both configurations on the CIC-IDS2017 
+(8)Recall = TP
+TP + FN
+(9)Precision = TP
+TP + FP
+
+Page 13 of 20
+Haddane et al. Cybersecurity           (2026) 9:130 
+ 
+dataset, we established a source expertise baseline to 
+contrast against future concept drift.
+Comparative performance analysis
+The results of the 5-run protocol presented in Table  9 
+reveal a clear divergence in how the agent utilizes feature 
+dimensionality to optimize its policy.
+The dimensionality paradox: precision vs. vigilance
+The contrast between the two models highlights two dis -
+tinct operational strategies adopted by the Dueling DQN:
+• The 32‑Feature Surgical Strategy: With access to 
+high-entropy features (e.g., IAT, Header lengths), the 
+agent achieved near-perfect Precision (99.38%). The 
+confusion matrices show that false positives were 
+reduced to a negligible range (194–365 per run). 
+However, this granularity came at the cost of Recall 
+(94.25%), as the agent became more selective and 
+missed subtle attack signatures that did not perfectly 
+match its learned high-dimensional patterns.
+• The 5‑Feature Paranoid Strategy: Operating on 
+minimalist, invariant flow descriptors, the agent 
+compensated for the lack of feature depth by becom -
+ing hyper-vigilant. It achieved a superior Recall of 
+98.80%, missing only approximately 500 attacks 
+compared to the 2,600 missed by the 32-feature 
+model. The trade-off is a significant increase in the 
+False Positive rate (  11,600), as the reduced feature 
+space makes it mathematically harder for the agent 
+to distinguish aggressive benign traffic from actual 
+malicious flows. Figure  2 presents the comparison 
+between the 32-feature and 5-feature configurations 
+on the CIC-IDS2017 dataset, illustrating the shift 
+from high-precision to high-vigilance policies.
+Statistical robustness and stability
+Analysis of the 10 confusion matrices ( N = 5 per 
+configuration) confirms that the Dueling DQN agent 
+achieved high-fidelity convergence. The results 
+presented in Table  10 demonstrate that the agent’s per -
+formance is not a product of stochastic luck but of a 
+reproducible learning policy.
+• Near‑Zero Variance: The standard deviation for 
+accuracy remained below 0.08% , with confusion 
+matrix quadrants showing minimal fluctuation 
+throughout all five runs. This demonstrates that 
+the agent successfully bypassed the local optima to 
+reach a stable global solution.
+• Structural Strategy: The trade-off between Preci -
+sion (32-features) and Recall (5-features) was found 
+to be a structural consequence of the feature space. 
+The 32-feature model consistently maintained 
+a precision floor of 98.7%+ , while the 5-feature 
+model maintained a recall ceiling of 98.6%+.
+• Reward Signal Effectiveness: The consistent mini -
+mization of false negatives (FN) across all 10 runs 
+validates the asymmetric reward function (Pen -
+alty = -5). The penalty successfully "anchored" the 
+agent’s behavior, ensuring a security-first posture 
+regardless of the input dimensionality.
+Phase I successfully established a gold standard of 
+source expertise. The high stability of these results 
+ensures that any performance drop in Phase II can be 
+strictly attributed to Concept Drift rather than algo -
+rithmic instability.
+Phase I conclusion: strategic performance baselines
+Phase I concludes by defining the performance ceiling 
+and classification philosophies of the source domain. 
+The results establish two distinct baselines for the sub -
+sequent cross-domain evaluation:
+Table 9 Comparative performance metrics: 5-feature vs. 
+32-feature (phase I)
+Metric 5‑Feature (Optimized) 32‑Feature 
+(Comprehensive)
+Accuracy ( µ ± σ) 86.54% ± 0.02 96.83% ± 0.08
+Recall ( µ ± σ) 98.80% ± 0.07 94.25% ± 0.05
+Precision ( µ) 79.35% 99.38%
+F1-Score ( µ) 88.01% 96.75%
+Table 10 Phase I stability analysis across five independent 
+training iterations for the 32-feature and 5-feature configurations 
+on the CIC-IDS2017 dataset, where B denotes benign and M 
+denotes malicious
+Features Run TN (B→B) FP (B→M) FN (M→B) TP (M→M)
+32 1 45059 234 2581 42712
+2 44893 400 2491 42802
+3 44885 408 2520 42773
+4 45058 235 2565 42728
+5 44760 533 2456 42837
+5 1 33714 11665 523 44856
+2 33692 11687 521 44858
+3 33663 11716 515 44864
+4 33732 11647 586 44793
+5 33744 11635 587 44792
+
+Page 14 of 20Haddane et al. Cybersecurity           (2026) 9:130 
+• The 32‑Feature Contextual Expert: Achieves a 
+superior 96.74% F1-Score, representing the model’s 
+maximum expertise within the 2017 environment. 
+However, its reliance on a high-dimensional feature 
+set results in a tight coupling to the source distri -
+bution, making it highly sensitive to environmental 
+shifts.
+• The 5‑Feature Structural Baseline: Prioritizes 
+robustness over precision, maintaining a near-per -
+fect 98.80% Recall. By focusing on invariant network 
+physics, this configuration establishes a high-vig -
+ilance posture designed to withstand the Concept 
+Drift observed in the next phase.
+These stable, reproducible results provide the empiri -
+cal gold standard necessary to quantify the Generaliza -
+tion Gap. We now transition to Phase II to measure the 
+performance decay triggered by the 2018 dataset and 
+evaluate the necessity for the REACT-D3QN adaptation 
+framework.
+Phase II: zero‑shot evaluation and the generalization gap
+Phase II evaluates the Zero-Shot transferability of the 
+Source Dueling DQN agent. By deploying the models 
+trained on the CIC-IDS2017 dataset directly onto the 
+CSE-CIC-IDS2018 traffic logs without retraining, we 
+quantify the Generalization Gap caused by temporal con-
+cept drift and infrastructure shifts (Physical Lab to AWS 
+Cloud).
+Analysis of catastrophic performance decay
+The transition to the 2018 target domain triggered a 
+severe decline in all performance indicators. Table  11 
+summarizes the delta between source expertise and tar -
+get performance.
+Interpretation of the collapse
+The results demonstrate that high performance in a 
+static environment does not translate to cross-domain 
+robustness:
+• The Failure of Minimalist Features (5‑Feature): The 
+5-feature model, which acted as a High-Vigilance 
+monitor in 2017 with 98.80% Recall, collapsed to a 
+mere 16.53% Recall. This confirms that simplified 
+network physics are insufficient to maintain detec -
+tion capabilities when faced with the sophisticated 
+distribution shifts of the 2018 dataset. The model 
+missed 134,  072 attacks, rendering it ineffective for 
+real-world deployment.
+• The Overfitting Trap (32‑Feature): Despite being 
+a Surgical Expert in 2017, the 32-feature model 
+achieved only a 28.50% Recall on the 2018 data. 
+While it performed slightly better than the 5-feature 
+version, it generated 74,  003 False Positives, indicat -
+Fig. 2 Average confusion matrices - phase I
+Table 11 Concept drift analysis: performance degradation from 
+phase I to phase II for 5-feature and 32-feature configurations
+Features Metric Phase I (%) Phase II (%) /Delta1 Drop (%)
+5 Accuracy 86.54 62.03 24.51
+Recall 98.80 16.53 82.27
+F1-score 88.01 22.50 65.51
+32 Accuracy 96.83 60.81 36.02
+Recall 94.25 28.50 65.75
+F1-score 96.75 32.66 64.09
+
+Page 15 of 20
+Haddane et al. Cybersecurity           (2026) 9:130 
+ 
+ing that its high-dimensional expertise was "tightly 
+coupled" to the 2017 signatures.
+• Empirical Evidence for Adaptation: The drop in 
+F1-Score from ∼ 96% to 32% serves as a definitive 
+statistical baseline for Concept Drift. It highlights the 
+Stagnation Risk of traditional DRL-based IDS and 
+establishes the necessity for the adaptive mechanisms 
+introduced in Phase III.
+Phase III: the REACT effect and D3QN resilience
+In Phase III, we evaluate the proposed REACT effect 
+across two distinct experimental tracks. These experi -
+ments were conducted separately to determine how the 
+D3QN architecture and the 10:1 risk-aware penalty per -
+form under different feature budgets during the Transfer 
+Learning process from CICIDS-2017 (training) to CIC -
+IDS-2018 (testing).
+Parallel transfer learning resilience
+A primary finding of Phase III is the Parallel Resilience 
+of the framework across different input dimensions. As 
+shown in our multi-track evaluation: The 32-Feature 
+Track: Maintained near-perfect transfer with a Recall of 
+99.90%4. The 5-Feature Track (Resource-Constrained): 
+Despite an 84.4% reduction in feature dimensionality, the 
+agent achieved a Mean Recall of 99.85%.This negligible 
+0.05% performance delta demonstrates that the D3QN’s 
+Value Stream (V) successfully captures the ’invariant 
+physics’ of network threats–such as flow duration and 
+basic volume metrics–which are more resilient to con -
+cept drift than high-entropy payload features. This result 
+is significant for Edge Computing deployments, where 
+achieving high-level detection with only 5 features allows 
+for a drastic reduction in computational overhead with -
+out sacrificing security integrity.
+The REACT effect: 10:1 penalty as a safety anchor
+The REACT Effect refers to the model’s behavioral shift 
+when the ADAPTATION_PENALTY is set to −10.0 for 
+False Negatives.
+• Restoring Capabilities: In both the 32 and 5 feature 
+tracks, this asymmetric penalty forces the agent to 
+prioritize Recall above all other metrics.
+• Forcing Convergence: Even in the information-poor 
+5-feature model, the penalty ensures that the agent 
+adapts its weights during the 40 episodes to specifi -
+cally catch positive attack classes that might other -
+wise be overlooked in a standard DQN setup.
+Architectural resilience: dueling streams and soft updates
+1. The success of these separate experiments highlights 
+the structural advantages of the D3QN architecture:
+2. Dueling Streams (V and A): In the 5-feature track, 
+the Value stream (V) learns to identify high-risk net -
+work states even when the individual action advan -
+tages (A) are harder to distinguish due to the limited 
+feature set.
+3. Incremental Synchronization ( τ = 0.005): Because 
+the 10:1 penalty is so aggressive, standard DQN 
+updates would likely cause the model to diverge (cat -
+astrophic forgetting). The use of Soft Updates allows 
+the 2017-trained weights to evolve into 2018-ready 
+weights gradually, preserving the "detection intelli -
+gence" across the transfer.
+Table 12 Comparison of results: REACT-D3QN vs. domain-adaptive multi-modal learning
+Feature REACT‑D3QN Domain‑adaptive multi‑modal learning Varghese and 
+Taghiyarrenani (2025)
+Primary Architecture Dueling Double Deep Q-Network (D3QN) with an asymmetric 
+cost-sensitive reward (FN ≫ FP)
+Private & shared neural networks with Maximum Mean Discrep-
+ancy (MMD) for feature alignment
+Main Objective Preventing “recall collapse”  under cross-dataset migration 
+and extreme feature pruning
+Generalizing intrusion detection across heterogeneous domains 
+with different feature spaces
+Evaluation Dataset Zero-base transfer (no target-domain labels) from CIC-IDS2017 
+to CIC-IDS2018
+20 cross-domain scenarios using CIC-IDS2017, CIC-IDS2018, 
+SDN20, and ANDMAL2017
+Feature Dimensions 32 features (full) vs. 5 features (extreme pruning, −84.4%) Variable feature subsets (e.g., 5–5, 15–15, 5–20, 30–5) selected 
+from 77 attributes
+Best Recall Result 99.85% (5 features) and 99.90% (32 features) Typically between ∼92% and ∼97% depending on feature split 
+and sample ratio (best-case scenarios)
+Stability Near-perfect recall with very low variance (std ≤ 0.002 ) 
+across independent runs
+Improved stability over baselines, particularly with larger sample 
+sizes and richer feature sets
+Key Innovation A recall floor mechanism that explicitly encodes the intrinsic 
+risk of network states
+A cyclic shared representation framework to learn domain-
+invariant features
+
+Page 16 of 20Haddane et al. Cybersecurity           (2026) 9:130 
+Comparative analysis with domain‑adaptive intrusion 
+detection models
+To better position the proposed REACT-D3QN frame -
+work within the existing literature, Table  12 provides a 
+qualitative and quantitative comparison with the repre -
+sentative domain-adaptive intrusion detection approach 
+of Varghese and Taghiyarrenani (2025).
+It is important to note that the two approaches 
+address different but complementary objectives: while 
+domain-adaptive learning focuses on feature distribu -
+tion alignment, REACT-D3QN explicitly targets recall 
+preservation under severe concept drift and information 
+scarcity.
+Comparative analysis of separate scenarios
+Table 13 summarizes the performance of these two inde -
+pendent models. The results quantify the REACT Effect 
+by showing that the Recall degradation is less than 0.05% 
+regardless of the feature count used.
+Conclusion on the REACT mechanism
+These results confirm that the REACT framework 
+(D3QN + 10:1 Penalty) is an highly robust solution 
+for Intrusion Detection. By training separate models 
+and achieving nearly identical Recall results (99.90% vs 
+99.85%), we demonstrate that the Risk-Aware logic is the 
+dominant factor in performance–not the number of fea -
+tures. This allows for a flexible security posture: using 32 
+features for maximum precision or 5 features for high-
+speed edge deployment, without ever compromising the 
+safety of the network.
+Resource efficiency and operational sustainability
+The convergence of the 32-feature and 5-feature results 
+reveals a significant breakthrough in operational effi -
+ciency. By reducing the feature space from 32 to 5, the 
+model achieves an 84.4% reduction in data dimensional -
+ity and computational overhead. Table  14 highlights the 
+discovered results. The final takeaways are:
+• Computational ROI: The 5-feature model maintains 
+99.95% of the detection efficacy (Recall) of the full-
+suite model while requiring a fraction of the memory 
+and processing power.
+• Latency Minimization: In high-speed network envi -
+ronments, the ability to make a safety-first decision 
+based on only 5 indicators allows for significantly 
+lower inference latency. This is crucial for prevent -
+ing Zero-Day attacks where reaction speed is the pri -
+mary defense.
+• Edge Deployment Suitability:  Because the REACT 
+mechanism enables high performance without full-
+scale retraining or high-dimensional input, it is per -
+fectly suited for resource-constrained environments 
+such as IoT gateways, edge routers, and mobile secu -
+rity nodes.
+The data empirically demonstrates that the REACT-
+D3QN framework creates a Recall Floor that prevents 
+performance collapse across datasets. Whether operating 
+with the full complexity of 32 features or the extreme effi-
+ciency of 5, the 10:1 risk-aware penalty ensures that the 
+D3QN agent remains a reliable sentinel, capable of trans-
+ferring its intelligence across time (2017 to 2018) and 
+across architectural constraints.
+Research limitations
+Despite the high performance of REACT-D3QN, certain 
+limitations must be acknowledged. First, the 10:1 asym -
+metric reward ratio was determined through empiri -
+cal testing for the CIC-IDS environment; in real-world 
+scenarios with highly volatile traffic, this fixed ratio may 
+require dynamic tuning to prevent potential increases in 
+False Positives. Second, while the study utilizes industry-
+standard synthetic datasets, they may not fully capture 
+the chaotic packet loss and jitter present in live, wild net -
+work traffic. Finally, the adaptation gap observed during 
+the initial phase of transfer learning–driven by the explo -
+ration rate ( ǫ = 0.4)–implies that the system may require 
+a brief stabilization period when first migrating to a new 
+network domain.
+Table 13 Cross-dataset resilience analysis: comparison of 
+separate feature-budget tracks
+Configuration Features Mean recall Recall std dev ( σ)
+D3QN + REACT (Track A) 32 99.90% 0.0000
+D3QN + REACT (Track B) 5 99.85% 0.0019
+Table 14 Operational impact and resource efficiency: 32-feature 
+vs. 5-feature tracks
+Parameter 32‑Feature 
+track
+5‑Feature track Impact
+Data Volume 100% 15.6% −84.4% Overhead
+Recall (Detec-
+tion)
+99.90% 99.85% −0.05% (Negli-
+gible)
+Complexity High (Server-
+side)
+Low (Edge-
+ready)
+High Portability
+
+Page 17 of 20
+Haddane et al. Cybersecurity           (2026) 9:130 
+ 
+Conclusion and future works
+In this paper, we have addressed the critical challenge of 
+maintaining intrusion detection integrity during domain 
+migration and feature suppression. Through the develop-
+ment of the REACT-D3QN framework, we demonstrated 
+that the instability typically associated with cross-dataset 
+transfer learning–caused by the concept drift between 
+CIC-IDS2017 and 2018–can be successfully mitigated 
+through deliberate architectural and reward design.
+The experimental results confirmed our primary 
+hypotheses: first, that a Dueling architecture allows an 
+agent to retain security intuition by isolating the invari -
+ant value of network states; and second, that an asym -
+metric 10:1 penalty ratio successfully anchors Recall, 
+preventing the catastrophic forgetting of attack classes 
+during adaptation. By achieving a 99.85% Recall with only 
+5 features, this work establishes that autonomous agents 
+can maintain high-level security postures even in infor -
+mation poverty scenarios, making them suitable for the 
+next generation of decentralized, edge-deployed cyberse -
+curity architectures.
+Future research will focus on evolving the REACT 
+mechanism into a Dynamic Penalty Scaler, where the 
+10:1 ratio is automatically adjusted based on real-time 
+uncertainty metrics. Additionally, we intend to evaluate 
+the framework’s resilience against Adversarial Backdoor 
+Attacks, exploring whether the intrinsic risk learned 
+by the Value stream can detect maliciously poisoned 
+gradients. A primary direction for future expansion is 
+the integration of Blockchain Technology to facilitate 
+decentralized, tamper-proof threat intelligence sharing. 
+By utilizing Distributed Ledger Technology (DLT) and 
+Smart Contracts, we aim to create a global, immutable 
+registry of detected attack vectors. This would enable 
+Multi-Agent Systems (MAS) to coordinate defense strat -
+egies trustlessly, ensuring that reward signals and model 
+updates remain resilient against manipulation or Man-
+in-the-Middle attacks on the agent’s knowledge base.
+Appendix A: detailed performance metrics 
+and stability analysis
+To provide full transparency regarding the REACT-
+D3QN framework’s performance, this appendix presents 
+the class-level classification results and the statistical var-
+iance across five independent training runs.
+Confusion matrices
+Confusion matrices for both the 32-feature (Comprehen-
+sive Fig.  4) and 5-feature (Resource-Constrained Fig.  3) 
+tracks are provided. These matrices illustrate the model’s 
+resilience against False Negatives (FN), demonstrating how 
+Fig. 3 Normalized mean confusion matrix (5-features (resource-constrained))
+
+Page 18 of 20Haddane et al. Cybersecurity           (2026) 9:130 
+the 10:1 asymmetric reward engine successfully anchors 
+detection even in the information poverty track (Fig. 4).
+Although the mean matrix shows high precision, 
+stochastic variance in individual runs (notably Run 3) 
+showed an increase in False Positives. However, the 
+REACT-D3QN policy consistently prioritized the mini -
+mization of False Negatives, maintaining a near-perfect 
+Recall across all iterations
+The 32-feature model achieves a near-perfect Recall 
+of 0.9990 with zero standard deviation. This confirms 
+Fig. 4 Normalized mean confusion matrix (32-features)
+Fig. 5 Facetted performance analysis comparing 5-feature (Red) and 32-feature (Blue) tracks. Dots represent individual runs, while horizontal 
+markers and error bars indicate the Mean and Standard Deviation. Note the near-identical clustering in the Recall panel, confirming that detection 
+integrity is preserved despite an 84.4% reduction in feature dimensionality
+
+Page 19 of 20
+Haddane et al. Cybersecurity           (2026) 9:130 
+ 
+the architectural stability of the D3QN and its capabil -
+ity for high-fidelity threat detection when full network 
+telemetry is available.
+ Comparative performance stability
+To verify the consistency of the REACT-D3QN agent, 
+Fig.  5 present a facetted stability profile across five 
+independent stochastic initializations.
+Acknowledgements
+The authors would like to express their sincere gratitude to Mr. Mohammed 
+HADDANE, Ms. R’kia HARRAICHA, and Dr. Nabila REBBAH for their invaluable 
+support and assistance throughout this study.
+Author contributions
+All authors contributed to the study conception and design. Material prepara-
+tion, data collection, and analysis were performed by Ibtissam Haddane. The 
+first draft of the manuscript was written by Ibtissam Haddane, and all authors 
+Badr Hirchoua and Hicham Moutachaouik commented on previous versions 
+of the manuscript. All authors read and approved the final manuscript.
+Declarations
+Competing interests
+The authors confirm that they have read the SpringerOpen guidance on 
+Conflict of interest and declare that none of the authors have any competing 
+financial or non-financial interests to disclose.
+Received: 2 December 2025   Accepted: 4 February 2026
+References
+Abdulrahman AA, Ibrahem MK (2020) Toward constructing a balanced intru-
+sion detection dataset based on CICIDS2017. Samarra J Pure Appl Sci 
+2(3):132–142
+Adawadkar AMK, Kulkarni N (2022) Cyber-security and reinforcement learning 
+- a brief survey. Eng Appl Artif Intell 114:105116. https:// doi. org/ 10. 1016/j. 
+engap pai. 2022. 105116
+Ahmad T, Truscan D (2022) Efficient early anomaly detection of network 
+security attacks using deep learning. In: Proceedings of the Åbo Aka-
+demi University / IEEE Study
+Alabsi BA, Anbar M, Rihan SDA (2023) Conditional tabular generative 
+adversarial based intrusion detection system for detecting ddos and 
+dos attacks on the internet of things networks. Sensors 23(12):5644. 
+https:// doi. org/ 10. 3390/ s2312 5644
+Almazroi AA, Aldhahri EA, Al-Shareeda MA, Manickam S (2023) Eca-vfog: an 
+efficient certificateless authentication scheme for 5g-assisted vehicular 
+fog computing. PLoS ONE 18(6):0287291. https:// doi. org/ 10. 1371/ journ 
+al. pone. 02872 91
+Almazroi AA, Alqarni MA, Al-Shareeda MA, Manickam S (2023) L-cppa: 
+lattice-based conditional privacy-preserving authentication scheme 
+for fog computing with 5g-enabled vehicular system. PLoS ONE 
+18(10):0292690. https:// doi. org/ 10. 1371/ journ al. pone. 02926 90
+Al-Mekhlafi ZG, Al-Shareeda MA, Manickam S et al (2023) Chebyshev 
+polynomial-based fog computing scheme supporting pseudonym 
+revocation for 5g-enabled vehicular networks. Electronics 12(4):872. 
+https:// doi. org/ 10. 3390/ elect ronic s1204 0872
+Almutairi L, Daniel R, Khasimbee S, Lydia EL, Acharya S, Kim H (2023) 
+Quantum dwarf mongoose optimization with ensemble deep learn-
+ing based intrusion detection in cyber-physical systems. IEEE Access. 
+https:// doi. org/ 10. 1109/ ACCESS. 2023. 32878 96
+Al-shareeda MA, Anbar M, Hasbullah IH, Manickam S, Abdullah N, Hamdi 
+MM (2019) Review of prevention schemes for replay attack in vehicular 
+ad hoc networks (vanets). In: Proceedings of the National Advanced 
+IPv6 Centre. Universiti Sains Malaysia, ???
+Azadeh R (2024) Advances in multi-agent reinforcement learning: Persistent 
+autonomy and robot learning lab report 2024. Technical report, Univer -
+sity of Massachusetts Lowell. arXiv preprint arXiv: 2412. 21088
+Badr Y (2022) Enabling intrusion detection systems with dueling double 
+deep Q-learning. Digit Transform Soc 1(1):115–141. https:// doi. org/ 10.  
+1108/ DTS- 05- 2022- 0016
+Barkah A, Selamat SR, Abidin Z, Wahyudi R (2023) Data Generative Model 
+to Detect the Anomalies for IDS Imbalance CICIDS2017 Dataset. TEM J 
+12:80–89. https:// doi. org/ 10. 18421/ TEM121- 11
+Bates E, Mavroudis V, Hicks C (2023) Reward shaping for happier autono -
+mous cyber security agents. arXiv preprint arXiv: 2310. 13565
+Bu F, Wang X (2019) A smart agriculture IoT system based on deep rein-
+forcement learning. Futur Gener Comput Syst 99:500–507. https:// doi.  
+org/ 10. 1016/j. future. 2019. 04. 027
+Cao Z, Jiang J, Liu H (2024) Curiosity-driven multi-level intrinsic reward dqn 
+for enhanced exploration in reinforcement learning. In: Proceedings of 
+the 2nd International Conference on Machine Learning and Automa-
+tion. https:// doi. org/ 10. 54254/ 2755- 2721/ 103/ 20241 121
+Chathoth AK, Lee S (2025) Pcap-backdoor: Backdoor poisoning generator 
+for network traffic in cps/iot environments. arXiv preprint arXiv: 2501.  
+15563
+Fivel O, Rudman M, Cohen K (2025) Control-Optimized Deep Reinforcement 
+Learning for Artificially Intelligent Autonomous Systems. arXiv e-prints 
+arXiv:  2507. 00268
+Gardille A, Ahmad O (2023) Towards safe reinforcement learning via ood 
+dynamics detection in autonomous driving system (student abstract). 
+In: Proceedings of the Thirty-Seventh AAAI Conference on Artificial 
+Intelligence (AAAI-23). AAAI Press, ???
+Gelenbe E, Nasereddin M (2025) Adaptive attack mitigation for iov flood 
+attacks. arXiv preprint arXiv: 2501. 10224
+Han J, Pak W (2023) High performance network intrusion detection system 
+using two-stage lstm and incremental created hybrid features. Elec-
+tronics 12(4):956. https:// doi. org/ 10. 3390/ elect ronic s1204 0956
+Hirchoua B, Mountasser I, Ouhbi B, Frikh B (2021) Evolutionary Deep 
+Reinforcement Learning Environment: Transfer Learning-Based Genetic 
+Algorithm. In: ACM International Conference Proceeding Series, pp. 
+242–249. https:// doi. org/ 10. 1145/ 34876 64. 34876 98
+Hirchoua B, Mountasser I, Ouhbi B, Frikh B (2022) Evolutionary deep 
+reinforcement learning environment: Transfer learning-based genetic 
+algorithm. In: The 23rd International Conference on Information 
+Integration and Web Intelligence. iiWAS2021, pp. 242–249. Association 
+for Computing Machinery, New York, NY, USA. https:// doi. org/ 10. 1145/ 
+34876 64. 34876 98
+Hirchoua B, Mountasser I, Zakrani A, Moutachaouik H, Mustapha H (2024) 
+Adaptive Self-supervised Agent: Leveraging Deep Reinforcement Learn-
+ing Through Strategic Precedence Estimation. In: Big Data and Internet of 
+Things, Cham, pp. 1047–1059
+Hore S, Ghadermazi J, Paudel D, Shah A, Das T, Bastian N (2025) Deep PackGen: 
+a deep reinforcement learning framework for adversarial network packet 
+generation. ACM Trans Privacy Secur 28(2):1–33. https:// doi. org/ 10. 1145/ 
+37123 07
+Hui B, Chiew KL (2025) An improved network intrusion detection method 
+based on cnn-lstm-sa. J Adv Res Appl Sci Eng Technol 44(1):225–238
+Jose J, Jose D (2023) Deep learning algorithms for intrusion detection systems 
+in internet of things using CIC-IDS 2017 dataset. Int J Electr Comput Eng 
+(IJECE) 13:1134–1141. https:// doi. org/ 10. 11591/ ijece. v13i1. pp1134- 1141
+Kandhro IA, Alanazi SM, Ali F, Kehar A, Fatima K, Uddin M, Karuppayah S (2023) 
+Detection of real-time malicious intrusions and attacks in iot empowered 
+cybersecurity infrastructures. IEEE Access 11:9136–9148
+Khenwar M, Nawal M (2024) Challenges and limitations of IDS: a comprehensive 
+assessment and future perspectives. SKIT Res J 14:35–39. https:// doi. org/ 10. 
+47904/ IJSKIT. 14.1. 2024. 35- 39
+Khozam S, Blanc G, Tixeuil S, Totel E (2024) Ddos mitigation while preserving qos: 
+a deep reinforcement learning-based approach. In: 2024 IEEE 10th Interna-
+tional Conference on Network Softwarization (NetSoft), pp. 369–374. IEEE
+
+Page 20 of 20Haddane et al. Cybersecurity           (2026) 9:130 
+Kim A, Park M, Lee DH (2020) AI-IDS: application of deep learning to real-time 
+web intrusion detection. IEEE Access 8:70245–70261. https:// doi. org/ 10. 
+1109/ ACCESS. 2020. 29868 82
+Lee XY, Wang H, Matsui T, Katsumata D, Gupta C (2024) Multi-agent reinforce-
+ment learning for dynamic dispatching in material handling systems. arXiv 
+preprint arXiv: 2409. 18435
+Lee XY, Wang H, Matsui T, Katsumata D, Gupta C (2024) Multi-agent reinforce-
+ment learning for dynamic dispatching in material handling systems. arXiv 
+preprint arXiv: 2409. 18435
+Lin Q, Ming RL, Zhang K, Luo H (2022) Privacy-enhanced intrusion detection 
+and defense for cyber-physical systems: a deep reinforcement learning 
+approach. Secur Commun Netw 2022(1):4996427. https:// doi. org/ 10. 1155/ 
+2022/ 49964 27
+Liu Z, Jiang K, Liu Z, Qin T (2024) A Cybersecurity Named Entity Recognition 
+Model Based on Active Learning and Self-learning. In: IEEE China Confer-
+ence on Communications (CCDC), pp. 4505–4510. https:// doi. org/ 10. 1109/ 
+CCDC6 2350. 2024. 10587 887
+Liu Q, Liu Y, Li R, Cao C, Li Y, Li X, Wang P , Feng R (2024) Mdhp-net: detecting injec-
+tion attacks on in-vehicle network using multi-dimensional hawkes process 
+and temporal model. arXiv preprint arXiv: 2411. 10258
+Li X, Zhang T, Wang J, Han Z, Liu J, Kang J, Niyato D, Jamalipour A (2025) Achiev-
+ing network resilience through graph neural network-enabled deep 
+reinforcement learning. arXiv:2501.11074 [cs.CR]. https:// arxiv. org/ abs/ 2501. 
+11074
+Malgwi Y, Ibrahim G, Bamanga Ahmad M (2022) Artificial neural network model 
+for intrusion detection system. Mediterranean J Basic Appl Sci 06:20–26. 
+https:// doi. org/ 10. 46382/ MJBAS. 2022. 6103
+Ma O, Zhou C, Du L, Li Q, Dai Y, Pu Y, Ji S (2025) Unidoor: A universal framework for 
+action-level backdoor attacks in deep reinforcement learning. arXiv preprint 
+arXiv: 2501. 15529
+Mnih V, Kavukcuoglu K, Silver D, Rusu AA, Veness J, Bellemare MG, Graves A, 
+Riedmiller M, Fidjeland AK, Ostrovski G, Petersen S, Beattie C, Sadik A, 
+Antonoglou I, King H, Kumaran D, Wierstra D, Legg S, Hassabis D (2015) 
+Human-level control through deep reinforcement learning. Nature 
+518(7540):529–533. https:// doi. org/ 10. 1038/ natur e14236
+Mohamed CR (2023) Case study on the application of deep learning to network 
+intruder detection. Emirati J Policing Secur Stud 2(1):4–12. https:// doi. org/ 
+10. 54878/ EJPSS. 298
+Mohammed BA, Al-Shareeda MA, Manickam S, Al-Mekhlafi ZG, Alreshidi A, 
+Alazmi M, Alshudukhi JS, Alsaffar M (2023) Fc-pa: fog computing-based 
+pseudonym authentication scheme in 5g-enabled vehicular networks. IEEE 
+Access 11:18804–18816
+Mutlu FB, Cicek DC, Saglam B, Kozat SS (2024) Parameter-free reduction of 
+the estimation bias in deep reinforcement learning for deterministic 
+policy gradients. Neural Process Lett 56(2):80. https:// doi. org/ 10. 1007/ 
+s11063- 024- 11461-y
+Nagarajan P , White M, Machado MC (2025) Double q-learning for value-based 
+deep reinforcement learning, revisited. arXiv preprint arXiv: 2507. 00275
+Nayak S, Choi K, Ding W, Dolan S, Gopalakrishnan K, Balakrishnan H (2023) Scal-
+able multi-agent reinforcement learning through intelligent information 
+aggregation. arXiv preprint arXiv: 2211. 02127
+Oh SH, Jeong MK, Kim HC, Park J (2023) Applying reinforcement learning for 
+enhanced cybersecurity against adversarial simulation. Sensors 23(6):3000. 
+https:// doi. org/ 10. 3390/ s2306 3000
+Pettersson M, Westphal F, Riveiro M (2024) Exploring demonstration pre-training 
+with improved deep q-learning.In: IEEE Conference Proceedings / Gymna-
+sium Study
+Prabhu BPA, Sunitha NR (2024) A literature review on prominent datasets used to 
+test the cyber attack detection accuracy of machine learning techniques. In: 
+2024 International Conference on Cybernation and Computation (CYBER-
+COM), pp 98–101. https:// api. seman ticsc holar. org/ Corpu sID: 27501 1861
+Qazi EUH, Faheem MH, Zia T (2023) Hdlnids: hybrid deep-learning-based network 
+intrusion detection system. Appl Sci 13(8):4921. https:// doi. org/ 10. 3390/ 
+app13 084921
+Qu Y, Ma H, Jiang Y, Bu Y (2023) A network intrusion detection method based on 
+domain confusion. Electronics 12(6):1255. https:// doi. org/ 10. 3390/ elect ronic 
+s1206 1255
+Razak SFA, Fang KY, Kamis NH, Amin AHM, Yogarayan S (2023) Simulation of 
+vehicular bots-based ddos attacks in connected vehicles networks. HighT-
+ech Innov J 4(4):859–871
+Roy J (2024) Effective reward specification in deep reinforcement learning. PhD 
+thesis, Polytechnique Montréal, Montréal, Canada. arXiv preprint arXiv: 2412. 
+07177
+Sabeel U, Heydari S, Elgazzar K, El-Khatib K (2021) Building an intrusion detection 
+system to detect atypical cyberattack flows. IEEE Access 9:94352–94370. 
+https:// doi. org/ 10. 1109/ ACCESS. 2021. 30938 30
+Sahingoz OK, Cekmez U, Buldu A (2021) Internet of things (IoTs) security: 
+intrusion detection using deep learning. J Cybersecur Inf Manag (CSI-M) 
+25(3):1735–1762
+Saini S, Chennamaneni A (2024) A review of the duality of adversarial learning in 
+network intrusion: Attacks and countermeasures. arXiv preprint arXiv: 2412. 
+13880
+Taveras Cruz AJ, Aybar-Mejía M, Colon-González CG, Mariano-Hernández D, 
+Hernandez JC, Andrade-Rengifo F, Hernández-Callejo L (2025) Cybersecu-
+rity in mas-based adaptive protection for microgrids-a review. Electronics 
+14(18):3663. https:// doi. org/ 10. 3390/ elect ronic s1418 3663
+Tellache A, Mokhtari A, Korba AA, Ghamri-Doudane Y (2024) Multi-agent 
+reinforcement learning-based network intrusion detection system. arXiv 
+preprint arXiv: 2407. 05766
+Tharewal S, Ashfaque MW, Banu SS, Uma P , Hassen SM, Shabaz M (2022) Intrusion 
+detection system for industrial internet of things based on deep reinforce-
+ment learning. Wirel Commun Mob Comput 2022(1):9023719. https:// doi. 
+org/ 10. 1155/ 2022/ 90237 19
+Thirimanne SP , Jayawardana L, Liyanaarachchi LYP , Hewage C (2022) Deep neural 
+network based real-time intrusion detection system. SN Comput Sci 3:145. 
+https:// doi. org/ 10. 1007/ s42979- 022- 01031-1
+Tian C, Yin W, Moens M-F (2022) Anti-overestimation dialogue policy learn-
+ing for task-completion dialogue system. In: Findings of the Association 
+for Computational Linguistics: NAACL 2022, pp. 565–577. Association for 
+Computational Linguistics
+Valianti P , Malialis K, Kolios P , Ellinas G (2025) Cooperative search and track of 
+rogue drones using multiagent reinforcement learning. arXiv preprint arXiv: 
+2501. 10413
+Van Hasselt H, Guez A, Silver D (2016) Deep reinforcement learning with double 
+Q-Learning. In: Proceedings of the Thirtieth AAAI Conference on Artificial 
+Intelligence, pp. 2094–2100. AAAI Press, Washington
+Varghese MU, Taghiyarrenani Z (2025) Intrusion detection in heterogeneous 
+networks with domain-adaptive multi-modal learning. arXiv preprint arXiv: 
+2508. 03517
+Wan Y, Dragicevic T (2022) Data-driven cyber-attack detection of intelligent 
+attacks in islanded dc microgrids. IEEE Trans Industr Electron 70(4):4293–
+4299. https:// doi. org/ 10. 1109/ TIE. 2022. 31763 01
+Wu Y, Hu Y, Wang J, Feng M, Dong A, Yang Y (2024) An active learning framework 
+using deep Q-network for zero-day attack detection. Comput & Secur 
+139:103713. https:// doi. org/ 10. 1016/j. cose. 2024. 103713
+Xiao W, Lyu Y, Dolan JM (2023) Tackling safe and efficient multi-agent reinforce-
+ment learning via dynamic shielding (student abstract). In: Proceedings of 
+the Thirty-Seventh AAAI Conference on Artificial Intelligence (AAAI-23)
+Yang Y, Huang T, Wang X, Wen C-Y, Huang X (2022) High-speed three-
+dimensional aerial vehicle evasion based on a multi-stage dueling deep 
+q-network. Aerospace 9(11):673. https:// doi. org/ 10. 3390/ aeros pace9 110673
+Zeng L, Yao W, Shuai H, Zhou Y, Ai X, Wen J (2023) Resilience assessment for 
+power systems under sequential attacks using double dqn with improved 
+prioritized experience replay. IEEE Syst J 17(1):1–12. https:// doi. org/ 10. 1109/ 
+JSYST. 2022. 31712 40
+Zhang Z, Zou Y, Lai J, Xu Q (2022) M2dqn: A robust method for accelerating deep 
+q-learning network. arXiv preprint arXiv: 2209. 07809
+Zhong Z, Xie C, Tang X (2024) Intrusion traffic detection and classification based 
+on unsupervised learning. IEEE Access 12:60133–60144. https:// doi. org/ 10. 
+1109/ ACCESS. 2024. 34002 13
+Zhu J, Zhao Z, Zheng S (2022) Intelligent anti-jamming decision algorithm of 
+bivariate frequency hopping pattern based on dqn with per and pareto. Int 
+J Inf Technol Web Eng (IJITWE) 17(1):1–16
+Publisher’s Note
+Springer Nature remains neutral with regard to jurisdictional claims in pub-
+lished maps and institutional affiliations.

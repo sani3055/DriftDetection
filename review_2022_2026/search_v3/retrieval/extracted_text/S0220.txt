@@ -1,0 +1,1382 @@
+TYPE Original Research
+PUBLISHED 09 October 2026
+DOI 10.3389/frai.2026.1878587
+OPEN ACCESS
+EDITED BY
+Akshat Gaurav,
+Asia University, Taiwan
+REVIEWED BY
+Joseph Teguh Santoso,
+Universitas STEKOM, Indonesia
+Uday Chandra Akuthota,
+Woxsen University, India
+*CORRESPONDENCE
+Abdullah Al Imtihan
+imtihan@eimatel.eu
+RECEIVED 11 May 2026
+REVISED 29 May 2026
+ACCEPTED 15 June 2026
+PUBLISHED 09 October 2026
+CITATION
+Chowdhury S and Imtihan AA (2026)
+CyberShield analytics: SHAP-guided
+stacking ensembles for organizational
+risk resilience.
+Front. Artif. Intell. 9:1878587.
+doi: 10.3389/frai.2026.1878587
+COPYRIGHT
+© 2026 Chowdhury and Imtihan. This is
+an open-access article distributed under
+the terms of theCreative Commons
+Attribution License (CC BY).T h eu s e ,
+distribution or reproduction in other
+forums is permitted, provided the
+original author(s) and the copyright
+owner(s) are credited and that the
+original publication in this journal is
+cited, in accordance with accepted
+academic practice. No use, distribution
+or reproduction is permitted which does
+not comply with these terms.
+CyberShield analytics:
+SHAP-guided stacking ensembles
+for organizational risk resilience
+Sadiya Chowdhury1 and Abdullah Al Imtihan2*
+1Water Supply and Sanitation Authority, Dhaka, Bangladesh,2European Institute for Materials AI &
+Technology, Madrid, Spain
+Introduction: The escalating sophistication of cyber threats against
+organizationalinfrastructuredemandsdetectionframeworksthatsimultaneously
+achieve high classiﬁcation performance, statistical robustness, and operational
+transparency. Most published intrusion detection frameworks optimize for
+accuracy alone, omitting leakage-free evaluation protocols, formal signiﬁcance
+testing, and the auditable explanations required by contemporaryAI governance
+frameworks.
+Methods: This paper presents CyberShield Analytics, a SHAP-guided two-level
+stackingensembleframeworkfornetworkintrusiondetectionandorganizational
+risk resilience. The study addresses the binary intrusion-detection task (Attack
+vs. Normal); the 10 underlying traffic categories of the dataset are used only
+for exploratory characterization and are not predicted as separate classes.
+Evaluated on the benchmark UNSW-NB15 dataset comprising 257,673 network
+ﬂow records, the framework integrates nine heterogeneous base learners-
+Logistic Regression, Decision Tree, Random Forest, Extra Trees, Gradient
+Boosting, XGBoost, LightGBM, Multilayer Perceptron, and K-Nearest Neighbors-
+withanXGBoostmeta-learneroperatingonleakage-freeout-of-foldprobability
+estimates. A systematic feature engineering pipeline expands the original 45-
+feature space to 67 dimensions through 22 domain-informed interaction and
+transformation features.
+Results: The ensemble achieves Accuracy= 0.9535, F
+1 = 0.9535, and AUC-
+ROC = 0.9929 on a fully held-out test set of 51,535 instances, outperforming all
+individualbaselearners.Statisticalvalidityisconﬁrmedvia5-FoldStratiﬁedCross-
+Validation (meanF1 = 0.9499 ± 0.0013), with paired t-tests showing signiﬁcant
+superiority over XGBoost (t = 7.165, p = 0.002), LightGBM ( t = 25.108, p <
+0.0001), and Extra Trees (t = 3.178, p = 0.034). Error evaluation conﬁrms the
+lowest MAE (0.04653) and RMSE (0.21571) among all evaluated models. A tri-
+method Explainable AI (XAI) layer comprising SHAP, DeepLIFT, and Integrated
+Gradients applied to representative base learners consistently identiﬁessttl,
+ct_dst_sport_ltm,a n dbyte_ratio as the dominant threat-discriminating
+features.
+Discussion: The CyberShield framework bridges the critical gap between
+predictive performance and operational explainability. Improvements should be
+read as gains in robustness, calibration, and statistical reliability at comparable
+accuracy rather than a headline accuracy increase. The framework offers
+actionable threat intelligence for Security Operations Centers (SOCs) and cyber
+risk governance in enterprise environments.
+KEYWORDS
+cyberresilience,explainableAI,featureengineering,networkintrusiondetection,SHAP,
+stacking ensemble,statistical validation, UNSW-NB15
+Frontiersin ArtiﬁcialIntelligence 01 frontiersin.org
+
+Chowdhury and Imtihan 10.3389/frai.2026.1878587
+1 Introduction
+The global cyber threat landscape has undergone a paradigm
+shift in scope and severity over the past decade. According to
+the IBM Cost of a Data Breach Report, the average cost of a data
+breach reached $4.88 million in 2024, with network intrusions
+comprising the majority of incident vectors (IBMSecurity, 2024).
+Organizations across ﬁnancial services, critical infrastructure,
+and healthcare sectors face increasingly adaptive adversaries
+deploying multi-vector attacks including Denial-of-Service (DoS),
+Exploits, Reconnaissance, and Advanced Persistent Threats
+(APTs) (Sarker, 2024 ). Traditional perimeter-based security
+mechanisms—ﬁrewalls, signature detection, and rule-based
+Intrusion Detection Systems (IDS)—are fundamentally ill-suited
+to detect zero-day exploits and polymorphic malware, as they
+rely on static pattern libraries that cannot adapt to novel attack
+vectors(SharmaandGupta,2024 ).
+Machine learning (ML) has emerged as a transformative
+paradigm for anomaly-based network intrusion detection,
+enabling models to learn discriminative representations from
+high-dimensional network ﬂow data ( ChenandLi, 2025 ;
+Al-HaijaandDroos, 2024 ). Supervised ensemble methods—
+particularly Random Forest, XGBoost, and LightGBM—have
+demonstrated strong classiﬁcation performance on benchmark
+datasets, yet each individual learner exhibits characteristic
+failure modes: tree-based methods suﬀer from high variance;
+gradient boosting is computationally intensive; and neural
+networks remain opaque black boxes oﬀering no interpretable
+decision rationale for security analysts ( Capuanoetal., 2022 ;
+Demšar, 2006). Stacking generalization —a meta-learning
+strategy wherein a higher-level learner is trained on the out-
+of-fold predictions of diverse base models—has been shown to
+mitigate individual learner weaknesses while preserving their
+collective discriminative strength (Wolpert, 1992; Rajagopaletal.,
+2020).
+Despite these advances, two critical gaps persist in the existing
+literature. First, the majority of published IDS frameworks
+optimize solely for classiﬁcation accuracy, neglecting the
+organizational requirement for transparent and auditable AI
+decisions. Regulatory frameworks such as the EU AI Act,
+NIST AI RMF, and ISO/IEC 42001:2023 explicitly mandate
+explainability for high-risk AI deployments in security-critical
+environments ( Barredo-Arrietaetal., 2020 ; Paniguttietal.,
+2023). Second, reported performance improvements are
+rarely subjected to rigorous statistical signiﬁcance testing,
+rendering claimed superiority claims potentially attributable
+to random variation across experimental folds rather
+than genuine model improvements ( Demšar, 2006). These
+limitations collectively undermine the operational deployment
+readiness and governance compliance of published IDS
+models.
+This paper addresses both gaps through the following
+contributions:
+1. CyberShield stacking ensemble: A two-level stacking
+architecture with nine heterogeneous base learners and an
+XGBoost meta-learner, achieving AUC-ROC = 0.9929 andF
+1 =
+0.9535ontheUNSW-NB15benchmarkdataset.
+2. Domain-informed feature engineering: A 22-feature
+expansion from 45 to 67 dimensions using interaction terms,
+logarithmic transforms, and ratio features, all constructed
+without data leakage by applying transformations exclusively to
+training-partitionstatistics.
+3. Leakage-free evaluation protocol: A rigorous pipeline-
+encapsulated evaluation framework in which all preprocessing,
+scaling, and meta-feature generation operations are
+strictly contained within CV fold boundaries, preventing
+distributionalleakage.
+4. Tri-method XAI layer: A uniﬁed explainability
+framework integrating SHAP ( LundbergandLee, 2017 ),
+DeepLIFT ( Shrikumaretal., 2017 ), and Integrated
+Gradients (Sundararajanetal., 2017 ), providing cross-method
+attribution stability validation and actionable feature rankings
+forSOCdeployment.
+5. Rigorous statistical validation: Performance superiority is
+veriﬁedviaWilcoxonSigned-RankTestandPaired t-Testacross
+ﬁve cross-validation folds, conﬁrming signiﬁcance atα = 0.05
+againstthreeoffourbaselines.
+1.1 Novelty and positioning
+Unlike prior stacking-based IDS studies, which typically
+combine three to four homogeneous tree learners and report
+only point-estimate accuracy on a single split, the distinguishing
+contribution of CyberShield is thesimultaneousintegration of (i) a
+nine-learner heterogeneous base layer spanning linear, tree-based,
+gradient-boosted, neural, and instance-based model families; (ii)
+a strictly pipeline-encapsulated, leakage-free evaluation protocol
+applied uniformly to preprocessing, feature engineering, and out-
+of-fold meta-feature generation; (iii) a tri-method XAI layer
+whose cross-method consensus is treated as evidence of genuine
+feature reliance; and (iv) formal statistical hypothesis testing of
+the performance gain. To our knowledge, no prior UNSW-NB15
+stackingstudycombinesallfourelements;existing works( Table1)
+satisfy at most two. The contribution is therefore methodological
+rigorandoperationalauditabilityratherthanarawaccuracyrecord.
+The remainder of this paper is structured as follows. Section 2
+reviews related work in ensemble-based IDS and XAI-augmented
+cybersecurity. Section 3 details the proposed methodology.
+Section 4 presents and analyses experimental results. Section 6
+concludesthepaperandoutlinesfutureresearchdirections.
+2 Literature review
+2.1 Traditional intrusion detection systems
+Early Network Intrusion Detection Systems (NIDS) relied on
+signature-based approaches, matching observed network traﬃc
+against pre-compiled attack libraries (SharmaandGupta, 2024 ).
+While eﬀective against known attack patterns, these systems
+fundamentally cannot detect zero-day exploits or novel variants of
+existing attack families. Anomaly-based IDS emerged to address
+this limitation by establishing statistical baselines of normal
+Frontiersin ArtiﬁcialIntelligence 02 frontiersin.org
+
+Chowdhury and Imtihan 10.3389/frai.2026.1878587
+TABLE 1 Positioningof CyberShield analyticsrelative toprior work.
+Study Ensemble XAI Stat. test No leakage Multi-XAI
+KasongoandSun(2020) ✓ × × Partial ×
+Rajagopaletal.(2020) ✓ × × Partial ×
+Senevirathnaetal.(2024) ✓ × × Partial ×
+Vishwakarmaetal.(2025) ✓ SHAP × Partial ×
+Warneckeetal.(2020) × SHAP × ✓ Partial
+CyberShield (Ours) ✓ ✓ ✓ ✓ ✓
+Multi-XAI:SHAP+DeepLIFT+IntegratedGradientscombined.
+behavior and ﬂagging statistically signiﬁcant deviations (Liuetal.,
+2012; GoldsteinandUchida, 2016 ). Early anomaly detectors
+employedstatisticalmethods—Gaussianmixturemodels,principal
+component analysis, and support vector machines—but their
+relianceonhand-craftedfeatureengineeringandlinearseparability
+assumptions limited their eﬀectiveness on high-dimensional, non-
+linearnetworktraﬃcdata( ChenandLi,2025 ).
+2.2 Machine learning approaches for IDS
+The proliferation of benchmark datasets such as KDD Cup
+1999, NSL-KDD, and UNSW-NB15 ( MoustafaandSlay, 2015 )
+accelerated the adoption of supervised ML for IDS. Kasongo
+and Sun (KasongoandSun, 2020 ) demonstrated that Random
+Forest with wrapper-based feature selection achieved 93.62%
+accuracy on UNSW-NB15. Deep learning approaches, particularly
+Convolutional Neural Networks (CNNs) and Long Short-Term
+Memory (LSTM) networks, have demonstrated superior feature
+abstraction capabilities. However, these deep architectures
+require signiﬁcant training data, computational resources,
+and—critically—sacriﬁce interpretability for performance
+gains(Capuanoetal.,2022 ;Marinoetal.,2018 ;Leeetal.,2022 ).
+Multiclass classiﬁcation on UNSW-NB15 has been studied by
+severalgroups. Rajagopaletal.(2020) demonstratedthatastacking
+ensemble applied to heterogeneous datasets (UNSW-NB15
+and UGR’16) achieved 94%–97% accuracy, outperforming
+individual classiﬁers. More recently, Vishwakarmaetal.
+(2025) reported that an explainable stacking ensemble
+improved model transparency without sacriﬁcing classiﬁcation
+accuracy.
+2.3 Ensemble methods and stacking
+generalization
+Stacking generalization, introduced by Wolpert (1992)
+and subsequently formalized by Breiman (1996) , addresses
+the bias-variance tradeoﬀ by training a meta-learner on
+the out-of-fold predictions of diverse base classiﬁers. The
+present work systematically extends these contributions
+by incorporating nine diverse base learners, enforcing
+strict anti-leakage pipeline encapsulation within every
+cross-validation fold, and integrating a tri-method XAI
+layer for cross-validated explainability ( Zhangetal.,
+2024).
+2.4 Explainable AI in cybersecurity
+The “black box” nature of high-performing ML models
+presents a fundamental operational challenge for security
+analysts who require not only accurate predictions but also
+justiﬁable, auditable decision rationales (Senevirathnaetal., 2024 ;
+Barredo-Arrietaetal., 2020 ). SHAP ( LundbergandLee, 2017 ),
+grounded in Shapley values from cooperative game theory, has
+emerged as the dominant post-hoc explanation method for tabular
+ML models in cybersecurity contexts ( Lundbergetal., 2020 ;
+Rajpurkaretal., 2024 ). Warneckeetal. (2020); Pandeetal. (2023)
+systematicallyevaluatedSHAP,LIME,andgradient-basedmethods
+for deep learning IDS, ﬁnding that SHAP provided the most stable
+andsemanticallyconsistentexplanationsacrossattackcategories.
+DeepLIFT ( Shrikumaretal., 2017 ) propagates activation
+diﬀerences relative to a reference baseline through the network in
+a single backward pass. Integrated Gradients (Sundararajanetal.,
+2017) provides axiomatic guarantees—Sensitivity and
+Completeness—by integrating gradients along a linear
+interpolation from baseline to input. Capuanoetal. (2022)
+evaluated these methods for deep learning-based IDS and found
+that cross-method consensus provides stronger evidence of
+genuinemodelreliancethananysinglemethodalone—avalidation
+principledirectlyadoptedinthepresentwork.
+2.5 Organizational cyber risk resilience
+Beyond detection accuracy, contemporary cyber risk
+governance frameworks. Jalalvandetal. (2024) survey criteria
+and methods for alert prioritization in security operations centres
+and report that interpretable risk metrics support more eﬀective
+triage than opaque alternatives, directly informing the design
+philosophyoftheCyberShieldframework.
+2.6 Research gaps and positioning
+Table1 summarizesthekeylimitationsofpriorworkaddressed
+bythepresentstudy.
+Frontiersin ArtiﬁcialIntelligence 03 frontiersin.org
+
+Chowdhury and Imtihan 10.3389/frai.2026.1878587
+FIGURE 1
+Class distribution of the UNSW-NB15 dataset.Left: Binary label distribution showing 63.91% malicious (Attack) and 36.09% benign (Normal) traffic.
+Right: Attack category distribution; Generic attacks constitute the largest class (58,871 samples, 35.7%).
+FIGURE 2
+Feature distributions (p99-clipped) for key UNSW-NB15 features stratiﬁed by class (green = Normal, red = Attack).
+Frontiersin ArtiﬁcialIntelligence 04 frontiersin.org
+
+Chowdhury and Imtihan 10.3389/frai.2026.1878587
+FIGURE 3
+Pearson correlation matrix of the 45 raw UNSW-NB15 features.
+FIGURE 4
+Boxplots (p95-clipped) for eight key UNSW-NB15 features stratiﬁed by class.
+Frontiersin ArtiﬁcialIntelligence 05 frontiersin.org
+
+Chowdhury and Imtihan 10.3389/frai.2026.1878587
+FIGURE 5
+Violin plots for four key network ﬂow features by class.
+FIGURE 6
+Feature skewness (left, blue) and kurtosis (right, purple) for all 45 raw features in descending order.trans_depth exhibits extreme skewness (173.16)
+and kurtosis (37,927.61).
+3 Methodology
+3.1 Dataset description
+This study employs the UNSW-NB15 benchmark dataset,
+generated by the Australian Center for Cyber Security (ACCS)
+using the IXIA PerfectStorm tool in a controlled Cyber Range
+Laboratory environment (MoustafaandSlay, 2015 ). The dataset
+comprises 257,673 network ﬂow records with 45 raw features
+spanning nine attack categories—Fuzzers, Analysis, Backdoors,
+Denial-of-Service (DoS), Exploits, Generic, Reconnaissance,
+Shellcode, and Worms—alongside a Normal traﬃc class.
+Following stratiﬁed partitioning, 206,138 samples (80%) were
+allocated for training and 51,535 samples (20%) for testing.
+A preliminary data quality audit conﬁrmed zero missing
+values, zero duplicate records, and a total memory footprint of
+138.97MB. The class composition of the dataset is shown in
+Figure1, and the class-conditional distributions of the principal
+ﬂow features are shown in Figures2–5. Figure6 reports the
+skewness and kurtosis of all 45 raw features, and Figure7
+shows the distributions of the engineered features by class
+Table2.
+3.1.1 Classiﬁcation task
+Although UNSW-NB15 provides ﬁne-grained multiclass
+labels (nine attack families plus Normal), the present study
+formulates and evaluates intrusion detection as abinary problem:
+each ﬂow is classiﬁed as Attack (y = 1) or Normal (y = 0).
+The attack-category labels are retained only for the exploratory
+analysis of class prevalence in Section 4.1; all reported metrics,
+confusion matrices, ROC curves, and statistical tests pertain
+to the binary task. Accordingly, no claim is made regarding
+discrimination among individual attack categories. Multiclass
+attack-family classiﬁcation is identiﬁed as future work in
+Section6.
+Several features exhibit severe positive skewness exceeding
+40 (e.g., skew( sbytes) = 47.92, skew( sloss) =
+Frontiersin ArtiﬁcialIntelligence 06 frontiersin.org
+
+Chowdhury and Imtihan 10.3389/frai.2026.1878587
+FIGURE 7
+Boxplot distributions of nine engineered features by class.
+TABLE 2 Statisticalsummary of selected UNSW-NB15 features.
+Feature Mean Std. dev. Min Max Skewness
+dur 1.247 5.974 0 59.999 —
+sbytes 8,572.95 173,773.88 24 14,355,774 47.92
+dbytes 14,387.29 146,199.28 0 14,657,531 44.34
+sttl 180.001 102.488 0 255 —
+rate 91,253.91 160,344.64 0 1,000,000 —
+trans_depth 0.102 0.711 0 172 173.16
+response_body_len 1,968.90 49,625.23 0 6,558,056 78.48
+tcprtt 0.046 0.093 0.000 3.821 —
+47.12), necessitating logarithmic transformation
+duringpreprocessing.
+3.2 Data preprocessing
+Raw network ﬂow data underwent a systematic six-step
+preprocessing pipeline designed to ensure representational
+integrity and eliminate data leakage ( Pedregosaetal., 2011 )
+(Equations1,2).
+3.2.1 Step 1—Identiﬁer and timestamp removal
+Non-informativeidentiﬁers( id)andtimestamp-derivedﬁelds
+wereexcludedtopreventspurioustemporalcorrelations.
+Frontiersin ArtiﬁcialIntelligence 07 frontiersin.org
+
+Chowdhury and Imtihan 10.3389/frai.2026.1878587
+FIGURE 8
+Feature engineering pipeline. Starting from 45 raw features, four transformation categories are applied exclusively to training-partition statistics: (2.1)
+log transformsx′ = log(x+1); (2.2) ratio featuresrA/B = A/(B+ ϵ); (2.3) difference featuresdA−B = A−B; (2.4) interaction featuresiA×B = A· B.
+TABLE 3 Top-10 most skewed features in the UNSW-NB15 dataset.
+Rank Feature Skewness Kurtosis
+1 trans_depth 173.16 37,927.61
+2 response_body_len 78.48 8,513.82
+3 sbytes 47.92 2,616.50
+4 sloss 47.12 2,551.47
+5 dloss 46.09 3,502.78
+6 dbytes 44.34 3,272.35
+7 spkts 42.52 2,213.27
+8 dpkts 41.19 2,965.88
+9 djit 37.50 2,638.49
+10 dinpkt 26.97 939.57
+3.2.2 Step 2—Categorical encoding
+Three categorical variables— proto (133 unique values),
+service (13), and state (11)—were encoded using Label
+Encodingaftercardinalityanalysis.
+3.2.3 Step 3—Stratiﬁed train/test split
+Data were partitioned prior to any feature engineering
+orscaling:
+D = Dtrain ∪Dtest, |Dtrain| = 206,138, |Dtest| = 51,535. (1)
+3.2.4 Step 4—Logarithmic transformation
+Features with absolute skewness exceeding 25 were log-
+transformed:
+x∗
+j = log
+(
+xj +1
+)
+,
+⏐⏐Skew(xj)
+⏐⏐ > 25. (2)
+3.2.5 Step 5—Standardization
+A StandardScaler was ﬁtted exclusively on Dtrain
+(Equation3):
+˜xij =
+xij −μtrain
+j
+σtrain
+j
+. (3)
+3.2.6 Step 6—Pipeline encapsulation
+All preprocessing operations were encapsulated within an
+sklearn.Pipeline(Pedregosaetal.,2011 ).
+3.2.7 Class imbalance handling
+The binary target is moderately imbalanced, with an
+Attack:Normal ratio of approximately 1.77 :1 (63.91% Attack,
+36.09% Normal). This is a mild imbalance that does not require
+aggressive rebalancing. Three complementary measures were
+nonetheless adopted. First, both the train/test split and the 5-fold
+cross-validation were stratiﬁed, preserving the marginal class
+distribution in every partition. Second, cost-sensitive learning was
+enabled where supported (class_weight = “balanced"
+Frontiersin ArtiﬁcialIntelligence 08 frontiersin.org
+
+Chowdhury and Imtihan 10.3389/frai.2026.1878587
+FIGURE 9
+Complete CyberShield Analytics pipeline. Nine sequential stages process raw UNSW-NB15 network traffic from data ingestion through the tri-method
+XAI layer.
+FIGURE 10
+Two-level stacking ensemble architecture.
+for Logistic Regression, Decision Tree, Random Forest and Extra
+Trees; scale_pos_weight for XGBoost/LightGBM), so that
+the minority Normal class contributes proportionally more to the
+loss. Third, threshold-independent and imbalance-robust metrics
+(F1 and AUC-ROC) were used as the primary selection criteria
+rather than raw accuracy. Synthetic minority over-sampling
+[SMOTE (Chawlaetal., 2002)] was evaluated during development
+but, applied strictly inside the training folds, produced no
+statistically signiﬁcant F1 gain while degrading probability
+calibration;itwasthereforenotretainedintheﬁnalpipeline.
+3.3 Feature engineering
+To enrich the original 45-feature representation, 22 domain-
+informed engineered features were constructed exclusively
+Frontiersin ArtiﬁcialIntelligence 09 frontiersin.org
+
+Chowdhury and Imtihan 10.3389/frai.2026.1878587
+TABLE 4 Principalhyperparameters ofthe base and meta learners.
+Model Key hyperparameters
+Logisticregression C=1.0, penalty=l2, solver=lbfgs,
+max_iter=1000, class_weight=balanced
+Decisiontree max_depth=20, min_samples_split=10,
+criterion=gini, class_weight=balanced
+Randomforest n_estimators=300, max_depth=None,
+min_samples_leaf=2,
+class_weight=balanced, n_jobs=-1
+Extratrees n_estimators=300, max_depth=None,
+min_samples_leaf=2,
+class_weight=balanced
+Gradientboosting n_estimators=200, learning_rate=0.1,
+max_depth=3
+XGBoost n_estimators=400, learning_rate=0.05,
+max_depth=6, subsample=0.8,
+colsample_bytree=0.8,
+scale_pos_weight=0.565
+LightGBM n_estimators=400, learning_rate=0.05,
+num_leaves=63, subsample=0.8,
+scale_pos_weight=0.565
+MLP Hiddenlayers(128,64), activation=relu,
+solver=adam, alpha=1e-4, batch_size=256,
+max_iter=200
+KNN n_neighbors=15, weights=distance,
+metric=minkowski
+Meta-learner
+(XGBoost)
+n_estimators=200, learning_rate=0.05,
+max_depth=3, subsample=0.9
+from training-set statistics, expanding the feature space
+to 67 dimensions. The complete transformation pipeline is
+summarizedin Figure8 andEquations4–11.
+3.3.1 Rationale for the 22 features
+The engineered set was not chosen arbitrarily but derived
+from four attack-motivated transformation families, each
+targeting a known limitation of the raw features for intrusion
+discrimination: (i) logarithmic transforms (x′ = log(x + 1))
+applied to the heavily right-skewed volume features (skewness
+> 25; seeTable3) to linearise their relationship with the decision
+boundary; (ii)ratio features(e.g., byte_ratio, Port_Ratio,
+Payload_per_Port) that capture source/destination
+asymmetry characteristic of exﬁltration and scanning;
+(iii) diﬀerence features(e.g., mean_diff) encoding directional
+traﬃc imbalance; and (iv) interaction terms (e.g., Conf×
+Payload) combining connection-state and volume signals.
+Within each family, candidates were retained only if they (a) were
+motivated by an established attack signature and (b) exhibited
+non-redundant behavior, i.e. pairwise Pearson correlation
+|ρ| < 0.95 with existing features on the training partition. This
+procedure yielded 22 features. Their utility is conﬁrmed post
+hoc in Section 4.6: three engineered features ( byte_ratio,
+log_dbytes, mean_diff)rankwithinthetop-10globalSHAP
+importances.
+Key interaction and transformation features are deﬁned
+asfollows:
+Port_Ratio = x
+sport
+xdport +1, (4)
+Port_Diﬀ=
+⏐⏐xsport −xdport
+⏐⏐, (5)
+Payload_per_Port = xsbytes
+xsport +1, (6)
+byte_ratio = xsbytes
+xdbytes +1, (7)
+log_dbytes = log
+(
+xdbytes +1
+)
+, (8)
+mean_diﬀ= xsmean −xdmean, (9)
+Conf×Payload = xconf ·xsbytes, (10)
+High_Conf = 1[xconf > 0.75]. (11)
+3.4 Stacking ensemble architecture
+The proposed CyberShield framework employs a two-level
+stacking ensemble architecture (Wolpert, 1992; Breiman, 1996)
+(Equations12–15).
+Let L0 denotethesetofLevel-0baselearnersand L1 themeta-
+learner. Figure9 presents the complete end-to-end CyberShield
+Analytics pipeline, and Figure10 details the two-level stacking
+architecture.
+3.4.1 Level-0 base learners
+L0 =
+{
+LR, DT, RF, ET, XGB, LGBM, GB, MLP, KNN
+}
+. (12)
+Each base learner hk ∈ L0 generates out-of-
+fold (OOF) class-probability estimates via internal
+5-fold cross-validation, constructing the meta-feature
+matrix Z ∈R
+n×K:
+Z =
+⎡
+⎢⎢⎣
+ˆp(1)
+1 ˆp(2)
+1 ··· ˆp(K)
+1
+..
+.
+..
+. ... ..
+.
+ˆp
+(1)
+n ˆp(2)
+n ··· ˆp(K)
+n
+⎤
+⎥⎥⎦, ˆp(k)
+i = P
+(
+yi = 1 | hk, xi
+)
+. (13)
+3.4.2 Level-1 meta-learner
+An XGBoost classiﬁer (ChenandGuestrin, 2016) serves as the
+meta-learner L1,trainedon Z:
+ˆyi = L1(Zi) = XGBoost
+(
+ˆp(1)
+i , ˆp(2)
+i , ... , ˆp(K)
+i
+)
+. (14)
+ˆY = sign
+(
+L1(Z)−0.5
+)
+. (15)
+Frontiersin ArtiﬁcialIntelligence 10 frontiersin.org
+
+Chowdhury and Imtihan 10.3389/frai.2026.1878587
+TABLE 5 5-foldstratiﬁedcross-validationF1-score results.
+Model F1 F2 F3 F4 F5 Mean±Std
+RandomForest 0.9483 0.9500 0.9488 0.9506 0.9493 0.9494±0.0008
+XGBoost 0.9455 0.9470 0.9485 0.9484 0.9486 0.9476±0.0012
+Extratrees 0.9469 0.9491 0.9467 0.9485 0.9474 0.9477±0.0009
+LightGBM 0.9422 0.9431 0.9446 0.9464 0.9455 0.9444±0.0015
+Stacking Ens. 0.9481 0.9491 0.9497 0.9514 0.9513 0.9499 ± 0.0013
+Boldvaluesindicatethebestresultforthecorrespondingmetric.
+FIGURE 11
+Leakage-free ML evaluation workﬂow.
+FIGURE 12
+5-fold CV results.Left:M e a n± std of Accuracy, F1, Precision, Recall.Right: Per-fold accuracy trajectories.
+3.5 Implementation details and
+hyperparameters
+AllmodelswereimplementedinPython3.11usingscikit-learn
+1.4 (Pedregosaetal., 2011 ), XGBoost 2.0 ( ChenandGuestrin,
+2016), and LightGBM 4.3. Experiments were executed on
+a workstation with an Intel Core i7 (8 cores, 16 threads)
+CPU and 32GB RAM. To ensure reproducibility, a ﬁxed
+random seed ( random_state = 42 ) was applied to
+all stochastic components. Table4 reports the principal
+hyperparameters of each Level-0 base learner and the Level-
+1 meta-learner; values were selected by grid search nested
+Frontiersin ArtiﬁcialIntelligence 11 frontiersin.org
+
+Chowdhury and Imtihan 10.3389/frai.2026.1878587
+TABLE 6 Completemodelperformance on held-outtest set (n = 51,535).
+Model Acc. Prec. Rec. F1 AUC LL MAE RMSE
+⋆ Stacking 0.9535 0.9535 0.9535 0.9535 0.9929 0.1132 0.0465 0.2157
+RandomForest 0.9528 0.9529 0.9528 0.9529 0.9923 0.1132 0.0472 0.2172
+Extratrees 0.9504 0.9504 0.9504 0.9504 0.9902 0.1697 0.0496 0.2228
+XGBoost 0.9491 0.9494 0.9491 0.9492 0.9919 0.1069 0.0509 0.2257
+LightGBM 0.9463 0.9467 0.9463 0.9464 0.9911 0.1129 0.0537 0.2318
+Decisiontree 0.9397 0.9397 0.9397 0.9397 0.9367 2.0882 0.0604 0.2457
+Grad.boosting 0.9345 0.9344 0.9345 0.9345 0.9873 0.1405 0.0655 0.2558
+MLP 0.9331 0.9347 0.9331 0.9335 0.9859 0.1389 0.0669 0.2587
+KNN 0.9278 0.9281 0.9278 0.9279 0.9760 0.5015 0.0722 0.2686
+LogisticReg. 0.8650 0.8662 0.8650 0.8618 0.9294 0.3092 0.1350 0.3674
+Acc,Accuracy;Prec,Precision;Rec,Recall;LL,Log-Loss;AUC,AUC-ROC.
+AccBold:bestpermetric; ⋆:proposedmodel.
+FIGURE 13
+Left: ROC curves for all evaluated models (Stacking Ensemble AUC= 0.9929). Right: Precision-Recall curve for the Stacking Ensemble.
+within the training folds so that no test data inﬂuenced
+modelconﬁguration.
+3.6 Evaluation metrics
+Performance is quantiﬁed using eight complementary metrics
+Equations16–22:
+Accuracy = TP+TN
+TP+TN+FP+FN, (16)
+Precision = TP
+TP+FP, Recall = TP
+TP+FN,[4pt] (17)
+F1 = 2· Precision×Recall
+Precision+Recall, (18)
+AUC-ROC =
+∫1
+0 TPR(t) d
+[
+FPR(t)
+]
+, (19)
+Llog =− 1
+N
+∑N
+i=1
+[
+yi logˆpi +(1−yi)log(1 −ˆpi)
+]
+, (20)
+MAE = 1
+N
+∑N
+i=1
+⏐⏐yi −ˆyi
+⏐⏐, (21)
+RMSE =
+√
+1
+N
+∑N
+i=1
+(
+yi −ˆyi
+)2. (22)
+3.7 5-fold stratiﬁed cross-validation
+All models were evaluated using 5-Fold Stratiﬁed Cross-
+Validation (SKF-CV), preserving the class distributionP(y = 1) ≈
+0.639 across each fold (Jamesetal., 2021)( Table5). The mean and
+standard deviation of theF1-score across folds{s1,s2,s3,s4,s5} are
+reportedas Equation23:
+¯s = 1
+5
+5∑
+k=1
+sk, σs =
+
+√
+1
+4
+5∑
+k=1
+(sk −¯s)2. (23)
+3.7.1 Leakage-free ﬁtting protocol
+To guarantee the absence of information leakage, every
+data-driven transformation is ﬁtted strictly on the training
+portion of each fold and merely applied to the held-out
+portion. The leakage-free ﬁtting protocol is illustrated in
+Figure11. Concretely, within each of the ﬁve training folds
+the following are estimated using training data only: (i) the
+label-encoding maps forproto, service, and state; (ii) the
+skewness thresholds and resulting log- transform decisions;
+Frontiersin ArtiﬁcialIntelligence 12 frontiersin.org
+
+Chowdhury and Imtihan 10.3389/frai.2026.1878587
+FIGURE 14
+Base classiﬁer performance comparison on the held-out test set.
+FIGURE 15
+Confusion matrices for the Stacking Ensemble on the held-out test set.
+(iii) all feature-engineering statistics (ratios, diﬀerences, and
+interaction terms in Section 3.3); (iv) the StandardScaler
+means and standard deviations (Equation3); and (v) the base-
+learner parameters used to generate out-of-fold probability
+meta-features. Because the entire chain is wrapped in a
+single sklearn.Pipeline (Pedregosaetal., 2011 ) and
+cloned per fold, no statistic derived from a validation fold
+or from the ﬁnal held-out test set can inﬂuence any ﬁtted
+quantity. Unseen categorical levels encountered at inference
+are mapped to a reserved “unknown” code rather than reﬁtting
+theencoder.
+3.8 Statistical signiﬁcance testing
+Two complementary signiﬁcance tests were applied to the ﬁve
+fold-wiseF1-scorevectors( Demšar,2006)and Equations24,25.
+3.8.1 Wilcoxon signed-rank test (non-parametric)
+W =
+∑
+i : di̸=0
+sgn(di)·Ri, di = ai −bi. (24)
+Frontiersin ArtiﬁcialIntelligence 13 frontiersin.org
+
+Chowdhury and Imtihan 10.3389/frai.2026.1878587
+TABLE 7 Error metricdecompositiononthe held-out testset.
+Model MAE MSE RMSE Log-Loss
+⋆ Stacking 0.04653 0.04653 0.21571 0.11318
+Randomforest 0.04715 0.04715 0.21715 0.11320
+Extratrees 0.04962 0.04962 0.22275 0.16965
+XGBoost 0.05092 0.05092 0.22565 0.10686
+LightGBM 0.05373 0.05373 0.23180 0.11294
+Gradientboosting 0.06545 0.06545 0.25583 0.14047
+MLP 0.06691 0.06691 0.25866 0.13891
+Decisiontree 0.06035 0.06035 0.24566 2.08824
+KNN 0.07216 0.07216 0.26863 0.50147
+Logisticreg. 0.13496 0.13496 0.36736 0.30925
+Boldvaluesindicatethebestresultforthecorrespondingmetric.
+3.8.2 Paired t-test (parametric)
+t =
+¯d
+sd/√n, ¯d = 1
+n
+n∑
+i=1
+di, sd =
+√ ∑n
+i=1(di −¯d)2
+n−1 , (25)
+wheren = 5folds.Statisticalsigniﬁcancewasdeclaredat α= 0.05.
+3.9 Explainable AI framework
+3.9.1 SHAP (SHapley Additive exPlanations)
+φj(f) =
+∑
+S⊆F\{j}
+|S|!
+(
+|F|−|S|−1
+)
+!
+|F|!
+[
+f(S∪{j})−f(S)
+]
+. (26)
+Global feature importance ( Lundbergetal., 2020 )
+Equations26–29:
+¯φj = 1
+N
+N∑
+i=1
+⏐⏐
+⏐φ
+(i)
+j
+⏐⏐
+⏐. (27)3.9.2 DeepLIFT
+C/Delta1xj/Delta1y = /Delta1y
+/Delta1xj
+· /Delta1xj, /Delta1xj = xj −x′
+j. (28)
+3.9.3 Integrated gradients
+IGj(x) = (xj −x′
+j)×
+∫ 1
+α=0
+∂F
+(
+x′ + α(x−x′)
+)
+∂xj
+dα, (29)
+p∑
+j=1
+IGj(x) = F(x)−F(x′). (30)
+4 Results and analysis
+4.1 Exploratory data analysis ﬁndings
+The target variable exhibits a class imbalance ratio of
+approximately 1.77:1 (malicious: 164,673; benign: 93,000). Among
+attack categories, Generic attacks constitute the largest malicious
+class (58,871 samples, 35.7% of all attacks), followed by Exploits
+(44,525) and Fuzzers (24,246), while Worms represent the rarest
+category(174samples).
+4.2 5-fold stratiﬁed cross-validation
+performance
+Table5 reports the fold-wise F1-scores obtained under
+5-fold stratiﬁed cross-validation, and Figure12 summarizes
+the corresponding mean performance and per-fold accuracy
+trajectories. The stacking ensemble attains the highest mean F1-
+score (0.9499 ± 0.0013), followed by Random Forest (0.9494
+± 0.0008), Extra Trees (0.9477 ± 0.0009), XGBoost (0.9476 ±
+0.0012), and LightGBM (0.9444±0.0015). All standard deviations
+are below 0.0016, indicating stable behaviour across partitions.
+Notably, the ensemble achieves the highest F1-score in four of the
+ﬁve folds and is never the worst-performing model in any fold,
+whereasLightGBMistheweakestlearnerineveryfold.Thenarrow
+spread across models—a range of 0.0055 in mean F1 between the
+best and worst candidate—conﬁrms that the UNSW-NB15 binary
+task is close to saturation for modern tree-based learners, and that
+theensemble’sadvantageliesinconsistencyratherthanmagnitude.
+4.3 Test set performance comparison
+Table6 reports the complete performance of all ten evaluated
+models on the fully held-out test set of 51,535 instances. The
+stacking ensemble achieves the best Accuracy, Precision, Recall,
+and F1-score (all 0.9535) and the highest AUC-ROC (0.9929),
+outperforming every individual base learner. Random Forest is the
+strongest single model (Accuracy= 0.9528, AUC-ROC= 0.9923),
+followedbyExtraTrees(0.9504),XGBoost(0.9491),andLightGBM
+(0.9463). Logistic Regression is the weakest learner (Accuracy=
+0.8650, F1= 0.8618), reﬂecting the non-linear separability of the
+feature space and conﬁrming the necessity of non-linear decision
+boundaries for this task.Figure13 presents the ROC curves for all
+models together with the precision-recall curve of the ensemble,
+and Figure14 compares base-classiﬁer performance across the six
+principal metrics.Figure15 shows the confusion matrices for the
+ensemble: of 18,600 Normal ﬂows, 17,429 are correctly classiﬁed
+and 1,171 are false positives (true negative rate 0.9370), while of
+32,935 Attack ﬂows, 31,708 are correctly detected and 1,227 are
+missed(recall0.9627).ThehigherrecallontheAttackclassthanon
+Frontiersin ArtiﬁcialIntelligence 14 frontiersin.org
+
+Chowdhury and Imtihan 10.3389/frai.2026.1878587
+FIGURE 16
+Error metric decomposition across all classiﬁers.
+TABLE 8 Statisticalsigniﬁcancetests: stackingensemble vs. baselines (α = 0.05, n = 5f o l d s ) .
+Baseline ¯Fstack
+1
+¯Fbase
+1 /Delta1F1 W pW t-stat pt
+Randomforest 0.9499 0.9494 +0.0005 5.000 0.6250 1.090 0.3372
+XGBoost 0.9499 0.9476 +0.0023 0.000 0.0625 7.165 0.0020
+LightGBM 0.9499 0.9444 +0.0055 0.000 0.0625 25.108 <0.0001
+Extratrees 0.9499 0.9477 +0.0022 0.000 0.0625 3.178 0.0336
+W,Wilcoxonstatistic;Bold pt:signiﬁcantat α= 0.05.Boldvaluesindicatethebestresultforthecorrespondingmetric.
+FIGURE 17
+Statistical signiﬁcance analysis.Left: 5-fold accuracy boxplots.Center: Wilcoxonp-values. Right:P a i r e dt-test p-values.
+theNormalclassisoperationallydesirableinanintrusion-detection
+setting, where the cost of a missed intrusion typically exceeds that
+ofafalsealarm.
+4.4 Error evaluation analysis
+Table7 decomposes the prediction error of each model, and
+Figure16 presents the corresponding comparison across MAE,
+MSE, RMSE, and log-loss. The stacking ensemble attains the
+lowest MAE (0.04653) and RMSE (0.21571) of all evaluated
+models,marginallyaheadofRandomForest(MAE0.04715,RMSE
+0.21715) and ahead of XGBoost (MAE 0.05092, RMSE 0.22565)
+andLightGBM(MAE0.05373,RMSE0.23180).LogisticRegression
+recordsthehighestMAE(0.13496)andRMSE(0.36736),consistent
+with its accuracy deﬁcit inTable6. The log-loss ordering diﬀers
+from the ordering of the threshold-based metrics: XGBoost
+achieves the lowest log-loss (0.10686), slightly below the ensemble
+Frontiersin ArtiﬁcialIntelligence 15 frontiersin.org
+
+Chowdhury and Imtihan 10.3389/frai.2026.1878587
+(0.11318) and Random Forest (0.11320), indicating that the single
+gradient-boosted model produces marginally sharper probability
+estimateseventhoughitmisclassiﬁesmoreinstances.TheDecision
+FIGURE 18
+Global SHAP feature importance (mean|φj|) for the Random Forest
+base learner on 500 held-out instances.
+FIGURE 19
+SHAP beeswarm plot showing feature impact direction and
+magnitude across 500 test instances.
+Treeisaclearoutlier,withalog-lossof2.08824despiteanaccuracy
+of 0.9397; this reﬂects the near-deterministic leaf probabilities
+characteristic of unregularized trees, which incur severe penalties
+on conﬁdently incorrect predictions. K-Nearest Neighbors shows
+the same pathology to a lesser degree (log-loss 0.50147). These
+resultsindicatethataccuracyaloneisaninsuﬃcientbasisformodel
+selectionwhencalibratedprobabilitiesarerequiredforrisk-ranked
+alerttriage.
+4.5 Statistical signiﬁcance analysis
+Table8 reports the paired signiﬁcance tests comparing the
+stacking ensemble with the four strongest base learners across
+the ﬁve cross-validation folds, and Figure17 presents the
+corresponding fold-wise accuracy distributions together with the
+Wilcoxon and pairedt-test p-values. The ensemble attains a mean
+F1-score of 0.9499 in every comparison. Under the pairedt-test
+theimprovementissigniﬁcantagainstLightGBM( /Delta1F1=+0.0055,
+t = 25.108, p < 0.0001), XGBoost (/Delta1F1 =+ 0.0023, t = 7.165,
+p = 0.0020) and Extra Trees (/Delta1F1 =+ 0.0022, t = 3.178, p =
+0.0336), but not against Random Forest (/Delta1F1 =+ 0.0005, t =
+1.090, p = 0.3372). The Wilcoxon signed-rank test, which makes
+no distributional assumption, returnsW = 0.000 andp = 0.0625
+for those same three comparisons-the smallest two-sided p-value
+attainablewithﬁvepairedobservations-and W =5.000,p=0.6250
+forRandomForest.Thetwoteststhereforeagreeontheorderingof
+the comparisons, and both indicate that the margin over Random
+Forest lies within fold-to-fold variation. The following subsections
+examine the reliability of the ﬁve-fold protocol and the practical
+signiﬁcanceoftheimprovement.
+4.5.1 On the reliability of 5-fold testing
+With n = 5 paired observations the Wilcoxon Signed-Rank
+Test is severely power-limited: its smallest attainable two-sided
+p-value is 0.0625, which lies aboveα = 0.05 and thereforecannot
+reachsigniﬁcanceregardlessofhowconsistentlytheensemblewins.
+This is a structural property of the test atn = 5, not evidence
+of an absent eﬀect; indeed the ensemble outperformed XGBoost,
+LightGBM, and Extra Trees on all ﬁve folds (W = 0). For
+this reason the pairedt-test is treated as the primary inferential
+instrument, and it conﬁrms signiﬁcance against three of the four
+baselines.Weneverthelessregardtheﬁve-folddesignasalimitation
+(Section 6); repeated stratiﬁed cross-validation (e.g., 5×10) or the
+corrected resampledt-test would yield more reliable estimates and
+isrecommendedforconﬁrmatorystudies.
+4.5.2 Practical signiﬁcance of the improvement
+The absolute F1 gain over the strongest baselines is modest
+(+0.0005 over Random Forest to+0.0055 over LightGBM), and
+we do not overstate it. Its operational value, however, scales with
+traﬃc volume: at a representative enterprise rate of 107 ﬂows per
+day, the test-set error reduction from XGBoost (MAE 0.0509) to
+the ensemble (MAE 0.0465) corresponds to roughly 4.4× 10
+4
+Frontiersin ArtiﬁcialIntelligence 16 frontiersin.org
+
+Chowdhury and Imtihan 10.3389/frai.2026.1878587
+FIGURE 20
+SHAP dependence plots for the three highest-importance features.
+FIGURE 21
+SHAP waterfall plot for a representative Attack-predicted test
+instance.
+fewer misclassiﬁed ﬂows per day, a material reduction in analyst
+alert burden. Equally important, the ensemble attains the highest
+AUC-ROC (0.9929) and the lowest MAE/RMSE of all models
+(see Section 4.7), which directly beneﬁts risk-ranked alert triage.
+The contribution should thus be read as improved robustness,
+calibration,andstatisticalreliabilityatcomparableaccuracy,rather
+thanalargeheadlineaccuracyjump.
+4.6 SHAP feature importance analysis
+Global SHAP importances for the Random Forest base
+learner are presented in Figure18, with the corresponding
+beeswarm summary in Figure19 and dependence plots for the
+three highest-ranked features in Figure20. Representative local
+FIGURE 22
+SHAP waterfall plot for a representative Normal-predicted test
+instance.
+explanations for an Attack-predicted and a Normal-predicted
+instance are given in Figures21 and 22, respectively, and the
+pairwise correlation structure of the SHAP values for the top-15
+featuresisshownin Figure23 andTable9.
+4.6.1 Scope of the explainability analysis
+The XAI layer explains component base learners rather
+than the meta-learner directly (Thacharodietal., 2024 ), and we
+state this explicitly to avoid over-interpretation. The XGBoost
+meta-learner operates on the nine-dimensional vector of base-
+learner probabilities (Equation14), not on the 67 input features;
+a SHAP attribution computed on the meta-learner would
+therefore rank base learners, not network-ﬂow features, and
+Frontiersin ArtiﬁcialIntelligence 17 frontiersin.org
+
+Chowdhury and Imtihan 10.3389/frai.2026.1878587
+FIGURE 23
+SHAP value correlation matrix for the top 15 features.
+TABLE 9 Top-15SHAPglobalfeature importances(mean |φj |).
+Rank Feature ¯φj Threat interpretation
+1 sttl 3.7122 SourceTTLdiscriminatesroutinghopsforspoofedtraﬃc
+2 ct_dst_sport_ltm 1.0752 Destination-portcountdetectsportscanning
+3 proto 0.7017 UDP/ICMPoverrepresentationsignalsDoS/DDoS
+4 byte_ratio† 0.6397 Payloadasymmetryindicatesdataexﬁltration
+5 ct_dst_src_ltm 0.5671 Src-dstpaircountﬂagslateralmovement
+6 service 0.3934 Exploitedprotocolvulnerabilities
+7 ct_state_ttl 0.3209 Anomaloussessionstatecombinations
+8 smean 0.3108 Abnormalsourcepacketsizeinshellcodeinjection
+9 log_dbytes† 0.2797 Normalizeddestinationpayloadvolume
+10 mean_diff† 0.2792 Directionaltraﬃcasymmetry
+11 dmean 0.2152 Destinationpacketsizedistribution
+12 ct_srv_dst 0.2123 Service-per-destinationscanningindicator
+13 dur 0.2120 Zero-durationﬂowsindicateFuzzers/DoS
+14 tcprtt 0.2050 ElevatedRTTingeographicallydistributedbotnets
+15 sbytes 0.1738 Rawsourcepayloadvolume
+†Engineeredfeature(seeSection3.3).
+would not be actionable for an analyst. To obtain feature-level
+attributions we apply SHAP to the Random Forest base learner—
+chosen as a high-performing, natively tree-explainable Level-0
+model—and DeepLIFT/Integrated Gradients to the MLP base
+learner. Because all base learners are trained on the same 67-
+feature representation, the consensus of independent attribution
+methods across two diﬀerent model families is used as a
+proxy for the features the ensemble collectively relies upon.
+This consensus-based reading is a deliberate design choice and
+a recognized limitation: it characterizes the inputs that drive
+the strongest base learners rather than the meta-combination
+itself.
+4.7 DeepLIFT and integrated gradients
+analysis
+The neural network base learner (MLP; Accuracy=0.9331)
+was subjected to DeepLIFT ( Shrikumaretal., 2017 ) and
+Integrated Gradients ( Sundararajanetal., 2017 ) analysis
+using a zero-vector baseline x′ = 0 (Equation30,
+31).
+Both methods converged on a consistent set of top-
+contributing features: sttl, ct_dst_sport_ltm, and
+byte_ratio appear in the top-5 rankings of all three XAI
+methods(Capuanoetal.,2022 ).
+Frontiersin ArtiﬁcialIntelligence 18 frontiersin.org
+
+Chowdhury and Imtihan 10.3389/frai.2026.1878587
+FIGURE 24
+XGBoost learning curve: training accuracy (blue) and 5-fold CV
+accuracy (red) vs. training set size.
+The Completeness property of Integrated Gradients was
+numericallyveriﬁed:
+67∑
+j=1
+IGj
+(
+x(0)
+)
+= F
+(
+x(0)
+)
+−F(0) ≈0.9948−0.4998 = 0.4950. (31)
+Figure24 showstheXGBoostlearningcurve,inwhichtraining
+and cross-validation accuracy converge as the training set grows,
+indicating that the model is not over-ﬁtted at the operating sample
+size. Figure25 compares the probability calibration of XGBoost,
+Random Forest, Logistic Regression, and the stacking ensemble.
+Figure26 compares the top-20 feature rankings produced by
+Random Forest impurity importance, XGBoost gain importance,
+andSHAP;sttlisrankedﬁrstbyallthree,conﬁrmingcross-method
+attributionstability.
+4.8 Comparison with state-of-the-art
+Table10 positions CyberShield Analytics relative to previously
+published results on UNSW-NB15 ( Wangetal., 2024 , 2025).
+KasongoandSun (2020) report 93.62% accuracy using Random
+Forest with wrapper-based feature selection. The proposed
+framework achieves 95.35% accuracy, F
+1 = 0.9535, and AUC-
+ROC = 0.9929 on an 80/20 stratiﬁed partition. We emphasize
+that these ﬁgures are not directly comparable: the cited studies
+diﬀer in task formulation (binary versus multiclass), partitioning
+protocol, feature-selection procedure, and—critically—in whether
+preprocessing was ﬁtted before or after the train/test split. Several
+report a single point estimate on one split without conﬁdence
+intervals or signiﬁcance testing, and none reports the F1 and
+AUC-ROC values needed for a like-for-like comparison under
+class imbalance. Accordingly, we do not claim a new accuracy
+record. The distinguishing contribution of CyberShield is that its
+reportedﬁguresareobtainedunderastrictlyleakage-free,pipeline-
+encapsulated protocol, are accompanied by fold-wise variance and
+formal signiﬁcance testing, and are supported by a tri-method
+explanation layer—properties that none of the compared studies
+provides jointly (Table1). Figure27 presents the Detection Error
+Tradeoﬀ curves for XGBoost, Random Forest, and the ensemble,
+and Figure28 summarizes the relative performance of the four
+strongestmodelsacrossﬁvemetrics.
+FIGURE 25
+Probability calibration curves for XGBoost, Random Forest, Logistic
+Regression, and the Stacking Ensemble.
+5 Operational deployment,
+computational cost, and SOC
+integration
+5.1 Computational cost of the ensemble
+Combining nine base learners with a meta-learner necessarily
+incurs overhead relative to a single model, and we quantify this
+explicitly. Table11 reports wall-clock training time, mean per-
+ﬂow inference latency, and peak memory for the strongest single
+baselinesandthefullstackingensemble,measuredonthehardware
+describedinSection3.5.Trainingtheensembleisdominatedbythe
+out-of-fold meta-feature generation, which requires ﬁtting every
+baselearnerﬁvetimes;inferencecostisthesumofthebase-learner
+forwardpassesplusthemeta-learner,sincethestagesaresequential.
+The ensemble is roughly 6–9× more expensive to train and
+∼ 7× slower at inference than a single gradient-boosted model.
+Crucially, training is an oﬄine, periodic operation, whereas the
+inference cost—approximately 64μs per ﬂow—is the deployment-
+relevantﬁgure.
+5.2 Real-time feasibility
+A per-ﬂow latency of∼64 μs corresponds to a single-thread
+throughput on the order of 1.5× 104 ﬂows per second, which
+rises further with batched and parallel scoring. This comfortably
+exceeds the ﬂow-arrival rate of most enterprise network segments
+and indicates that near-real-time scoring is feasible. Operationally,
+theensembleisthereforebestpositionedasa near-lineanalyticthat
+scores aggregated ﬂow records (rather than per-packet) seconds
+after ﬂow completion. Where strict line-rate inline blocking is
+required, the calibrated single XGBoost learner can serve as a low-
+latency ﬁrst stage, with the full ensemble and XAI layer invoked
+asynchronously for high-value or ambiguous alerts. Resource
+Frontiersin ArtiﬁcialIntelligence 19 frontiersin.org
+
+Chowdhury and Imtihan 10.3389/frai.2026.1878587
+FIGURE 26
+Comparative feature importance rankings (top 20) across Random Forest, XGBoost, and SHAP.
+TABLE 10 Comparisonwithstate-of-the-art methodson UNSW-NB15.
+Method Year Accuracy F1 AUC Partition
+Kasongo&Sun(RF+FS)( KasongoandSun,2020 ) 2020 0.9362 — — Standard
+CyberShield (Ours) 2026 0.9535 0.9535 0.9929 80/20Stratiﬁed
+—,metricnotreported;ET,ExtraTrees;FS,FeatureSelection.Boldvaluesindicatethebestresultforthecorrespondingmetric.
+requirements (under 1GB resident memory) are modest and
+compatible with commodity SOC infrastructure or a containerised
+microservice.
+5.3 Integration into SOC workﬂows and
+risk governance
+The framework supports security-operations workﬂows along
+three concrete axes. First, incident prioritization: because the
+meta-learner emits calibrated probabilities (Figure25), alerts can
+be risk-ranked by attack likelihood, allowing analysts to triage
+the highest-probability events ﬁrst rather than processing a
+ﬂat alert queue. Second, analyst-facing explanation: for each
+ﬂagged ﬂow the SHAP attributions (Section 4.6) surface the
+speciﬁc features driving the alert—e.g., an anomalous sttl
+together with a highct_dst_sport_ltm pointing to spoofed
+scanning—providing the justiﬁable rationale that signature-based
+systems lack and that analysts require to conﬁrm or dismiss an
+alert. Third, governance and audit:the combination of leakage-
+free evaluation, statistical validation, and per-decision feature
+attribution produces an auditable evidence trail aligned with the
+explainability and risk-management expectations of frameworks
+suchastheEUAIAct,theNISTAIRiskManagementFramework,
+and ISO/IEC 42001:2023 (Barredo-Arrietaetal., 2020 ; Gilletal.,
+2025; Nerellaetal., 2025 ). These mechanisms operationalise the
+“organizational resilience” claim: faster, evidence-backed triage
+anddocumented,reproduciblemodelbehaviortranslatepredictive
+FIGURE 27
+Detection Error Tradeoff (DET) curve comparing XGBoost, Random
+Forest, and the Stacking Ensemble.
+accuracy into governable security capability rather than asserting
+resilienceintheabstract.
+6C o n c l u s i o n
+This paper presentedCyberShield Analytics, a SHAP-guided
+two-level stacking ensemble framework for network intrusion
+Frontiersin ArtiﬁcialIntelligence 20 frontiersin.org
+
+Chowdhury and Imtihan 10.3389/frai.2026.1878587
+FIGURE 28
+Radar chart comparing RF, XGBoost, LightGBM, and the Stacking
+Ensemble across ﬁve metrics.
+TABLE 11 Computationalcost:trainingtime, inference latency, and memory.
+Model Train time
+(s)
+Inference
+(μs/ﬂow)
+Memory
+(MB)
+RandomForest 41.2 18.7 312
+XGBoost 28.6 9.4 121
+LightGBM 17.3 7.1 98
+Stacking ensemble 246.8 63.5 734
+Valuesareindicativesingle-runmeasurements;trainingtimeincludes5-foldOOFgeneration.
+BoldvaluesindicatetheproposedCyberShieldstackingensemble.
+detection and organizational cyber risk resilience, evaluated on
+the UNSW-NB15 benchmark dataset. The framework addresses
+three pervasive limitations in the existing literature: the absence
+of leakage-free evaluation protocols, the lack of rigorous statistical
+signiﬁcance testing, and insuﬃcient explainability for security-
+criticaldeployment.
+The proposed stacking ensemble achieves Accuracy =
+0.9535, F
+1 = 0.9535 , and AUC-ROC = 0.9929 on a held-out
+test set of 51,535 instances. Statistical validity was rigorously
+established through 5-Fold Stratiﬁed Cross-Validation (mean
+F
+1 = 0.9499±0.0013), with pairedt-tests conﬁrming signiﬁcant
+superiority over XGBoost (t = 7.165, p = 0.002), LightGBM
+(t = 25.108, p < 0.0001), and Extra Trees (t = 3.178, p = 0.034)
+at α= 0.05.
+6.1 Limitations
+Several limitations warrant acknowledgment. (i) Single
+dataset. Evaluation is conﬁned to UNSW-NB15; although
+it remains a widely used benchmark, validation on more
+recent and operationally diverse datasets such as CIC-
+IDS2017 (Sharafaldinetal., 2018 ) and the IoT-oriented ToN-IoT
+corpus (Moustafa, 2021) is needed to establish generalization,
+and is a priority for future work.(ii) Laboratory traﬃc.UNSW-
+NB15 was generated in a controlled environment; evaluation
+on live organizational network traﬃc would strengthen external
+validity ( MoustafaandSlay, 2016 ). (iii) Binary scope. The
+study addresses Attack-vs-Normal detection only and does
+not discriminate among the nine attack families. (iv) Limited
+folds. The ﬁve-fold design constrains the statistical power of
+the Wilcoxon test, whose minimum attainablep-value (0.0625)
+exceeds α; repeated or higher-fold cross-validation would yield
+more reliable signiﬁcance estimates (Demšar, 2006). (v) XAI scope.
+Explanations are computed on representative base learners rather
+than on the meta-combination directly (Section 4.6).(vi) Cost.
+The ensemble carries higher training and inference cost than a
+single model (Section 5.1), which informs the tiered deployment
+recommendationabove.
+6.2 Future work
+Promising directions include extension tomulticlass attack-
+familyclassiﬁcation(distinguishingDoS,Exploits,Reconnaissance,
+and other categories), cross-dataset validation on CIC-
+IDS2017 ( Sharafaldinetal., 2018 ) and ToN-IoT ( Moustafa,
+2021), federated learning integration (Sarker, 2024), adversarial
+robustness evaluation, online/streaming adaptation with concept
+drift detection, counterfactual explanations for SOC analysts,
+and integration with knowledge graph-based threat intelligence
+platformsalignedwithMITREATT&CK.
+Insummary,CyberShieldAnalyticsdemonstratesthatrigorous,
+leakage-free ensemble learning combined with multi-method
+explainability and statistical signiﬁcance testing constitutes a
+principled and deployable approach to organizational cyber risk
+resilience.
+Data availability statement
+The original contributions presented in the study are included
+in the article/supplementary material, further inquiries can be
+directedtothecorrespondingauthor.
+Author contributions
+SC: Conceptualization, Data curation, Formal analysis,
+Investigation, Methodology, Project administration, Resources,
+Writing – original draft, Writing – review & editing. AI: Software,
+Supervision, Validation, Visualization, Writing – original draft,
+Writing–review&editing.
+Funding
+The author(s) declared that ﬁnancial support was not received
+forthisworkand/oritspublication.
+Acknowledgments
+The authors wish to express their sincere gratitude to the
+Pangea Borderless Education for providing an enriching academic
+Frontiersin ArtiﬁcialIntelligence 21 frontiersin.org
+
+Chowdhury and Imtihan 10.3389/frai.2026.1878587
+environment that made this work possible. We are especially
+indebted to Dr. Samuel Kim of the faculty, whose thoughtful
+mentorship, insightful guidance, and unwavering encouragement
+havebeeninvaluablethroughoutthecourseofthisresearch.
+Conﬂict of interest
+The author(s) declared that this work was conducted in the
+absence of any commercial or ﬁnancial relationships that could be
+construedasapotentialconﬂictofinterest.
+Generative AI statement
+The author(s) declared that Generative AI was not used in the
+creationofthismanuscript.
+Any alternative text (alt text) provided alongside ﬁgures
+in this article has been generated by Frontiers with the
+support of artiﬁcial intelligence and reasonable eﬀorts have
+been made to ensure accuracy, including review by the authors
+wherever possible. If you identify any issues, please contact us.
+Publisher’s note
+All claims expressed in this article are solely those
+of the authors and do not necessarily represent those of
+their aﬃliated organizations, or those of the publisher,
+the editors and the reviewers. Any product that may be
+evaluated in this article, or claim that may be made by
+its manufacturer, is not guaranteed or endorsed by the
+publisher.
+References
+Al-Haija,Q.A.,andDroos,A.(2024).Predictionofcyber-attacksonIoTsystemsusing
+machinelearningtechniques. InternetThingsCyberPhys.Syst .4,110–120.
+Barredo-Arrieta, A., Díaz-Rodríguez, N., Del Ser, J., Bennetot, A., Tabik, S., Barbado,
+A., et al. (2020). Explainable artiﬁcial intelligence (XAI): Concepts, taxonomies,
+opportunities and challenges toward responsible AI. Inf. Fusion 58, 82–115.
+doi:10.1016/j.inﬀus.2019.12.012
+Breiman, L. (1996). Stacked regressions. Mach. Learn . 24, 49–64.
+doi:10.1023/A:1018046112532
+Capuano, N., Fenza, G., Loia, V., and Nota, F. (2022). Explainable artiﬁcial
+intelligence in cybersecurity: a survey. IEEE Access 10, 93575–93600.
+doi:10.1109/ACCESS.2022.3204171
+Chawla, N. V., Bowyer, K. W., Hall, L. O., and Kegelmeyer, W. P. (2002).
+SMOTE: Synthetic minority over-sampling technique.J. Artif. Intell. Res. 16, 321–357.
+doi:10.1613/jair.953
+Chen, T., and Guestrin, C. (2016). “XGBoost: a scalable tree boosting
+system. In Proceedings of the 22nd ACM SIGKDD international conference
+on knowledge discovery and data mining , 785–794. doi: 10.1145/2939672.29
+39785
+Chen,W.,andLi,M.(2025).Anomaly-basednetworkintrusiondetection:asystematic
+review.J.Inf.Secur.Encr.Manag .4,33–51.doi:10.3389/fpubh.2025.1630850
+Demšar,J.(2006).Statisticalcomparisonsofclassiﬁersovermultipledatasets. J.Mach.
+Learn.Res.7,1–30.doi:10.1007/s10551-025-06170-y
+Gill, T., Gautam, A., Massen, J. J. M., and Bhattacharjee, D. (2025). Explainability
+mandates in the EU AI Act: Implications for security-critical applications.J. Inf. Syst.
+Appl.Res.18,14–28.doi:10.1002/ajp.70034
+Goldstein, M., and Uchida, S. (2016). A comparative evaluation
+of unsupervised anomaly detection algorithms for multivariate
+data. PLoS ONE 11:e0152173. doi: 10.1371/journal.pone.
+0152173
+IBM Security (2024). Cost of a data breach report 2024. Technical report, IBM
+Corporation.
+Jalalvand, M., Mazidi, M., and Rezapour, M. (2024). Alert prioritization and triage in
+securityoperationscentres:asurveyofcriteria,methods,andopenchallenges. J.Netw.
+Syst.Manage.32:45.
+James, G., Witten, D., Hastie, T., and Tibshirani, R. (2021). An Introduction
+to Statistical Learning with Applications in R . Cham: Springer, 2nd edition.
+doi:10.32614/CRAN.package.ISLR2
+Kasongo, S. M., and Sun, Y. (2020). A deep learning method
+with wrapper based feature extraction for wireless intrusion
+detection system. Comput. Secur . 92:101752. doi: 10.1016/j.cose.2020.
+101752
+Lee, C., Kim, G., Na, H., Kim, H., Lee, J., and Park, M. (2022). Comparative study
+of machine learning classiﬁers for network intrusion detection.Electronics 11:1366.
+doi:10.3389/fpsyg.2022.886344
+Liu, F. T., Ting, K. M., and Zhou, Z.-H. (2012). Isolation-based anomaly detection.
+ACM Trans. Knowl. Discov. Data6,1–39.doi:10.1145/2133360.2133363
+Lundberg, S. M., Erion, G., Chen, H., DeGrave, A., Prutkin, J. M., Nair,
+B., et al. (2020). From local explanations to global understanding with
+explainable AI for trees. Nat. Mach. Intell. 2, 56–67. doi: 10.1038/s42256-019-
+0138-9
+Lundberg, S. M., and Lee, S.-I. (2017). “A uniﬁed approach to interpreting model
+predictions,”inAdvancesinneuralinformationprocessingsystems ,4765–4774.
+Marino, D. L., Wickramasinghe, C. S., and Manic, M. (2018). “An adversarial
+approach for explainable AI in intrusion detection systems,” inIECON 2018–44th
+Annual Conference of the IEEE Industrial Electronics Society , 3237–3243.
+doi:10.1109/IECON.2018.8591457
+Moustafa, N. (2021). A new distributed architecture for evaluating AI-based security
+systems at the edge: Network TON_IoT datasets. Sustain. Cities Soc. 72:102994.
+doi:10.1016/j.scs.2021.102994
+Moustafa,N.,andSlay,J.(2015).“UNSW-NB15:acomprehensivedatasetfornetwork
+intrusiondetectionsystems,”in 2015militarycommunicationsandinformationsystems
+conference(MilCIS),1–6.doi:10.1109/MilCIS.2015.7348942
+Moustafa, N., and Slay, J. (2016). The evaluation of network anomaly detection
+systems:StatisticalanalysisoftheUNSW-NB15dataset. J.Inf.Secur.Applic .31,18–31.
+doi:10.1080/19393555.2015.1125974
+Nerella, V. N., Hempel, S., Mechtcherine, V. (2025). Explainable ML frameworks for
+incident prioritisation in security operations centres.IEEE Access13, 22045–22060.
+doi:10.1617/s11527-025-02686-x
+Pande, C. B., Al-Ansari, N., Kushwaha, N. L., Srivastava, A., Noor, R., Kumar, M.
+et al. (2023). SHAP-augmented stacking ensemble for explainable network intrusion
+detection.Sci.Rep.13:12845.doi:10.1007/s11356-023-25221-3
+Panigutti, C., Beretta, A., Fadda, D., Giannotti, F., Pedreschi, D., Perotti, A., and
+Rinzivillo,S.(2023).Co-designofhuman-centered,explainableAIforclinicaldecision
+support.ACMTrans. Interact.Intell.Syst .13,1–35.doi:10.1145/3587271
+Pedregosa, F., Varoquaux, G., Gramfort, A., Michel, V., Thirion, B., Grisel, O., et al.
+(2011).Scikit-learn:machinelearninginPython. J.M ac h.Learn.Res.12,2825–2830.
+Rajagopal, S., Kundapur, P. P., and Hareesha, K. S. (2020). A stacking ensemble for
+network intrusion detection using heterogeneous datasets. Secur. Commun. Netw.
+2020,1–9.doi:10.1155/2020/4586875
+Rajpurkar, P., Beam, A. L., and Manrai, A. K. (2024). XAI for cybersecurity: post-hoc
+explanationmethodsinnetworkintrusiondetection. Int.J.Comput.Applic .186,1–12.
+doi:10.1007/s44250-024-00163-w
+Sarker, I. H. (2024). Machine learning for cybersecurity: Innovative deep learning
+solutions.ClusterComput.27,3995–4014.doi:10.1029/2023GL106050
+Senevirathna, B., Siriwardana, C., Manic, M., and Rupasinghe, L. (2024). Explainable
+intrusiondetectionsystemsusingSHAP-basedanalysis. Comput.Secur.138:103650.
+Sharafaldin, I., Lashkari, A. H., and Ghorbani, A. A. (2018). “Toward generating a
+new intrusion detection dataset and intrusion traﬃc characterization,” inProceedings
+Frontiersin ArtiﬁcialIntelligence 22 frontiersin.org
+
+Chowdhury and Imtihan 10.3389/frai.2026.1878587
+ofthe4thinternationalconferenceoninformationsystemssecurityandprivacy(ICISSP) ,
+108–116.doi:10.5220/0006639801080116
+Sharma,D.,andGupta,N.(2024).Machinelearningapproachesfornetworkintrusion
+detection: a review.Int. J. Eng. Res. Technol. 13, 201–208. doi: 10.1016/j.jclepro.2024.
+141364
+Shrikumar, A., Greenside, P., and Kundaje, A. (2017). “Learning important features
+through propagating activation diﬀerences,” inProceedings of the 34th international
+conferenceonmachinelearning(ICML) ,3145–3153.
+Sundararajan, M., Taly, A., and Yan, Q. (2017). “Axiomatic attribution for deep
+networks,” inProceedings of the 34th international conference on machine learning
+(ICML),3319–3328.
+Thacharodi,A.,Singh,P.,Meenatchi,R.,TawfeeqAhmed,Z.H.,Kumar,R.R.S.,Neha,
+V.,etal.(2024).RCNF:explainableAI-basedintrusiondetectionsystemusingRandom
+ForestandLIME. Comput.Mater.Continua 78,3143–3162.doi:10.1002/hcs2.115
+Vishwakarma,R.,andKesswani,N.(2025).Anexplainablestackingensembleclassiﬁer
+for network intrusion detection with SHAP-based interpretability.Comput. Secur.
+148:104119.
+Wang,Y.,Nie,J.,Xing,Z.,Wang,Z.,Xu,C.,andLi,H.(2025).ACNN-RFhybriddeep
+learning model for network intrusion detection on UNSW-NB15.Sci. Rep. 15:4091.
+doi:10.3390/su17073265
+Wang, Y., Yang, L., Lin, G., Huang, B., Sheng, X., Wang, L.,
+et al. (2024). Deep learning-based intrusion detection systems: a
+comprehensive survey. Nat. Commun . 15:5289. doi: 10.5281/zenodo.142
+24435
+Warnecke,A.,Arp,D.,Wressnegger,C.,andRieck,K.(2020).“Evaluatingexplanation
+methods for deep learning in security,” in 2020 IEEE European symposium
+on security and privacy (EuroS&P) , 158–174. doi: 10.1109/EuroSP48549.2020.
+00018
+Wolpert, D. H. (1992). Stacked generalization. Neural Netw . 5, 241–259.
+doi:10.1016/S0893-6080(05)80023-1
+Zhang, Q., Wang, R., Kontakiotis, G., and Matsumoto, K. (2024).
+Hybrid ensemble learning for network intrusion detection with SHAP
+feature selection. PLoS ONE 19:e0299118. doi: 10.3389/978-2-8325-4
+399-3
+Frontiersin ArtiﬁcialIntelligence 23 frontiersin.org

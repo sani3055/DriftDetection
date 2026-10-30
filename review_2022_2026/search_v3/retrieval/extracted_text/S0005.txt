@@ -1,0 +1,1259 @@
+International Journal of Information Security (2026) 25:159
+https://doi.org/10.1007/s10207-026-01333-y
+REGULAR CONTRIBUTION
+Estimating adversarial transferability from feature-importance
+similarity in explainable intrusion detection systems
+Abdlelah Abdlatef 1 · Marwa Abdulkareem 2 · Duygu Cakir 2,3
+Received: 10 May 2025 / Accepted: 6 September 2026 / Published online: 14 September 2026
+© The Author(s) 2026
+Abstract
+Machine Learning (ML)-based Intrusion Detection Systems (IDS) are critical for defending against cyber threats but remain
+vulnerable to adversarial attacks, posing risks to system reliability and security. This study investigates the transferability
+of adversarial attacks across XGBoost and LightGBM models in IDS and uses Explainable AI (XAI) techniques to identify
+features that inﬂuence model decisions. Experiments on the CICIDS-2017 and NSL-KDD datasets demonstrate cross-model
+adversarial transferability, with accuracy reductions of 8.75% and 10.59% for XGBoost and LightGBM, respectively. The
+XAI-informed analysis further shows that feature-importance patterns can be used to examine model vulnerability under
+adversarial perturbations. Under direct adversarial testing, XGBoost exhibited a 6.18% reduction in accuracy, illustrating
+the vulnerability associated with perturbations targeting highly ranked features. Building on prior research linking feature
+importance to adversarial transferability, this study operationalizes that relationship in the IDS domain through a heuristic
+formulation based on correlations between model-speciﬁc feature-importance vectors. The proposed formulation is intended
+as a practical approximation for assessing cross-model vulnerability rather than as a deterministic predictor.
+Keywords Adversarial attacks · Intrusion detection systems (IDS) · Explainable AI (XAI) · Adversarial transferability ·
+Feature importance
+1 Introduction
+Intrusion Detection Systems (IDS) have become essential
+components in cybersecurity frameworks, with machine
+learning (ML) approaches increasingly adopted to enhance
+detection capabilities. Despite their performance, ML-based
+IDS remain vulnerable to adversarial attacks that manipulate
+input data to evade detection mechanisms [ 1]. These per-
+turbations to malicious trafﬁc can signiﬁcantly degrade IDS
+B Duygu Cakir
+duygu.cakir@bau.edu.tr
+Abdlelah Abdlatef
+abdlelah.abdlatef@bahcesehir.edu.tr
+Marwa Abdulkareem
+marwaissam.abdulkareem@bau.edu.tr
+1 Graduate School, Bahcesehir University, Istanbul, Besiktas
+34353, Turkey
+2 Department of Software Engineering, Bahcesehir University,
+Istanbul, Besiktas 34353, Turkey
+3 Programme of Applied Mathematics, Galatasaray University,
+Istanbul, Besiktas 34349, Turkey
+accuracy, raising concerns about system reliability in critical
+applications.
+Network IDS attacks are commonly classiﬁed as white-
+box attacks, where attackers have complete knowledge of
+the target model, or black-box attacks, where attackers have
+limited information [ 2]. While white-box attacks are effec-
+tive but unrealistic in practical scenarios, black-box attacks
+often achieve lower success rates due to limited transfer-
+ability between different model architectures. Understanding
+adversarial example transferability is essential for develop-
+ing robust ML-based IDS solutions.
+Adversarial Machine Learning (AML) examines how
+machine learning systems respond when targeted by mali-
+cious actors attempting to degrade performance or extract
+sensitive information [3]. AML attacks include data poison-
+ing (corrupting training data), evasion attacks (manipulating
+input data), and inference attacks (extracting unauthorized
+information). Common generation techniques include the
+Fast Gradient Sign Method (FGSM) [ 4] and Jacobian-based
+Saliency Map Attack (JSMA) [ 5]F i g .1.
+To address these threats, researchers have developed
+defensive mechanisms such as data sanitization and robust
+123
+
+159 Page 2 of 15 A. Abdlatef et al.
+classiﬁer development during training, as well as security
+assessment systems based on game theory and advanced
+cryptographic techniques during testing [ 6]. Additionally,
+Explainable AI (XAI) has emerged as a critical approach
+for enhancing the interpretability of ML models, particularly
+in security contexts where understanding model reasoning
+is crucial [ 7]. Model-agnostic techniques such as Local
+Interpretable Model-Agnostic Explanations (LIME) [ 8] and
+SHapley Additive exPlanations (SHAP) [ 6] provide signiﬁ-
+cant tools for interpreting complex model behaviors.
+Previous studies have demonstrated the value of XAI
+methods for identifying inﬂuential features, interpreting
+intrusion detection decisions, and analyzing model vulner-
+abilities [ 9, 10]. However, an important gap remains in
+operationalizing the relationship between feature importance
+and adversarial transferability for intrusion detection sys-
+tems. While prior research has examined feature-importance-
+aware attack generation and transferable adversarial behav-
+ior, comparatively limited attention has been given to using
+feature-importance similarity as an explicit heuristic for
+approximating cross-model transferability. This gap is par-
+ticularly relevant for controlled comparisons between struc-
+turally related gradient-boosting models using post-hoc XAI
+methods. Notably, recent work in this journal has applied
+XAI to black-box attack generation against deep-learning
+NIDS [11]; the present study is complementary, addressing
+the distinct question of cross-model transferability between
+gradient-boosting detectors.
+This study addresses this gap by operationalizing the rela-
+tionship between feature-importance similarity and adversar-
+ial transferability in the context of machine learning-based
+intrusion detection. Rather than claiming to originate the gen-
+eral connection between important features and transferable
+adversarial behavior, the study adapts this relationship to a
+controlled comparison of XGBoost and LightGBM models.
+The main contributions of this work are as follows:
+• We investigate adversarial transferability between two
+structurally related gradient-boosting models, XGBoost
+and LightGBM, using the CICIDS-2017 and NSL-KDD
+datasets.
+• We use SHAP and LIME to identify model-relevant fea-
+tures and examine how similarities in feature-importance
+patterns relate to cross-model adversarial vulnerability.
+• We introduce a heuristic quantitative formulation that
+approximates transferability as a function of the correla-
+tion between model-speciﬁc feature-importance vectors.
+• We empirically compare the heuristic estimate with the
+observed transferability rate and discuss the limitations
+arising from the piecewise-constant structure of tree
+ensembles.
+• We provide an IDS-speciﬁc operationalization of the
+broader feature-importance–transferability relationship,
+with the scope deliberately restricted to gradient-boosting
+tree models.
+The remainder of this paper is organized as follows:
+Sect. 2 reviews related work in intrusion detection systems,
+machine learning techniques for IDS, adversarial attacks,
+and XAI applications in cybersecurity. Section 3 details our
+methodology, including the proposed framework, datasets,
+preprocessing techniques, adversarial example generation,
+and explainability methods. Section 4 presents experimen-
+tal results, comprising XAI feature importance analysis,
+the proposed formulation for adversarial transferability, and
+model performance evaluation under attacks, and a contex-
+tual analysis with existing approaches. Section 5 discusses
+the empirical ﬁndings, the utility and limitations of the pro-
+posed formulation, and its relationship to prior adversarial
+transferability research. Finally, Sect. 6 concludes the paper
+with a summary of contributions, limitations, and directions
+for future research.
+2 Related work
+The domain of intrusion detection has evolved signiﬁ-
+cantly with the integration of machine learning techniques,
+adversarial methods, and explainability approaches. This
+section reviews the relevant literature across four key areas:
+fundamental intrusion detection systems, machine learn-
+ing applications within IDS, adversarial attacks targeting
+these systems, and the role of explainable AI in enhancing
+security solutions. The section then highlights the open ques-
+tions and research challenges in the ﬁeld. In particular, this
+section traces the lineage of feature-importance-based adver-
+sarial transferability, from its origins in the computer-vision
+domain to its recent applications in network intrusion detec-
+tion.
+2.1 Intrusion detection systems
+Intrusion detection systems (IDS) have evolved signiﬁcantly
+to address the growing sophistication of cyber threats. These
+systems monitor and analyze network or system behav-
+ior to identify suspicious activities, classiﬁed primarily as
+host-based or network-based depending on their deployment
+location [ 12]. Network-based IDS (NIDS) examine trafﬁc
+at network segments, while host-based IDS (HIDS) ana-
+lyze indicators such as processes and log ﬁles on individual
+machines [ 13]. Modern IDS implementations have transi-
+tioned from signature-based approaches, which struggle with
+novel threats, to more advanced anomaly-based techniques
+that model normal behavior and ﬂag deviations [ 14].
+The integration of Big Data Analytics has transformed
+how organizations handle the overwhelming volume of net-
+123
+
+Estimating adversarial transferability from feature-importance similarity in explainable intrusion… Page 3 of 15 159
+Fig. 1 Adversarial Machine Learning (AML) attack and defense
+framework. The diagram illustrates the interaction between attackers
+employing techniques such as FGSM and JSMA to generate adver-
+sarial examples, and the defensive mechanisms including adversarial
+training and input transformation that protect ML-based systems
+work trafﬁc data, enabling comprehensive analysis rather
+than selective logging [ 15]. This transformation has created
+both challenges and opportunities for developing more effec-
+tive intrusion detection mechanisms capable of processing
+vast data streams while maintaining detection accuracy. Fig-
+ure 2 shows the steps of an intrusion detection process.
+2.2 ML techniques in IDS
+Machine learning approaches have been widely adopted in
+IDS to improve detection capabilities. Traditional ML algo-
+rithms such as Support V ector Machines (SVM), Random
+Forest (RF), and K-Nearest Neighbors (KNN) have demon-
+strated effectiveness in various intrusion detection scenarios
+[16]. These approaches typically rely on feature engineering
+to identify relevant patterns in network trafﬁc data.
+Decision tree-based ensemble methods, particularly Light-
+GBM and XGBoost, have shown high performance in
+intrusion detection tasks due to their ability to handle
+high-dimensional data with complex relationships. Light-
+GBM’s leaf-wise tree growth strategy offers computational
+advantages over XGBoost’s level-wise approach, making it
+particularly suitable for large-scale IDS applications [ 17].
+While traditional models such as Support V ector Machines
+(SVM) continue to be a signiﬁcant and widely adopted
+approach in the literature, gradient-boosting ensembles pro-
+vide shared feature-importance estimation mechanisms that
+facilitate a controlled study of adversarial transferability.
+Deep learning techniques have also been applied to intru-
+sion detection, with architectures such as Convolutional Neu-
+ral Networks (CNN), Long Short-Term Memory (LSTM),
+and hybrid models demonstrating promising results. For
+instance, Lo et al. [ 18] developed a CNN–LSTM hybrid
+model that achieved nearly 100% detection accuracy with
+minimal false alarm rates for various in-vehicle network
+attacks. Similarly, Maheswari et al. [ 19] proposed an opti-
+mal cluster-based IDS that achieved 95.01% accuracy on
+the KDD Cup’99 dataset by combining Multi-segment with
+Chaotic Manta-ray Foraging Optimization.
+2.3 Adversarial attacks on IDS
+Adversarial attacks on intrusion detection systems exploit
+vulnerabilities in machine learning models to evade detec-
+tion. These attacks can be categorized as white-box attacks,
+where attackers have complete knowledge of the target sys-
+tem, or black-box attacks, where attackers have limited
+information [1]. Research by Roshan et al. [20] demonstrated
+123
+
+159 Page 4 of 15 A. Abdlatef et al.
+Fig. 2 Steps of an intrusion detection process. The workﬂow demonstrates the pipeline from network trafﬁc collection through preprocessing,
+feature extraction, model training, and attack classiﬁcation
+that even small perturbations to network trafﬁc features can
+signiﬁcantly degrade the performance of deep learning-based
+NIDS.
+The transferability of adversarial attacks presents a partic-
+ular challenge, as attacks designed for one model can often
+successfully evade different models [ 9]. This phenomenon
+was observed by Paya et al. [ 21], who found that adversarial
+samples generated using Zeroth-order optimization (ZOO)
+and HopSkipJump attacks could transfer across different
+classiﬁer architectures with varying success rates.
+Generative Adversarial Networks (GANs) have been uti-
+lized both to generate adversarial samples and to enhance
+IDS robustness. Y ang et al. [22] introduced DA-GAN, a sys-
+tem that improved IDS performance by creating modiﬁed
+network attack data using GANs and Domain Adaptation,
+increasing detection rates from approximately 60% to over
+99% in various scenarios. While these studies have advanced
+the understanding of adversarial robustness, they have pri-
+marily focused on detection performance without addressing
+the interpretability of such attacks.
+Recent research emphasizes that Explainable AI (XAI)
+techniques can play a dual role in adversarial contexts [ 23,
+24]. On one hand, explainability methods such as SHAP and
+LIME can inadvertently expose critical features most inﬂu-
+ential to model predictions, thereby assisting adversaries in
+crafting more targeted perturbations [ 25–27]. On the other
+hand, these same tools can be used defensively to identify and
+mitigate model weaknesses by revealing sensitive regions in
+the feature space [ 9, 28–30].
+2.4 Feature-importance-based adversarial
+transferability
+A distinct line of research links the importance a model
+assigns to features with the transferability of adversarial
+examples across models. This subsection traces that lineage,
+from its conceptual origin in the computer-vision domain to
+its recent application in network intrusion detection, in order
+to position the present contribution within it.
+Only limited work has explored how feature-importance
+correlations inﬂuence adversarial transferability between
+models. The conceptual foundation for this direction orig-
+inates in the computer-vision domain: Wang et al. [ 31]p r o -
+posed the Feature Importance-aware Attack (FIA), arguing
+that feature importance is strongly correlated with the under-
+lying objects of interest and that this correlation remains
+largely invariant across different models, which makes
+importance-guided perturbations transfer more effectively.
+Our work extends this insight to the intrusion-detection
+domain along two axes. First, the purpose differs: FIA gener-
+ates adversarial images that disrupt critical features, whereas
+we use feature-importance similarity to approximate the
+transferability of adversarial samples between detectors. Sec-
+ond, the importance signal differs: FIA derives importance
+123
+
+Estimating adversarial transferability from feature-importance similarity in explainable intrusion… Page 5 of 15 159
+from aggregate gradients over feature maps of a source
+model, requiring internal access, whereas we rely on post-
+hoc, model-agnostic XAI (SHAP and LIME), which is better
+suited to the black-box setting typical of network intrusion
+detection. This research builds on that cross-domain foun-
+dation by operationalizing a heuristic connection between
+explainability-based feature relevance and the transferabil-
+ity of adversarial attacks.
+A closely related line of work uses XAI to guide adver-
+sarial attack generation against NIDS. Okada et al. [ 11]p r o -
+posed an XAI-driven black-box attack in which KernelSHAP
+identiﬁes the features most inﬂuential to a deep-learning
+detector, and perturbations are then crafted in the problem
+space to evade detection. Our study differs from this work in
+three respects. First, the target model class differs: Okada et
+al. attack deep feedforward detectors, whereas we focus on
+gradient-boosting tree ensembles. Second, the objective dif-
+fers: their framework is concerned with generating successful
+evasions for a single target, whereas our formulation aims to
+approximate how readily an adversarial example transfers
+between two models. Third, the explainability mechanism
+differs: they rely on KernelSHAP alone, whereas we combine
+SHAP and LIME to characterize feature-importance similar-
+ity across models.
+The work most closely related to ours is ETA, the
+Explainable Transfer-based Black-Box Adversarial Attack
+framework of Zhang et al. [ 32]. ETA shares our central
+premise that adversarial transferability arises when mod-
+els rely on similar important features, and, like the present
+study, it targets NIDS, uses CIC-IDS2017, and includes tree-
+based detectors. Despite this overlap, the two studies are
+oriented toward different ends. First, in terms of use case,
+ETA is an attack- generation framework: it produces trans-
+ferable adversarial examples through an Important-Sensitive
+Feature Selection procedure grounded in cooperative game
+theory and perturbation interpretation. Our objective is not
+to generate stronger attacks but to approximate how readily
+an adversarial example transfers between detectors. Sec-
+ond, in terms of formulation, ETA explains transferability
+qualitatively but does not provide a quantitative approxima-
+tion, whereas we introduce an explicit heuristic formulation
+(Eq. 7) that approximates transferability from the rank corre-
+lation of feature-importance vectors. Third, in terms of model
+scope, ETA spans the broader ML space (including neu-
+ral networks and tree ensembles), whereas we deliberately
+restrict our analysis to structurally related gradient-boosting
+models, which share a common split-gain importance mech-
+anism and thus permit a controlled study of how importance
+similarity governs transfer. The present work can therefore
+be read as operationalizing, in a narrower and more analyti-
+cally controlled setting, the feature-sharing insight examined
+by ETA and earlier feature-importance-aware transferability
+research.
+Across this line of work, feature importance is con-
+sistently treated as a factor associated with cross-model
+transferability, yet existing studies use this insight to gener-
+ate attacks rather than to estimate transferability in advance.
+The present work addresses that gap by operationalizing the
+feature-importance/transferability relationship as an explicit
+heuristic formulation for approximating cross-model trans-
+ferability, with scope restricted to gradient-boosting detec-
+tors for a controlled analysis.
+2.5 XAI applications in IDS
+Explainable Artiﬁcial Intelligence (XAI) has emerged as
+a critical approach for enhancing the interpretability and
+trustworthiness of IDS. Arisdakessian et al. [ 33] conducted
+a comprehensive survey of XAI techniques applied to
+anomaly-based IDS within IoT networks, concluding that
+XAI signiﬁcantly enhances trust and conﬁdence in cyber
+defense mechanisms.
+SHAP (SHapley Additive exPlanations) and LIME (Local
+Interpretable Model-agnostic Explanations) have been widely
+applied to interpret IDS decisions. Cui et al. [ 10] discovered
+that using these XAI techniques on IDS greatly improved
+clarity, particularly in distinguishing normal activities from
+attacks like Denial of Service (DoS). Their research revealed
+that global explanation methods, such as Permutation Impor-
+tance and SHAP , boosted model performance by identifying
+the most important features.
+Adversarial attacks on XAI explanations themselves rep-
+resent an emerging research area. Studies have shown that
+explanation methods can be vulnerable to manipulations that
+preserve model outputs while signiﬁcantly altering the expla-
+nations provided to users [7]. This vulnerability underscores
+the importance of developing robust explanation methods
+that can withstand adversarial attempts to obscure or mis-
+lead interpretations of model behavior.
+Recent research has also highlighted that XAI methods
+themselves may be susceptible to adversarial manipulations
+[23, 34]. Attackers can exploit explanation algorithms to pro-
+duce misleading yet plausible explanations that preserve the
+original model output while concealing malicious perturba-
+tions [7].
+While these studies collectively illustrate the value of
+XAI in understanding and improving IDS performance,
+they rarely examine the relationship between explanation-
+based feature importance and the transferability of adver-
+sarial attacks across different model architectures. Hence,
+this research integrates SHAP and LIME within a uni-
+ﬁed adversarial framework, establishing a heuristic connec-
+tion between feature importance similarity and cross-model
+adversarial success, thereby linking interpretability directly
+to robustness in IDS.
+123
+
+159 Page 6 of 15 A. Abdlatef et al.
+2.6 Open issues and research challenges
+Despite signiﬁcant advancements, several challenges persist
+in developing robust and interpretable intrusion detection
+systems. High-quality datasets remain essential for validating
+IDS models, yet public datasets often contain missing values,
+incomplete features, or redundant information that reduces
+model efﬁcacy [35]. Additionally, detection methods require
+retraining with minimal time investment to identify emerging
+threats.
+The computational cost of training deep learning mod-
+els presents another challenge, particularly for real-time
+applications where rapid detection is crucial. Feature selec-
+tion techniques that reduce dimensionality while preserving
+discriminative information are essential for optimizing per-
+formance [36]. Overﬁtting remains a signiﬁcant concern with
+black-box models like Random Forest, SVM, and CNN,
+which despite achieving excellent detection rates, often lack
+transparency.
+Transparency and interpretability have emerged as critical
+requirements for modern IDS, as security analysts increas-
+ingly base decisions on system recommendations. Develop-
+ing novel XAI approaches that provide clear explanations
+of model behavior represents a signiﬁcant opportunity for
+improving trust and understanding in intrusion detection sys-
+tems [37].
+3 Methodology
+This research employs an approach to investigate adversar-
+ial attack transferability across different machine learning
+models in intrusion detection systems. Our methodology
+encompasses framework design, data preparation, adversar-
+ial example generation, and explainability techniques. The
+approach is designed to evaluate how adversarial samples
+created for one model architecture can affect another, while
+using explainable AI methods to identify vulnerable features
+and understand attack mechanisms. The following subsec-
+tions detail each component of our experimental design and
+analytical framework.
+3.1 Proposed framework
+The proposed framework integrates LightGBM and XGBoost
+models with explainable AI techniques to develop a robust
+intrusion detection system capable of withstanding adversar-
+ial attacks. These two algorithms were deliberately selected
+because both are gradient-boosting ensemble frameworks
+that build additive decision trees through iterative opti-
+mization. They share similar feature-importance estimation
+mechanisms based on split gain, which enables a controlled
+analysis of how feature-importance similarity inﬂuences
+adversarial transferability. While traditional models such
+as Support V ector Machines (SVM) and Random Forests
+(RF) are widely and successfully adopted in intrusion
+detection research, offering high performance across vari-
+ous network contexts, they utilize fundamentally different
+decision-making structures (e.g., margin maximization in
+kernel space or bagging). Consequently, evaluating such
+heterogeneous models is beyond the scope of the current
+study, as our framework focuses speciﬁcally on transfer-
+ability guided by the interpretable patterns shared between
+gradient-boosting architectures.
+As illustrated in Fig. 3, the system employs a multi-stage
+approach combining adversarial testing with XAI-informed
+defense mechanisms. The system uses the CICIDS-2017
+and NSL-KDD datasets to train the LightGBM model for
+detecting normal and malicious network activities. XAI
+approaches, speciﬁcally SHAP and LIME, are utilized to
+determine signiﬁcant features inﬂuencing prediction results.
+These feature importance rankings guide the heuristic-based
+search methodology that creates adversarial samples by mod-
+ifying vital features to produce inputs which deceive the
+model without altering semantic content.
+The IDS is evaluated by testing its performance against
+these adversarial samples, tracking changes in precision,
+accuracy, recall, and F
+1 score metrics. The framework
+also examines adversarial attack transferability by testing
+XGBoost-derived adversarial samples against LightGBM
+to identify vulnerabilities stemming from shared decision
+boundary areas. This approach allows for a comprehensive
+assessment of model robustness while maintaining inter-
+pretability.
+3.2 Datasets and preprocessing
+The two primary datasets that have been employed in this
+research are as follows:
+• The CIC-IDS2017 dataset was collected over a 5-day
+period based on the behavior of 25 users across HTTP ,
+HTTPS, FTP , SSH, and email protocols. This dataset
+includes various attack types: Brute Force FTP , Brute
+Force SSH, DoS, Heartbleed, Web Attack, Inﬁltration,
+Botnet, and DDoS. The testbed architecture comprises
+two isolated networks (Victim-Network and Attack-
+Network), with the Victim-Network containing essential
+components such as router, ﬁrewall, switches, and mul-
+tiple devices running Windows, Linux, and macOS.
+• The NSL-KDD V2 dataset represents an enhanced ver-
+sion of the original NSL-KDD dataset, offering improved
+consistency and a new grouping created by combining
+certain non-normal classes. This dataset contains 41 net-
+work trafﬁc identiﬁcation attributes categorized as basic
+features (e.g., duration, protocol type), content-based fea-
+123
+
+Estimating adversarial transferability from feature-importance similarity in explainable intrusion… Page 7 of 15 159
+Fig. 3 The proposed framework for explainable adversarial attack
+detection in intrusion detection systems. The system integrates Light-
+GBM and XGBoost models with SHAP and LIME explanatory
+techniques to (1) identify critical features inﬂuencing detection deci-
+sions, (2) generate adversarial samples using feature importance-guided
+heuristics, (3) evaluate model robustness against these attacks, and (4)
+assess transferability between different model architectures
+tures (e.g., failed logins, root shell access), time-based
+trafﬁc features (e.g., count, service rate), and host-based
+trafﬁc features (e.g., destination host count, service rate).
+3.2.1 Data preprocessing
+Data preprocessing plays a crucial role in ensuring adver-
+sarial attack effectiveness. The implemented preprocessing
+pipeline includes:
+1. Data cleaning by removing constant features and quasi-
+constant features.
+2. Applying ordinal encoding to convert non-numeric fea-
+tures into numerical representations.
+3. Normalizing numeric features using min-max scaling.
+4. Identifying and retaining the most relevant features for
+model training.
+3.3 Adversarial example generation
+The research employs a black-box heuristic search approach
+for generating adversarial samples that target critical features
+identiﬁed through XAI methods. This approach is particu-
+larly suitable for real-world scenarios where attackers lack
+complete knowledge of the target model’s architecture and
+parameters.
+3.3.1 Heuristic search method
+The heuristic algorithm iteratively modiﬁes input features
+to ﬁnd instances that cause model misclassiﬁcation. Unlike
+gradient-based methods that require access to model inter-
+nals, this approach relies on feature importance rankings
+from SHAP and LIME to guide the search process. The
+algorithm systematically perturbs high-importance features
+within predeﬁned constraints to maximize the probability of
+misclassiﬁcation while maintaining the semantic integrity of
+the original data.
+The perturbations are subject to L
+p norm constraints
+to ensure that the modiﬁcations remain imperceptible and
+realistic. Additionally, feature consistency constraints are
+imposed to preserve the logical relationships between net-
+work trafﬁc features, ensuring that the adversarial samples
+represent plausible network trafﬁc patterns.
+3.3.2 Transferability testing
+To evaluate the transferability of adversarial attacks, the
+methodology involves:
+1. Identifying critical features driving prediction results in
+the source model (XGBoost) through SHAP analysis.
+2. Creating adversarial samples by manipulating signiﬁcant
+features to deceive the source model.
+3. Testing these adversarial samples against the target model
+(LightGBM).
+4. Measuring performance degradation using standard met-
+rics (accuracy, precision, recall, F
+1 score).
+5. Analyzing how the target model processes transferred
+adversarial samples using interpretability tools.
+This approach examines whether shared decision pat-
+terns between models enable adversarial samples designed
+for one system to cause misclassiﬁcation in another, provid-
+ing insights into common vulnerabilities across different IDS
+architectures.
+123
+
+159 Page 8 of 15 A. Abdlatef et al.
+3.4 Explainability methods
+The research integrates two primary XAI frameworks to
+enhance model interpretability:
+3.4.1 Local interpretable model-agnostic explanation
+(LIME)
+LIME employs local surrogate models to interpret individual
+predictions made by the IDS. It operates by perturbing a
+reference input and evaluating how the model’s probability
+scores change across these perturbed instances. The pixels
+with the highest weights indicate key attributes inﬂuencing
+the model’s decision. LIME is formalized as:
+Explanation (x) = arg min
+fs∈Fs
+L( f0, fs,π x) + /Omega1(fs) (1)
+where f0 is the original model, Fs represents surrogate
+models, πx is the proximity measure, and /Omega1(fs) deﬁnes sur-
+rogate model complexity.
+3.4.2 Shapley additive explanations (SHAP)
+SHAP quantiﬁes the contribution of each input feature to
+the output prediction based on Shapley values from coali-
+tional game theory. It fairly allocates the prediction among
+input features, enabling precise measurement of each fea-
+ture’s importance in model decision-making. The weights
+for LIFTSHAP π
+z() are determined by:
+πz(Z′) = M − 1( M
+|Z′|
+)
+×| Z′|× (M −| Z′|)
+(2)
+where |Z′| represents the number of features in the coali-
+tion and M is the maximum coalition size.
+3.4.3 Robustness analysis through XAI
+The explanations generated by SHAP and LIME serve dual
+purposes in the framework. First, they identify the fea-
+tures most susceptible to adversarial manipulation, guiding
+the generation of adversarial samples. Second, they provide
+insight into how adversarial attacks affect model decision-
+making by highlighting shifts in feature importance rankings
+before and after attacks.
+4 Results
+This section presents the ﬁndings from the XAI-based
+feature-importance analysis, the empirical assessment of
+the proposed formulation, performance measurements under
+adversarial conditions, and the comparison with existing
+approaches.
+4.1 XAI Feature importance analysis
+The SHAP and LIME analyses revealed distinct feature
+importance patterns across both datasets. In the CICIDS2017
+dataset, the SHAP summary plot showed that Feature 17
+exerted the strongest inﬂuence on model predictions, fol-
+lowed by Features 9 and 1, while Features 10 and 5 demon-
+strated minimal impact. Figure 4 illustrates these global
+importance rankings.
+Local SHAP analysis for individual samples revealed that
+“Bwd Packet Length Max" and “Init_Win_bytes_backward"
+were the most inﬂuential features directing predictions
+toward Class 0. The feature “min_seg_size_forward" showed
+some support for Class 1 but was outweighed by negative
+features. Similar patterns were observed in LIME explana-
+tions, with “Bwd Packet Length Max" ( − 0.66) and “URG
+Flag Count" (− 0.28) demonstrating substantial inﬂuence on
+directing predictions toward Class 0.
+For the NSL-KDD dataset, SHAP analysis identiﬁed Fea-
+ture 36 as the most critical for model predictions, with
+Features 53 and 21 also showing signiﬁcant inﬂuence,
+where features 31 and 33 exhibited the least impact (Fig. 5).
+Local explanations for NSL-KDD samples revealed that
+“service_remote_job" (0.30) and “service_domain" (0.26)
+strongly inﬂuenced predictions toward Class 1, while “ser-
+vice_hostnames" (− 0.69) and “hot" ( − 0.09) acted as nega-
+tive inﬂuences toward Class 0.
+The effectiveness of SHAP and LIME in identifying
+vulnerable features connects to the theoretical concept of
+“feature importance sensitivity" described by Ribeiro et al.
+[38], who theorized that explanation methods can reveal
+model reliance on speciﬁc features that make them suscep-
+tible to manipulation. Our ﬁndings empirically support this
+theory, demonstrating that features with the highest SHAP
+values were indeed the most effective targets for adversarial
+manipulation, conﬁrming the link between feature impor-
+tance and adversarial vulnerability.
+While the proposed feature-importance analysis high-
+lights the effectiveness of XAI techniques in identifying
+vulnerable features, an operational formulation is needed
+to examine how feature-importance similarity may relate to
+adversarial transferability across IDS architectures. Build-
+ing on these empirical observations, we introduce a heuristic
+formulation that approximates this relationship.
+4.2 Framework for adversarial transferability
+We propose a framework for understanding adversarial trans-
+ferability in intrusion detection systems. Let f
+θA and fθB rep-
+resent two different machine learning models (e.g., XGBoost
+123
+
+Estimating adversarial transferability from feature-importance similarity in explainable intrusion… Page 9 of 15 159
+Fig. 4 SHAP summary plot
+showing global feature
+importance rankings for the
+CICIDS2017 dataset. Feature 17
+demonstrates the highest impact
+on model predictions, followed
+by Features 9 and 1, while
+Features 10 and 5 show minimal
+inﬂuence
+and LightGBM) with parameters θA and θB , respectively.
+Both models map the input space X to the output space Y,
+where Y ={ 0, 1} for binary classiﬁcation in our IDS sce-
+nario.
+4.2.1 Adversarial example formulation
+For a given network trafﬁc sample x ∈ X with true class
+y ∈ Y, an adversarial example x′ can be formalized as:
+x′ = x + δ, such that fθ(x′) ̸= y and ∥δ∥p ≤ ϵ (3)
+where δrepresents the perturbation vector, ∥·∥ p denotes
+the L p norm, and ϵ is the maximum perturbation magnitude.
+In our case, we employ theL2 norm to constrain perturbations
+to make sure they remain imperceptible.
+4.2.2 Feature importance-guided perturbation
+Let φi(x) represent the SHAP value or importance score of
+feature i for input x. We deﬁne a feature importance vector
+φ(x) =[ φ1(x), φ2(x) ,...,φ d(x)] where d is the dimension-
+ality of the input space.
+The optimal perturbation vector δ∗ can be formulated as
+the solution to the following optimization problem:
+δ∗ = arg min
+δ
+∥δ∥2 subject to fθ(x + δ) ̸= fθ(x) (4)
+In practice, our heuristic search approach approximates
+this optimization by prioritizing features with high SHAP
+values. Speciﬁcally, we deﬁne a feature mask m based on
+feature importance:
+mi =
+{
+1, if |φi(x)|≥ τ
+0, otherwise
+(5)
+where τis a threshold parameter. The perturbation is then
+applied only to the selected features:
+δi =
+{
+α · sign(φi(x)) · max(min(|φi(x)|,ϵ i), ϵmin), if mi = 1
+0, otherwise
+(6)
+123
+
+159 Page 10 of 15 A. Abdlatef et al.
+Fig. 5 SHAP summary plot
+showing global feature
+importance rankings for the
+NSL-KDD dataset. Feature 36
+as the most critical for model
+predictions, with Features 53
+and 21 also showing signiﬁcant
+inﬂuence, where features 31 and
+33 exhibited the least impact
+where α is a scaling factor controlling the strength of per-
+turbation, ϵi is the feature-speciﬁc constraint, and ϵmin is the
+minimum perturbation magnitude.
+4.2.3 Adversarial transferability theorem
+We introduce the following theorem to approximate the trans-
+ferability of adversarial examples between models fθA and
+fθB :
+Theorem 1 (Adversarial Transferability via Feature Impor-
+tance Theorem 1 provides a heuristic foundation for under-
+standing transferability. While tree ensembles like XGBoost
+and LightGBM produce piecewise constant decision bound-
+aries, they often share similar feature-splitting thresholds
+when trained on the same data. We suggest that when fea-
+tures show strong correlation in their importance rankings,
+it may indicate that the models rely on similar feature-
+ranking patterns and potentially related split structures. With
+this in mind, Equation ( 7) should be understood not as a
+strict geometric transformation, but rather as a probabilis-
+tic approximation that reﬂects how likely transferability is to
+occur when models rely on similar features.
+Let f
+θA and f θB be two different ML models trained on the
+same task. Let ρ(φA,φB) denote the Spearman rank corre-
+lation between the feature importance vectors of models A
+and B. If an adversarial example x
+′ is generated using the
+feature importance vector φA such that f θA (x′) ̸= fθA (x),
+then the probability of transferability to model B is estimated
+by the following heuristic approximation:
+P( fθB (x′) ̸= fθB (x)) ≈ 1 + ρ(φA,φ B)
+2 · P( fθA (x′) ̸= fθA (x))
+(7)
+Sketch of Proof The effectiveness of an adversarial example
+depends on how the perturbation interacts with the decision
+structure of a model. When two models assign similar impor-
+tance rankings to the same features, perturbations targeting
+highly ranked features may affect both models in a similar
+manner.
+As a heuristic assumption, we treat greater similarity
+between the models’ feature
+-importance rankings as an indicator of greater similarity
+in their effective feature-space partitions. This assumption is
+123
+
+Estimating adversarial transferability from feature-importance similarity in explainable intrusion… Page 11 of 15 159
+used only to motivate Equation ( 7) and does not establish a
+geometric equivalence between feature-importance correla-
+tion and decision-region overlap.
+For an adversarial example x
+′ that changes the prediction
+of model A, we heuristically approximate the probability that
+it also changes the prediction of model B as increasing with
+the similarity of the models’ feature-importance rankings.
+Under this assumption, the scaling factor is approximated by
+1+ρ(φA,φB)
+2 . ⊓⊔
+4.2.4 Empirical assessment
+To assess the proposed formulation, we compute the Spear-
+man rank correlation between the feature importance vectors
+of XGBoost and LightGBM models:
+ρ(φXGBoost,φLightGBM) = 0.831 (8)
+Based on the proposed formulation, the estimated trans-
+ferability rate is:
+1 + 0.831
+2 = 0.9155 (9)
+Our experimental results show a rate of 86.4%. This
+deviation is expected in a heuristic setting, as Equation ( 7)
+captures the probabilistic tendency rather than a determinis-
+tic limit. The difference arises from the discrete nature of tree
+partitions which can cause localized variations in the trans-
+ferability success that the global correlation ρ does not fully
+capture.
+4.3 Model performance under attacks
+Performance metrics for both XGBoost and LightGBM mod-
+els were evaluated before and after exposure to adversarial
+attacks. Table 1 presents the results for the CICIDS2017
+dataset.
+Before adversarial attacks, both models demonstrated
+excellent performance, with XGBoost achieving 97.41%
+accuracy and LightGBM reaching 96.22%. However, fol-
+lowing the introduction of adversarial samples, performance
+degraded signiﬁcantly. XGBoost’s accuracy dropped to
+91.23% (− 6.18 percentage points), while LightGBM’s fell
+to 90.14% ( − 6.08 percentage points). Similar degradation
+patterns were observed across precision, recall, and F
+1 score
+metrics.
+The adversarial sample generation experiment provided
+further insights into attack effectiveness. From 10,000 test
+samples in the NSL-KDD dataset, 3,256 adversarial samples
+were successfully created (32.56%), with an average pertur-
+bation (Euclidean distance) of 1.82. Among the 4,732 attack
+class samples, 3,165 (66.9%) were misclassiﬁed as normal
+following perturbation. For the CICIDS-2017 dataset, 3,612
+adversarial samples were generated from 12,000 test samples
+(30.1%), with an average perturbation of 1.67. Among 6,430
+attack class samples, 4,112 (63.9%) were misclassiﬁed after
+modiﬁcation.
+Figure 6 demonstrates the vulnerability of both models
+to adversarial attacks, with a signiﬁcant portion of malicious
+samples successfully evading detection after relatively minor
+feature modiﬁcations.
+4.4 Transferability of adversarial attacks
+Experiments on attack transferability revealed that adversar-
+ial samples generated for one model could successfully fool
+another model architecture. On the CICIDS2017 dataset,
+performance metrics for both XGBoost and LightGBM
+decreased substantially when exposed to adversarial samples
+created for the other model. Table 2 presents these ﬁndings.
+XGBoost’s accuracy decreased by 8.75 percentage points
+under transferred attacks, while LightGBM exhibited a
+more signiﬁcant drop of 10.59 percentage points. Simi-
+lar degradation patterns were observed for the NSL-KDD
+dataset, though with slightly less impact: XGBoost’s accu-
+racy decreased from 0.9671 to 0.9021 ( − 6.5 percentage
+points), and LightGBM’s from 0.9663 to 0.8846 (− 8.17 per-
+centage points).
+The results conﬁrm the existence of shared vulnerabilities
+between different model architectures, particularly for com-
+plex datasets like CICIDS2017. The transferability success
+indicates that attackers can effectively target multiple IDS
+implementations using adversarial samples generated for a
+single model, posing signiﬁcant security concerns.
+4.5 Comparison with existing approaches
+While various studies have investigated adversarial robust-
+ness in machine learning-based IDS, direct quantitative
+comparisons remain challenging due to variations in prepro-
+cessing, feature selection, and evaluation protocols. Many
+studies [ 2, 6, 39] have demonstrated the vulnerability of
+models such as XGBoost, Random Forest, and Deep Neu-
+ral Networks (DNN) to adversarial perturbations on the
+CICIDS-2017 and NSL-KDD datasets.
+The proposed approach, which integrates a dual-XAI
+framework using both SHAP and LIME, observed a perfor-
+mance degradation of 6.18%. Rather than claiming absolute
+superiority, we highlight that this resilience is achieved by
+leveraging explainability-guided insights during the model
+evaluation phase. Unlike existing works that primarily uti-
+lize a single interpretability method, our dual-XAI approach
+provides a more comprehensive identiﬁcation of vulnerable
+feature regions. Furthermore, the choice of LightGBM facil-
+itates a leaf-wise tree growth strategy that offers speciﬁc
+123
+
+159 Page 12 of 15 A. Abdlatef et al.
+Table 1 Performance metrics
+before and after adversarial
+attacks on CICIDS2017
+Metric XGBoost LightGBM
+Before → After Before → After
+Accuracy 0.9741 → 0.9123 (− 6.18%) 0.9622 → 0.9014 (− 6.08%)
+Precision 0.9715 → 0.9107 (− 6.08%) 0.9598 → 0.8973 (− 6.25%)
+Recall 0.9738 → 0.9152 (− 5.86%) 0.9635 → 0.9041 (− 5.94%)
+F1 score 0.9724 → 0.9129 (− 5.95%) 0.9616 → 0.8996 (− 6.20%)
+Fig. 6 Impact of adversarial transferability on model performance
+metrics. a CICIDS2017 dataset results showing performance degra-
+dation across accuracy, precision, recall, and F 1-score when XGBoost
+and LightGBM models are exposed to adversarial examples generated
+for the other model. LightGBM exhibits greater vulnerability with a
+10.59% accuracy reduction compared to XGBoost’s 8.75%. b NSL-
+KDD dataset results demonstrating similar transferability effects but
+with less severe degradation, showing the dataset-dependent nature of
+adversarial robustness. Both charts provide empirical support for the
+expectation that similar feature-importance patterns may be associated
+with shared vulnerabilities across the evaluated model architectures
+Table 2 Transferability results
+on CICIDS2017 dataset
+Metric XGBoost LightGBM
+Before → Transferred Before → Transferred
+Accuracy 0.9778 → 0.8923 (− 8.75%) 0.9769 → 0.8735 (− 10.59%)
+Precision 0.9419 → 0.8973 (− 4.73%) 0.9372 → 0.8808 (− 6.02%)
+Recall 0.9673 → 0.8895 (− 8.04%) 0.9830 → 0.8678 (− 11.72%)
+F1 score 0.9875 → 0.8934 (− 9.53%) 0.9568 → 0.8745 (− 8.60%)
+computational advantages for high-dimensional network
+data compared to more query-intensive deep learning archi-
+tectures.
+Traditional gradient-based adversarial attacks, such as the
+Fast Gradient Sign Method (FGSM) and the Jacobian-based
+Saliency Map Attack (JSMA), are common benchmarks in
+the literature. However, these attacks fundamentally rely
+on direct access to model gradients, making them suitable
+primarily for white-box scenarios. Our study focuses on
+explainability-driven transferable attacks where perturba-
+tions are guided by feature importance scores instead. This
+enables a realistic black-box transferability setting, as the
+attack model does not require access to the target model’s
+internal parameters. Empirical studies by Jmila et al. [ 40]
+have shown that gradient-based methods like FGSM often
+yield limited cross-model transferability compared to strate-
+gies guided by feature interpretability.
+Recent research by Sharma [ 41] evaluated query-based
+black-box attacks, including Zeroth-Order Optimization
+(ZOO) and HopSkipJump. While these methods can achieve
+high success rates, they are computationally intensive, often
+requiring tens of thousands of queries, which limits their
+applicability to real-time intrusion detection systems. In con-
+trast, the proposed SHAP/LIME-guided framework gener-
+ates perturbations based on interpretable feature-importance
+patterns rather than iterative boundary exploration.
+5 Discussion
+The experimental results demonstrate signiﬁcant vulnerabil-
+ities in machine learning-based intrusion detection systems
+when subjected to adversarial attacks. The ﬁndings align with
+fundamental frameworks in adversarial machine learning.
+123
+
+Estimating adversarial transferability from feature-importance similarity in explainable intrusion… Page 13 of 15 159
+According to the linearity hypothesis proposed by Goodfel-
+low et al. [42], machine learning models exhibit vulnerability
+to adversarial samples because they behave approximately
+linearly in high-dimensional spaces. The successful gen-
+eration of adversarial samples with minimal perturbations
+(average Euclidean distances of 1.82 and 1.67 for NSL-KDD
+and CICIDS2017, respectively) empirically supports this the-
+oretical prediction.
+The performance degradation observed in both XGBoost
+and LightGBM models corresponds to Szegedy’s [ 43] foun-
+dational observation that imperceptible perturbations can
+cause models to misclassify inputs with high conﬁdence.
+This phenomenon manifested in the current study with
+66.9% and 63.9% of attack samples being incorrectly labeled
+as benign after adversarial manipulation in the NSL-KDD
+and CICIDS2017 datasets, respectively. The susceptibil-
+ity to black-box attacks using heuristic search methods is
+particularly concerning from a security perspective, as it
+demonstrates that attackers do not require detailed knowl-
+edge of model architecture to craft effective adversarial
+samples.
+The transferability results provide empirical evidence sup-
+porting Tramèr’s [44] theoretical work on shared adversarial
+subspaces. According to this theory, different models trained
+on similar data develop overlapping decision boundaries,
+creating common vulnerabilities that adversarial samples
+can exploit regardless of speciﬁc model architecture. The
+observed transferability between XGBoost and LightGBM
+models—with accuracy reductions of 8.75 and 10.59 per-
+centage points respectively when exposed to transferred
+attacks—conﬁrms the existence of these shared blind spots,
+suggesting the possibility of “universal" adversarial samples
+capable of evading multiple IDS implementations simulta-
+neously.
+The effectiveness of feature-importance-guided attacks
+aligns with the theoretical concept of “feature importance
+sensitivity" described by Ribeiro et al. [ 38], who proposed
+that explanation methods reveal model reliance on speciﬁc
+features that make them susceptible to manipulation. The
+current ﬁndings empirically support this proposal, as features
+with the highest SHAP values proved to be the most effective
+targets for adversarial perturbation. This connection between
+explainability and vulnerability represents a fundamental
+tension in ML-based security systems: the same features that
+enable effective classiﬁcation also create exploitable weak-
+nesses.
+The formulation presented in this study builds on previ-
+ous work by operationalizing a possible relationship between
+feature-importance similarity and adversarial transferabil-
+ity. The high Spearman correlation (0.831) between the
+XGBoost and LightGBM feature-importance vectors indi-
+cates substantial similarity in their feature rankings. This
+similarity is consistent with, but does not by itself establish,
+the observed cross-model transferability. This formulation
+provides a probabilistic heuristic for approximating transfer-
+ability between the structurally similar model pair evaluated
+in this study. The reasonable agreement between the heuristic
+estimate (91.55%) and the experimental result (86.4%) sup-
+ports the utility of the framework for assessing cross-model
+vulnerability while also indicating that the approximation
+does not replace direct empirical evaluation. This ten-
+sion relates to what Papernot et al. [ 45] described as the
+“transferability-security" trade-off, where model properties
+that enhance generalization also facilitate adversarial trans-
+ferability.
+From a theoretical perspective, the integration of XAI
+methods like SHAP and LIME represents an application
+of what Miller [ 46] terms “explanatory debugging"—using
+explanations to identify and mitigate model weaknesses.
+The consistency of feature importance rankings across these
+methods supports their reliability as interpretability tools
+while revealing potential pathways for defensive strategies.
+This aligns with theoretical work by Kaur et al. [ 47], who
+established that explanation methods can serve as practical
+tools for model diagnosis and improvement.
+While this study focuses on gradient-boosting architec-
+tures due to their shared importance estimation mechanisms,
+the heuristic framework provides a basis for future explo-
+rations into how feature relevance informs robustness in
+heterogeneous models such as SVM or Random Forest.
+6 Conclusion
+This research has presented an explainability-informed
+framework for analyzing adversarial vulnerability and
+approximating cross-model transferability in intrusion detec-
+tion systems. The ﬁndings demonstrate that while machine
+learning-based IDS can achieve high accuracy under normal
+conditions, they remain vulnerable to adversarial manipula-
+tion, particularly when attackers target features identiﬁed as
+important through explainability methods.
+The key contributions of this work include:
+• Developing explainable XGBoost and LightGBM-based
+IDS models that achieve baseline accuracies of 97.41%
+and 96.22%, respectively, while providing explanations
+through SHAP and LIME.
+• Demonstrating model vulnerability to adversarial manip-
+ulation, with successful adversarial samples generated
+for 32.56% of the NSL-KDD test instances and 30.1% of
+the CICIDS-2017 test instances.
+• Demonstrating adversarial transferability between the
+evaluated XGBoost and LightGBM models, highlight-
+ing shared vulnerabilities within the studied gradient-
+boosting setting.
+123
+
+159 Page 14 of 15 A. Abdlatef et al.
+• Using SHAP and LIME to identify features associated
+with adversarial vulnerability and to support the inter-
+pretation of model behavior under direct and transferred
+attacks.
+• Operationalizing the relationship between feature
+-importance similarity and adversarial transferability
+through a probabilistic heuristic for approximating cross-
+model vulnerability within the evaluated gradient
+-boosting model pair.
+Despite these advancements, several limitations and oppor-
+tunities for future work remain. The current approach relies
+primarily on static datasets, which may not fully capture the
+dynamic nature of network trafﬁc in operational environ-
+ments. Additionally, while the proposed defense mechanisms
+show promise in increasing robustness, they do not com-
+pletely eliminate vulnerability to adversarial attacks.
+Some future research directions we believe that researchers
+should focus on are as follows:
+• Developing advanced data augmentation strategies using
+generative models like GANs to improve model diversity
+and robustness.
+• Implementing more sophisticated adversarial training
+techniques that can anticipate and mitigate emerging
+attack vectors.
+• Creating hybrid detection systems that combine deep
+learning with traditional rule-based approaches to lever-
+age both statistical learning and domain knowledge.
+• Optimizing the proposed framework for real-time appli-
+cations by enhancing scalability and reducing computa-
+tional costs.
+• Further reﬁning XAI methods speciﬁcally tailored to
+adversarial scenarios, improving the understanding of
+model vulnerabilities.
+• While this study focused on gradient-boosting ensem-
+bles, future work is needed to assess the extent to
+which these transferability patterns apply to heteroge-
+neous architectures such as SVM and Random Forest.
+Author Contributions M.A. conceptualized the research idea, A.A.
+implemented the methodology and prepared the ﬁgures, and D.C. ana-
+lyzed the experimental results and wrote the main manuscript text. All
+authors reviewed the manuscript.
+Funding No funding was received to support this work. The authors
+have no relevant ﬁnancial or non-ﬁnancial interests to disclose.
+Data Availability The datasets used in this research are publicly avail-
+able. The CICIDS2017 dataset was obtained from the Canadian Institute
+for Cybersecurity (CIC) and is available at https://www.unb.ca/cic/
+datasets/ids-2017.html . The NSL-KDD dataset is available at https://
+www.unb.ca/cic/datasets/nsl.html. The NSL-KDD V2 dataset is an
+enhanced version developed by Abluva Inc.
+Declarations
+Conﬂict of interest We declare that there are no conﬂict of interest
+related to this manuscript.
+Open Access This article is licensed under a Creative Commons
+Attribution-NonCommercial-NoDerivatives 4.0 International License,
+which permits any non-commercial use, sharing, distribution and repro-
+duction in any medium or format, as long as you give appropriate credit
+to the original author(s) and the source, provide a link to the Creative
+Commons licence, and indicate if you modiﬁed the licensed mate-
+rial. Y ou do not have permission under this licence to share adapted
+material derived from this article or parts of it. The images or other
+third party material in this article are included in the article’s Creative
+Commons licence, unless indicated otherwise in a credit line to the
+material. If material is not included in the article’s Creative Commons
+licence and your intended use is not permitted by statutory regula-
+tion or exceeds the permitted use, you will need to obtain permission
+directly from the copyright holder. To view a copy of this licence, visit
+http://creativecommons.org/licenses/by-nc-nd/4.0/.
+References
+1. He, K., Kim, D.D., Asghar, M.R.: Adversarial machine learning
+for network intrusion detection systems: a comprehensive survey.
+IEEE Commun. Surv. Tutor. 25(1), 538–566 (2023)
+2. Bouaziz, A., Nguyen, M.-D., V aldés, V ., Cavalli, A.R., Mallouli,
+W.: Study on adversarial attacks techniques, learning methods and
+countermeasures: Application to anomaly detection, pp. 510–517.
+ICSOFT (2023)
+3. Chakraborty, A., Alam, M., Dey, V ., Chattopadhyay, A.,
+Mukhopadhyay, D.: Adversarial attacks and defences: A survey,
+(2018). arXiv:1810.00069 arXiv preprint
+4. Lundberg, H.: Increasing the Trustworthiness ofAI-based In-
+V ehicle IDS usingeXplainable AI, (2022)
+5. Hu, Y ., Kuang, W., Qin, Z., Li, K., Zhang, J., Gao, Y ., Li, W., Li, K.:
+Artiﬁcial intelligence security: threats and countermeasures. ACM
+Comp. Surv (CSUR) 55(1), 1–36 (2021)
+6. Jiyad, Z.M., Al Maruf, A., Haque, M.M., Gupta, M.S., Ahad, A.,
+Aung, Z.: Ddos attack classiﬁcation leveraging data balancing and
+hyperparameter tuning approach using ensemble machine learning
+with xai. In: 2024 Third International Conference on Power, Con-
+trol and Computing Technologies (ICPC2T), pp. 569–575 (2024).
+IEEE
+7 . S a u k a ,K . ,S h i n ,G . - Y . ,K i m ,D . - W . ,H a n ,M . - M . :A d v e r s a r i a lr o b u s t
+and explainable network intrusion detection systems based on deep
+learning. Appl. Sci. 12(13), 6451 (2022)
+8. Habib, G., Qureshi, S.: Xai and machine learning for cyber security:
+A systematic review. Medical Data Analysis and Processing using
+Explainable Artiﬁcial Intelligence, pp. 91–104. (2023)
+9. Hariharan, S., Rejimol Robinson, R., Prasad, R.R., Thomas, C.,
+Balakrishnan, N.: Xai for intrusion detection system: comparing
+explanations based on global and local scope. J. Computer Virol.
+Hacking Tech. 19(2), 217–239 (2023)
+10. Cui, J., Zong, L., Xie, J., Tang, M.: A novel multi-module integrated
+intrusion detection system for high-dimensional imbalanced data.
+Appl. Intell. 53(1), 272–288 (2023)
+11. Okada, S., Jmila, H., Akashi, K., Mitsunaga, T., Sekiya, Y ., Takase,
+H., Blanc, G., Nakamura, H.: Xai-driven black-box adversarial
+attacks on network intrusion detectors. Int. J. Inf. Secur. 24(3),
+103 (2025)
+123
+
+Estimating adversarial transferability from feature-importance similarity in explainable intrusion… Page 15 of 15 159
+12. Abdulganiyu, O.H., Ait Tchakoucht, T., Saheed, Y .K.: A systematic
+literature review for network intrusion detection system (ids). Int.
+J. Inf. Secur. 22(5), 1125–1162 (2023)
+13. Habeeb, M.S., Babu, T.R.: Network intrusion detection system:
+a survey on artiﬁcial intelligence-based techniques. Expert. Syst.
+39(9), 13066 (2022)
+14. Afolabi, A.S., Akinola, O.A.: Network intrusion detection using
+knapsack optimization, mutual information gain, and machine
+learning. J. Electr. Computer Eng. 2024(1), 7302909 (2024)
+15. Thakkar, A., Lohiya, R.: A survey on intrusion detection system:
+feature selection, model, performance measures, application per-
+spective, challenges, and future research directions. Artif. Intell.
+Rev. 55(1), 453–563 (2022)
+16. Abdulganiyu, O.H., Tchakoucht, T.A., Saheed, Y .K.: Towards an
+efﬁcient model for network intrusion detection system (ids): sys-
+tematic literature review. Wireless Netw. 30(1), 453–482 (2024)
+17. Mallampati, S.B., Seetha, H., Batchu, R.K.: Pcb-lgbm: A hybrid
+feature selection by pearson correlation and boruta-lgbm for intru-
+sion detection systems. In: International Conference on Computa-
+tional Intelligence and Data Engineering, pp. 523–533. Springer
+(2022)
+18. Lo, W., Alqahtani, H., Thakur, K., Almadhor, A., Chander, S.,
+Kumar, G.: A hybrid deep learning based intrusion detection system
+using spatial-temporal representation of in-vehicle network trafﬁc.
+V eh. Commun.35, 100471 (2022)
+19. Maheswari, K., Siva, C., Priya, G.N.: An optimal cluster based
+intrusion detection system for defence against attack in web and
+cloud computing environments. Wireless Pers. Commun. 128(3),
+2011–2037 (2023)
+20. Roshan, K., Zafar, A., Haque, S.B.U.: Untargeted white-box adver-
+sarial attack with heuristic defence methods in real-time deep
+learning based network intrusion detection system. Comput. Com-
+mun. 218, 97–113 (2024)
+21. Paya, A., Arroni, S., García-Díaz, V ., Gómez, A.: Apollon: a robust
+defense system against adversarial machine learning attacks in
+intrusion detection systems. Computers Secur. 136, 103546 (2024)
+22. Y ang, Y .-G., Fu, H.-M., Gao, S., Zhou, Y .-H., Shi, W.-M.: Intrusion
+detection: a model based on the improved vision transformer. Trans.
+Emerg. Telecommun. Technol. 33(9), 4522 (2022)
+23. Baniecki, H., Biecek, P .: Adversarial attacks and defenses in
+explainable artiﬁcial intelligence: a survey. Information Fusion
+107, 102303 (2024)
+24. Noppel, M., Wressnegger, C.: Sok: Explainable machine learning
+in adversarial environments. In: 2024 IEEE Symposium on Secu-
+rity and Privacy (SP), pp. 2441–2459. IEEE (2024)
+25. Slack, D., Hilgard, S., Jia, E., Singh, S., Lakkaraju, H.: Fooling lime
+and shap: Adversarial attacks on post hoc explanation methods. In:
+Proceedings of the AAAI/ACM Conference on AI, Ethics, and
+Society, pp. 180–186. (2020)
+26. Aïvodji, U., Hara, S., Marchand, M., Khomh, F.: Fooling shap with
+stealthily biased sampling. In: The Eleventh International Confer-
+ence on Learning Representations, (2022)
+27. Ghorbani, A., Abid, A., Zou, J.: Interpretation of neural networks
+is fragile. In: Proceedings of the AAAI Conference on Artiﬁcial
+Intelligence, vol. 33, pp. 3681–3688. (2019)
+28. Mahbooba, B., Timilsina, M., Sahal, R., Serrano, M.: Explainable
+artiﬁcial intelligence (xai) to enhance trust management in intrusion
+detection systems using decision tree model. Complexity 2021(1),
+6634811 (2021)
+29. Pinhasov, B., Lapid, R., Ohayon, R., Sipper, M., Aperstein, Y .:
+Xai-based detection of adversarial attacks on deepfake detectors,
+(2024). arXiv:2403.02955 arXiv preprint
+30. Vreš, D., Robnik-Šikonja, M.: Preventing deception with expla-
+nation methods using focused sampling. Data Min. Knowl. Disc.
+38(5), 3262–3307 (2024)
+31. Wang, Z., Guo, H., Zhang, Z., Liu, W., Qin, Z., Ren, K.: Feature
+importance-aware transferable adversarial attacks. In: Proceedings
+of the IEEE/CVF International Conference on Computer Vision,
+pp. 7639–7648. (2021)
+32. Zhang, H., Han, D., Zhuang, S., Wang, Z., Sun, J., Liu, Y ., Liu,
+J., Dong, J.: Explainable and transferable adversarial attack for ml-
+based network intrusion detectors. IEEE Trans. Dependable Secure
+Comput. 22(5), 5090–107 (2025)
+33. Arisdakessian, S., Wahab, O.A., Mourad, A., Otrok, H., Guizani,
+M.: A survey on iot intrusion detection: Federated learning, game
+theory, social psychology, and explainable ai as future directions.
+IEEE Internet Things J. 10(5), 4059–4092 (2022)
+34. Wang, J., Wu, Y ., Li, M., Lin, X., Wu, J., Li, C.: Interpretability
+is a kind of safety: An interpreter-based ensemble for adversary
+defense. In: Proceedings of the 26th ACM SIGKDD International
+Conference on Knowledge Discovery and Data Mining, pp. 15–24
+(2020)
+35. Muneer, S., Farooq, U., Athar, A., Ahsan Raza, M., Ghazal,
+T.M., Sakib, S.: A critical review of artiﬁcial intelligence based
+approaches in intrusion detection: a comprehensive analysis. J.
+Eng. 2024(1), 3909173 (2024)
+36. Agalit, M.A., Sadiqui, A., Khamlichi, Y ., Chakir, E.M.: Hybrid
+intrusion detection system for wireless networks. In: WITS 2020:
+Proceedings of the 6th International Conference on Wireless
+Technologies, Embedded, and Intelligent Systems, pp. 507–513.
+Springer (2021)
+37. Altulaihan, E., Almaiah, M.A., Aljughaiman, A.: Anomaly detec-
+tion ids for detecting dos attacks in iot networks based on machine
+learning algorithms. Sensors 24(2), 713 (2024)
+38. Ribeiro, M.T., Singh, S., Guestrin, C.: “Why should i trust you?”
+Explaining the predictions of any classiﬁer. In: Proceedings of the
+22nd ACM SIGKDD International Conference on Knowledge Dis-
+covery and Data Mining, pp. 1135–1144 (2016)
+39. Oseni, A., Moustafa, N., Creech, G., Sohrabi, N., Strelzoff, A.,
+Tari, Z., Linkov, I.: An explainable deep learning framework for
+resilient intrusion detection in iot-enabled transportation networks.
+IEEE Trans. Intell. Transp. Syst. 24(1), 1000–1014 (2022)
+40. Jmila, H., Khedher, M.I.: Adversarial machine learning for net-
+work intrusion detection: a comparative study. Comput. Netw.
+214,
+109073 (2022)
+41. Sharma, S.: Adversarial attacks against network intrusion detection
+systems, Purdue University (2024). (Master&apos;s thesis)
+42. Goodfellow, I.J., Shlens, J., Szegedy, C.: Explaining and harnessing
+adversarial examples, (2014). arXiv:1412.6572 arXiv preprint
+43. Szegedy, C., Zaremba, W., Sutskever, I., Bruna, J., Erhan, D., Good-
+fellow, I., Fergus, R.: Intriguing properties of neural networks,
+(2013). arXiv:1312.6199 arXiv preprint
+44. Tramèr, F., Papernot, N., Goodfellow, I., Boneh, D., McDaniel,
+P .: The space of transferable adversarial examples. arXiv preprint
+arXiv:1704.03453 (2017)
+45. Papernot, N., McDaniel, P ., Jha, S., Fredrikson, M., Celik, Z.B.,
+Swami, A.: The limitations of deep learning in adversarial set-
+tings. In: 2016 IEEE European Symposium on Security and Privacy
+(EuroS&P), pp. 372–387 (2016). IEEE
+46. Miller, T.: Explanation in artiﬁcial intelligence: insights from the
+social sciences. Artif. Intell. 267, 1–38 (2019)
+47. Kaur, H., Nori, H., Jenkins, S., Caruana, R., Wallach, H., Wort-
+man V aughan, J.: Interpreting interpretability: understanding data
+scientists’ use of interpretability tools for machine learning. In:
+Proceedings of the 2020 CHI Conference on Human Factors in
+Computing Systems, pp. 1–14. (2020)
+Publisher’s Note Springer Nature remains neutral with regard to juris-
+dictional claims in published maps and institutional afﬁliations.
+123
