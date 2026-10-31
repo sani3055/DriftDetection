@@ -36,6 +36,15 @@ request has been sent. [Author-hosted paper, especially PDF pages 6-7 and 24](ht
 Independent labelled CloudTrail evaluation with established benign controls is
 still open. The trace collection does not by itself resolve that gap.
 
+## Independently authored labelled generic synthetic events
+
+The Apache-2.0 [cloud-threat-anomaly-lab](https://github.com/katerina20/cloud-threat-anomaly-lab)
+provides a committed, cloud-neutral synthetic sample with per-event normal/anomaly
+labels. A frozen, retrospective cross-domain replay is documented in
+`docs/INDEPENDENT_LABELLED_SYNTHETIC_FINDINGS.md`. It is not a native CloudTrail
+corpus and does not supply an independent real AWS environment; it therefore
+does not resolve the independent labelled CloudTrail validation gap.
+
 ## Independent synthetic baseline
 
 Opsbreak's MIT-licensed Trailhunt sample contains 11,575 generated CloudTrail

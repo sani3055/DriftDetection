@@ -70,8 +70,25 @@ sensitivity analysis, not a production cost estimate.
 
 The literature package is an automated initial evidence set until two reviewers complete title/
 abstract and full-text screening, exclusion reasons, study-level risk of bias, and the PRISMA
-checklist. The current set contains 100 DOI records but only 12 downloaded open-access PDFs and
-must not yet be described as a completed systematic review.
+checklist. The current Project 20106UG03 collection contains 101 selected primary journal
+articles, 101 locally retained PDFs and 101 AI-assisted summaries. It is a bounded structured
+evidence review, not a completed exhaustive systematic review or independent critical
+appraisal. Downloaded PDFs and raw full-text archives are not redistributed here.
+
+### Current papers and review collection
+
+- [Research manuscript for guide review](outputs/CloudTrail_Journal_Manuscript_Guide_Review_Final.docx)
+- [Structured review draft](20106UG03/20106UG03_Review_Paper_Guide_Draft.docx)
+- [Consolidated summaries of 101 journal articles](20106UG03/20106UG03_Consolidated_Journal_Paper_Summaries.docx)
+- [Paper register](20106UG03/Paper_Register.csv)
+- [PRISMA completion map](20106UG03/PRISMA_2020_Completion_Map.md)
+- [Review package status and limitations](20106UG03/README_FOR_GUIDE.md)
+
+The latest empirical evidence includes candidate-update safety stress tests, matched static
+baselines and a separately sourced labelled synthetic transfer test. See
+`docs/JOURNAL_V5_SAFETY_FINDINGS.md` and `docs/INDEPENDENT_LABELLED_SYNTHETIC_FINDINGS.md`.
+Synthetic transfer is not validation on a second independent real AWS environment.
+Neither manuscript has been submitted or accepted; Q1/Q2 acceptance is not guaranteed.
 
 ## Research positioning
 
